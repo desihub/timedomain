@@ -1,4 +1,6 @@
+import gzip
 import numpy as np
+from glob import glob
 from astropy import units as u
 
 
@@ -220,7 +222,9 @@ class K17Generator:
         # Grab two models (get indices without replacement.)
         i = np.random.choice(self.idx_lo)
         j = np.random.choice(self.idx_hi)
-        a, b = np.random.uniform(low=0., high=1., size=2)
+        #a, b = np.random.uniform(low=0., high=1., size=2)
+        a = np.random.uniform()
+        b = 1. - a
         
         ks_i = K17Sim(self.ksfiles[i])
         ks_j = K17Sim(self.ksfiles[j])
