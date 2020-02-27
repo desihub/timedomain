@@ -1,4 +1,12 @@
-# Gravitational Wave plots
+# Gravitational Wave Scripts
+
+## GW target notebook
+
+The notebook in this folder will estimate the 50%/90% credible localization
+interval of a GW alert and calculate all DR8 targets within the interval
+given an r-band magnitude threshold.
+
+## GW plots
 
 Grab LIGO reconstruction from GraceDB (currently defaults to bayestar
 reconstruction, not LALInference) and plot arbitrary credible intervals on a
