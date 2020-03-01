@@ -6,7 +6,8 @@ Updated SYB, Dec 2020.
 """
 
 import os
-import numpy  as np
+import logging
+import numpy as np
 import healpy as hp
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -68,10 +69,10 @@ def compute_contours(proportions, samples):
 
     Returns:
     --------
-    theta_list: list
-        List of arrays containing theta values for desired contours
-    phi_list: list
-        List of arrays containing phi values for desired contours
+    ra_list: list
+        List of arrays containing RA values for desired contours [deg].
+    dec_list: list
+        List of arrays containing Dec values for desired contours [deg].
     """
 
     levels = []
@@ -84,15 +85,15 @@ def compute_contours(proportions, samples):
         levels.append(level)
     contours_by_level = meander.spherical_contours(sample_points, samples, levels)
 
-    theta_list = []; phi_list=[]
+    ra_list = []; dec_list=[]
     for contours in contours_by_level:
         for contour in contours:
             theta, phi = contour.T
             phi[phi<0] += 2.0*np.pi
-            theta_list.append(theta)
-            phi_list.append(phi)
-
-    return theta_list, phi_list
+            dec_list.append(90 - np.degrees(theta))
+            ra_list.append(np.degrees(phi))
+    
+    return ra_list, dec_list
 
 
 def plot_gwmap(lvc_healpix_file, levels=[0.5, 0.9]):
@@ -127,8 +128,7 @@ def plot_gwmap(lvc_healpix_file, levels=[0.5, 0.9]):
     prob64 = hp.pixelfunc.ud_grade(gwmap, 64) #reduce nside to make it faster
     prob64 = prob64/np.sum(prob64)
     pixels = np.arange(prob64.size)
-    #sample_points = np.array(hp.pix2ang(nside,pixels)).T
-    theta_contour, phi_contour = compute_contours(levels, prob64)
+    ra_contour, dec_contour = compute_contours(levels, prob64)
 
     cmap = mpl.cm.OrRd
     cmap.set_under('w')
@@ -143,17 +143,16 @@ def plot_gwmap(lvc_healpix_file, levels=[0.5, 0.9]):
                 min=0, max=2e-4, flip='astro', rot=180, cmap=cmap)
     hp.graticule(ls=':', alpha=0.5, dpar=30, dmer=45)
 
-    thmin, thmax = 1e99, -1e99
-    phmin, phmax = 1e99, -1e99
-    for i, (tc, pc) in enumerate(zip(theta_contour, phi_contour)):
-        thmin = np.minimum(thmin, np.min(tc))
-        thmax = np.maximum(thmax, np.max(tc))
-        phmin = np.minimum(phmin, np.min(pc))
-        phmax = np.maximum(phmax, np.max(pc))
-        hp.projplot(tc, pc, linewidth=1, c='k')
-
-    ramin, ramax = np.degrees(phmin), np.degrees(phmax)
-    decmin, decmax = 90-np.degrees(thmax), 90-np.degrees(thmin)
+    ramin, ramax = 1e99, -1e99
+    decmin, decmax = 1e99, -1e99
+    for i, (rc, dc) in enumerate(zip(ra_contour, dec_contour)):
+        ramin = np.minimum(ramin, np.min(rc))
+        ramax = np.maximum(ramax, np.max(rc))
+        decmin = np.minimum(decmin, np.min(dc))
+        decmax = np.maximum(decmax, np.max(dc))
+        hp.projplot(rc, dc, lonlat=True, linewidth=1, c='k')
+        
+    logging.info('RA_min={:.1f}, RA_max={:.1f}, Dec_min={:.1f}, Dec_max={:.1f}'.format(ramin, ramax, decmin, decmax))
 
     ax = plt.gca()
 
