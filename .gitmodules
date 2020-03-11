@@ -1,0 +1,3 @@
+[submodule "astrodash"]
+	path = astrodash
+	url = https://github.com/daniel-muthukrishna/astrodash.git
