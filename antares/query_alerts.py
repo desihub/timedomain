@@ -49,7 +49,7 @@ def build_query(ra0, dec0, fov, date):
     # Set up the RA search.
     if ra0 is not None:
         query['query']['bool']['must'].append(
-            {'range': {'ra':{ 'gte':ra0-dra, 'lte':ra0+dra, } } })
+            {'range': {'ra':{ 'gte':(ra0-dra)%360., 'lte':(ra0+dra)%360., } } })
 
     # Set up the cumulative date search.
     if date is not None:
