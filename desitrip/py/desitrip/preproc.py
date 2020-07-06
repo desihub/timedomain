@@ -63,7 +63,7 @@ def _rebin_logwave(wave, flux, ivar, targetids, minwave=3500., maxwave=10000., d
 
     return fl, iv
 
-def rebin_flux(wave, flux, ivar=None, minwave=3600., maxwave=9900., nbins=600,  log=False):
+def rebin_flux(wave, flux, ivar=None, minwave=3600., maxwave=9800., nbins=600,  log=False):
     """Rebin differential flux vs wavelength using desispec resample_flux.
 
     Parameters
@@ -103,7 +103,7 @@ def rebin_flux(wave, flux, ivar=None, minwave=3600., maxwave=9900., nbins=600,  
         iv = np.ones((nspec, nbins))
         for i in range(nspec):
             if ivar is not None:
-                iv[i], fl[i] = resample_flux(basewave, wave, flux[i], ivar[i])
+                fl[i], iv[i] = resample_flux(basewave, wave, flux[i], ivar[i])
             else:
                 fl[i] = resample_flux(basewave, wave, flux[i])
     else:
