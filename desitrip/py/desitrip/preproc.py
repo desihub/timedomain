@@ -2,6 +2,8 @@
 single observation of a spectrum.
 """
 
+import numpy as np
+
 def _rebin_logwave(wave, flux, ivar, targetids, minwave=3500., maxwave=10000., dlogwave=1e-3):
     """
     Parameters:
@@ -29,7 +31,7 @@ def _rebin_logwave(wave, flux, ivar, targetids, minwave=3500., maxwave=10000., d
     logmin = np.log10(minwave)
     logmax = np.log10(maxwave)
     logwave = np.log10(wave)
-    logbins = np.floor(logwave-logmin)/dlogwave).astype(int)
+    logbins = np.floor((logwave-logmin)/dlogwave).astype(int)
 
     # Select wavelengths with data. Zero-pad everything else.
     w = (logwave>logmin) & (logwave<logmax)
@@ -46,10 +48,10 @@ def _rebin_logwave(wave, flux, ivar, targetids, minwave=3500., maxwave=10000., d
 
     for i, t in enumerate(targetids):
         j = np.argwhere(utids == t)[0]
-        c = np.bincounts(bins, weights=ivfl_aux[i])
+        c = np.bincount(logbins, weights=ivfl_aux[i])
         fl[j,:len(c)] += c
 
-        c = np.bincount(bins, weights=iv_aux[i])
+        c = np.bincount(logbins, weights=iv_aux[i])
         iv[j,:len(c)] += c
 
     w = iv > 0
