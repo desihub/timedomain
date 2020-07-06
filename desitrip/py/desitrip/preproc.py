@@ -3,6 +3,7 @@ single observation of a spectrum.
 """
 
 import numpy as np
+from desispec.interpolation import resample_flux
 
 def _rebin_logwave(wave, flux, ivar, targetids, minwave=3500., maxwave=10000., dlogwave=1e-3):
     """
@@ -27,7 +28,10 @@ def _rebin_logwave(wave, flux, ivar, targetids, minwave=3500., maxwave=10000., d
     --------
     fl : ndarray
         Rebinned spectrum.
+    iv : ndarray
+        Rebinned inverse variance.
     """
+    # Copied from QuasarNET; for checks.
     logmin = np.log10(minwave)
     logmax = np.log10(maxwave)
     logwave = np.log10(wave)
@@ -57,4 +61,76 @@ def _rebin_logwave(wave, flux, ivar, targetids, minwave=3500., maxwave=10000., d
     w = iv > 0
     fl[w] /= iv[w]
 
-    return fl
+    return fl, iv
+
+def rebin_flux(wave, flux, ivar=None, minwave=3500., maxwave=10000., nbins=600,  log=False):
+    """Rebin differential flux vs wavelength using desispec resample_flux.
+
+    Parameters
+    ----------
+    wave : ndarray
+        Input wavelength; assume units of Angstroms.
+    flux : ndarray
+        Input differential spectra as a function of wavelength.
+    ivar : None or ndarray
+        Inverse variance (weight) of spectra vs wavelength.
+    minwave : float
+        Minimum output wavelength, in units of Angstroms.
+    maxwave : float
+        Maximum output wavelength, in units of Angstroms.
+    nbins : int
+        Number of output wavelength bins.
+    log : bool
+        If true, use logarithmic bins between minwave and maxwave.
+
+    Returns
+    -------
+    basewave : ndarray
+        Output wavelength, in units of Angstroms.
+    fl : ndarray
+        Rebinned spectra.
+    iv : ndarray
+        Rebinned inverse variance.
+    """
+    if log:
+        basewave = np.logspace(np.log10(minwave), np.log10(maxwave), nbins)
+    else:
+        basewave = np.linspace(minwave, maxwave, nbins)
+
+    if flux.ndim > 1:
+        nspec = len(flux)
+        fl = np.zeros((nspec, nbins))
+        iv = np.ones((nspec, nbins))
+        for i in range(nspec):
+            if ivar is not None:
+                iv[i], fl[i] = resample_flux(basewave, wave, flux[i], ivar[i])
+            else:
+                fl[i] = resample_flux(basewave, wave, flux[i])
+    else:
+        resampled = resample_flux(basewave, wave, flux, ivar)
+        if ivar is not None:
+            fl, iv = resampled
+        else:
+            fl, iv = resampled, None
+
+    return basewave, fl, iv
+
+def rescale_flux(flux):
+    """Rescale flux so that it ranges from 0 to 1.
+
+    Parameters
+    ----------
+    flux : ndarray
+        Input flux array.
+
+    Returns
+    -------
+    rsfl : ndarray
+        Flux rescaled to range between 0 and 1.
+    """
+    if flux.ndim > 1:
+        a, b = np.min(flux,axis=1)[:,None], np.max(flux,axis=1)[:,None]
+    else:
+        a, b = np.min(flux), np.max(flux)
+    
+    return (flux - a) / (b - a)
