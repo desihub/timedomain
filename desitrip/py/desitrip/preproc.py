@@ -63,7 +63,7 @@ def _rebin_logwave(wave, flux, ivar, targetids, minwave=3500., maxwave=10000., d
 
     return fl, iv
 
-def rebin_flux(wave, flux, ivar=None, minwave=3500., maxwave=10000., nbins=600,  log=False):
+def rebin_flux(wave, flux, ivar=None, minwave=3600., maxwave=9900., nbins=600,  log=False):
     """Rebin differential flux vs wavelength using desispec resample_flux.
 
     Parameters
