@@ -132,9 +132,5 @@ def rescale_flux(flux):
         a, b = np.min(flux,axis=1)[:,None], np.max(flux,axis=1)[:,None]
     else:
         a, b = np.min(flux), np.max(flux)
-
-    # Catch divide-by-zero before it happens.
-    j = np.argwhere(a == b)[:,0]
-    b[j] = a[j] + 1
     
     return (flux - a) / (b - a)
