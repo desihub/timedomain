@@ -119,19 +119,24 @@ def rebin_flux(wave, flux, ivar=None, minwave=3600., maxwave=9800., nbins=600,  
 
     return basewave, fl, iv
 
-def rescale_flux(flux):
+def rescale_flux(flux, clip=False):
     """Rescale flux so that it ranges from 0 to 1.
 
     Parameters
     ----------
     flux : ndarray
         Input flux array.
+    clip : bool
+        If true, clip input values below zero before rescaling.
 
     Returns
     -------
     rsfl : ndarray
         Flux rescaled to range between 0 and 1.
     """
+    if clip:
+        flux = flux.clip(min=0)
+
     if flux.ndim > 1:
         a, b = np.min(flux,axis=1)[:,None], np.max(flux,axis=1)[:,None]
     else:
