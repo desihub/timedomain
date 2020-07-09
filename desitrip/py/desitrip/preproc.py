@@ -140,7 +140,7 @@ def rebin_flux(wave, flux, ivar=None, z=None, minwave=3600., maxwave=9800., nbin
 
     return basewave, fl, iv
 
-def rescale_flux(flux, clip=False):
+def rescale_flux(flux):
     """Rescale flux so that it ranges from 0 to 1.
 
     Parameters
