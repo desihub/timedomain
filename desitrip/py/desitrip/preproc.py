@@ -63,7 +63,7 @@ def _rebin_logwave(wave, flux, ivar, targetids, minwave=3500., maxwave=10000., d
 
     return fl, iv
 
-def rebin_flux(wave, flux, ivar=None, minwave=3600., maxwave=9800., nbins=600,  log=False):
+def rebin_flux(wave, flux, ivar=None, z=None, minwave=3600., maxwave=9800., nbins=600,  log=False):
     """Rebin differential flux vs wavelength using desispec resample_flux.
 
     Parameters
@@ -74,6 +74,8 @@ def rebin_flux(wave, flux, ivar=None, minwave=3600., maxwave=9800., nbins=600,  
         Input differential spectra as a function of wavelength.
     ivar : None or ndarray
         Inverse variance (weight) of spectra vs wavelength.
+    z : None, float, or ndarray
+        Known or estimated redshift(s) for input spectra.
     minwave : float
         Minimum output wavelength, in units of Angstroms.
     maxwave : float
@@ -92,10 +94,15 @@ def rebin_flux(wave, flux, ivar=None, minwave=3600., maxwave=9800., nbins=600,  
     iv : ndarray
         Rebinned inverse variance.
     """
+    # Choose new binning.
     if log:
         basewave = np.logspace(np.log10(minwave), np.log10(maxwave), nbins)
     else:
         basewave = np.linspace(minwave, maxwave, nbins)
+
+    # Shift to rest frame.
+    if z is not None:
+        wave = wave/(1+z) if np.isscalar(z) else np.outer(1./(1+z), wave)
 
     if flux.ndim > 1:
         nspec = len(flux)
