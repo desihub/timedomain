@@ -63,7 +63,7 @@ def _rebin_logwave(wave, flux, ivar, targetids, minwave=3500., maxwave=10000., d
 
     return fl, iv
 
-def rebin_flux(wave, flux, ivar=None, z=None, minwave=3600., maxwave=9800., nbins=600,  log=False):
+def rebin_flux(wave, flux, ivar=None, z=None, minwave=3600., maxwave=9800., nbins=600, log=False, clip=False):
     """Rebin differential flux vs wavelength using desispec resample_flux.
 
     Parameters
@@ -84,6 +84,8 @@ def rebin_flux(wave, flux, ivar=None, z=None, minwave=3600., maxwave=9800., nbin
         Number of output wavelength bins.
     log : bool
         If true, use logarithmic bins between minwave and maxwave.
+    clip : bool
+        If true, clip input values below zero before rescaling.
 
     Returns
     -------
@@ -124,6 +126,10 @@ def rebin_flux(wave, flux, ivar=None, z=None, minwave=3600., maxwave=9800., nbin
         else:
             fl, iv = resampled, None
 
+    # Enable clipping of negative values.
+    if clip:
+        fl = fl.clip(min=0)
+
     return basewave, fl, iv
 
 def rescale_flux(flux, clip=False):
@@ -133,16 +139,12 @@ def rescale_flux(flux, clip=False):
     ----------
     flux : ndarray
         Input flux array.
-    clip : bool
-        If true, clip input values below zero before rescaling.
 
     Returns
     -------
     rsfl : ndarray
         Flux rescaled to range between 0 and 1.
     """
-    if clip:
-        flux = flux.clip(min=0)
 
     if flux.ndim > 1:
         a, b = np.min(flux,axis=1)[:,None], np.max(flux,axis=1)[:,None]
