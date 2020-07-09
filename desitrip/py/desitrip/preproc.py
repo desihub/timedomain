@@ -102,10 +102,14 @@ def rebin_flux(wave, flux, ivar=None, minwave=3600., maxwave=9800., nbins=600,  
         fl = np.zeros((nspec, nbins))
         iv = np.ones((nspec, nbins))
         for i in range(nspec):
+            # Wavelength array may be different for each input flux, e.g., if
+            # we shift to the rest frame.
+            wave_ = wave[i] if wave.ndim > 1 else wave
+
             if ivar is not None:
-                fl[i], iv[i] = resample_flux(basewave, wave, flux[i], ivar[i])
+                fl[i], iv[i] = resample_flux(basewave, wave_, flux[i], ivar[i])
             else:
-                fl[i] = resample_flux(basewave, wave, flux[i])
+                fl[i] = resample_flux(basewave, wave_, flux[i])
     else:
         resampled = resample_flux(basewave, wave, flux, ivar)
         if ivar is not None:
