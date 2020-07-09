@@ -107,6 +107,14 @@ def rebin_flux(wave, flux, ivar=None, z=None, minwave=3600., maxwave=9800., nbin
         wave = wave/(1+z) if np.isscalar(z) else np.outer(1./(1+z), wave)
 
     if flux.ndim > 1:
+        # Remove spectra with NaNs and zero flux values.
+        mask = np.isnan(flux).any(axis=1) | (np.count_nonzero(flux, axis=1) == 0)
+        mask_idx = np.argwhere(mask)
+        flux = np.delete(flux, mask_idx, axis=0)
+        ivar = np.delete(ivar, mask_idx, axis=0)
+        if wave.ndim > 1:
+            wave = np.delete(wave, mask_idx, axis=0)
+
         nspec = len(flux)
         fl = np.zeros((nspec, nbins))
         iv = np.ones((nspec, nbins))
