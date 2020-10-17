@@ -96,8 +96,8 @@ def compute_contours(proportions, samples):
     return ra_list, dec_list
 
 
-def plot_gwmap(lvc_healpix_file, levels=[0.5, 0.9]):
-    """Plot the GW map with the DESI footprint.
+def plot_gwmap(lvc_healpix_file, levels=[0.5, 0.9], rot=255):
+    """Plot the GW map with the DESI footprint in a Mollweide projection.
     
     Parameters
     ----------
@@ -105,6 +105,8 @@ def plot_gwmap(lvc_healpix_file, levels=[0.5, 0.9]):
         Relative or absolute path to LIGO/Virgo HEALPix angular reconstruction file.
     levels : list
         List of credible interval thresholds, e.g., 0.5, 0.9, etc.
+    rot : float
+        Rotation angle (around z) for map projection, in degrees.
     
     Returns
     -------
@@ -119,7 +121,7 @@ def plot_gwmap(lvc_healpix_file, levels=[0.5, 0.9]):
     distmean = header['DISTMEAN']
     diststd = header['DISTSTD']
     origin = header['ORIGIN']
-    date = header['DATE']
+    date = header['DATE-OBS']
     
     # Read HEALPix map.
     gwmap = hp.read_map(lvc_healpix_file)
@@ -140,7 +142,7 @@ def plot_gwmap(lvc_healpix_file, levels=[0.5, 0.9]):
     probs[desi_mask == 0] = hp.UNSEEN
 
     hp.mollview(probs, cbar=True, unit=r'probability', title='{} {}'.format(origin, date),
-                min=0, max=2e-4, flip='astro', rot=180, cmap=cmap)
+                min=0, max=2e-4, flip='astro', rot=rot, cmap=cmap)
     hp.graticule(ls=':', alpha=0.5, dpar=30, dmer=45)
 
     ramin, ramax = 1e99, -1e99
@@ -157,27 +159,15 @@ def plot_gwmap(lvc_healpix_file, levels=[0.5, 0.9]):
     ax = plt.gca()
 
     # Label latitude lines.
-    ax.text( 2.00,  0.10, r'$0^\circ$', horizontalalignment='left')
-    ax.text( 1.80,  0.45, r'$30^\circ$', horizontalalignment='left')
-    ax.text( 1.30,  0.80, r'$60^\circ$', horizontalalignment='left')
-    ax.text( 1.83, -0.45, r'$-30^\circ$', horizontalalignment='left')
-    ax.text( 1.33, -0.80, r'$-60^\circ$', horizontalalignment='left')
-    ax.text(-2.00,  0.10, r'$0^\circ$', horizontalalignment='right')
-    ax.text(-1.80,  0.45, r'$30^\circ$', horizontalalignment='right')
-    ax.text(-1.30,  0.80, r'$60^\circ$', horizontalalignment='right')
-    ax.text(-1.85, -0.45, r'$-30^\circ$', horizontalalignment='right')
-    ax.text(-1.35, -0.80, r'$-60^\circ$', horizontalalignment='right')
-
+    for _dec in [-60,-30,0,30,60]:
+        vert = 'top' if _dec < 0 else 'bottom' if _dec > 0 else 'center'
+        hp.projtext(180+rot, _dec, r'{0:+}$^\circ$'.format(_dec),
+                    ha='left', va=vert, fontsize=12, lonlat=True)
+        
     # Label longitude lines.
-    ax.text( 2.0, -0.15, r'0$^\mathrm{h}$', horizontalalignment='center')
-    ax.text( 1.5, -0.15, r'3$^\mathrm{h}$', horizontalalignment='center')
-    ax.text( 1.0, -0.15, r'6$^\mathrm{h}$', horizontalalignment='center')
-    ax.text( 0.5, -0.15, r'9$^\mathrm{h}$', horizontalalignment='center')
-    ax.text( 0.0, -0.15, r'12$^\mathrm{h}$', horizontalalignment='center')
-    ax.text(-0.5, -0.15, r'15$^\mathrm{h}$', horizontalalignment='center')
-    ax.text(-1.0, -0.15, r'18$^\mathrm{h}$', horizontalalignment='center')
-    ax.text(-1.5, -0.15, r'21$^\mathrm{h}$', horizontalalignment='center')
-    ax.text(-2.0, -0.15, r'24$^\mathrm{h}$', horizontalalignment='center')
+    for _ra in np.arange(0,360,45):
+        hp.projtext(_ra, -40, r'{:d}$^\circ$'.format(_ra),
+                    horizontalalignment='center', fontsize=12, lonlat=True)
     
     fig = plt.gcf()
     return fig
