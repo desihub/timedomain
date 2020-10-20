@@ -96,7 +96,7 @@ def compute_contours(proportions, samples):
     return ra_list, dec_list
 
 
-def plot_gwmap(lvc_healpix_file, levels=[0.5, 0.9], rot=255):
+def plot_mollmap(lvc_healpix_file, levels=[0.5, 0.9], rot=255):
     """Plot the GW map with the DESI footprint in a Mollweide projection.
     
     Parameters
@@ -175,6 +175,113 @@ def plot_gwmap(lvc_healpix_file, levels=[0.5, 0.9], rot=255):
     return fig
 
 
+def plot_cartmap(lvc_healpix_file, levels=[0.5, 0.9], angsize=3., tile_ra=None, tile_dec=None):
+    """Plot the GW map with the DESI footprint in a Cartesian projection.
+    
+    Parameters
+    ----------
+    lvc_healpix_file : str
+        Relative or absolute path to LIGO/Virgo HEALPix angular reconstruction file.
+    levels : list
+        List of credible interval thresholds, e.g., 0.5, 0.9, etc.
+    angsize : float
+        Size of plot (-angsize, +angsize) in degrees about the center.
+    tile_ra : list or ndarray
+        List of RAs for DESI tiles (in deg).
+    tile_dec : list or ndarray
+        List of declinations for DESI tiles (in deg).
+    
+    Returns
+    -------
+    fig : matplotlib.Figure
+        Figure object for accessing or saving a plot.
+    """
+    gwmap = hp.read_map(lvc_healpix_file)
+    npix = len(gwmap)
+    nside = hp.npix2nside(npix)
+
+    # Compute contours.
+    if nside > 256:
+        _gwmap = hp.pixelfunc.ud_grade(gwmap, 256)
+        _gwmap = _gwmap / np.sum(_gwmap)
+    else:
+        _gwmap = gwmap
+    ra_contour, dec_contour = compute_contours(levels, _gwmap)
+
+    # Create a temporary plot to produce a nice image array.
+    # This code sets the size of the map around the maximum value.
+    maxpix = np.argmax(gwmap)
+    ra_c, dec_c = hp.pix2ang(nside, maxpix, lonlat=True)
+
+    xmin = np.round(ra_c - angsize)
+    xmax = np.round(ra_c + angsize)
+    if xmax < xmin:
+        xmin, xmax = xmax, xmin
+    cxmin, cxmax = xmin, xmax
+    frot = 0.
+    if xmax > 90 and xmax < -90:
+        frot, cxmin, cmax = 180., xmax-180., xmax+180.
+    ymin = np.round(dec_c - 3)
+    ymax = np.round(dec_c + 3)
+
+    faspect = np.abs(cxmax - cxmin)/np.abs(ymax-ymin)
+    fysize = 4
+    figsize = (fysize*faspect+1, fysize+2)
+
+    # Open and close the temporary plot.
+    tfig   = plt.figure(num=2,figsize=figsize)
+    rotimg = hp.cartview(gwmap, fig=2,coord='C', title="", cbar=False, flip='astro',
+                         lonra=[cxmin,cxmax], latra=[ymin,ymax], rot=frot,
+                         notext=True, xsize=1000,
+                         return_projected_map=True)
+    plt.close(tfig)
+
+    # Now make the real plot with the desired angular contours.
+    fig, ax = plt.subplots(1,1, num=1, figsize=figsize)
+    img = ax.imshow(rotimg, extent=[cxmax, cxmin, ymin, ymax],
+                    origin='lower', cmap='OrRd')
+
+    for i, (rc, dc, lstyle, clev) in enumerate(zip(ra_contour, dec_contour, ['--', '-'], ['50', '90'])):
+        p = ax.plot(rc, dc, 'g-', ls=lstyle, lw=2, label='{}% CI'.format(clev))
+
+    ax.set(xlim=(cxmax, cxmin),
+       xlabel='RA [deg]',
+       ylabel='Dec [deg]')
+    ax.grid(ls=':')
+
+    if tile_ra is not None and tile_dec is not None:
+        gw32 = hp.pixelfunc.ud_grade(gwmap, 32)
+        idx = np.argsort(gw32)[-4:-2]
+        ra_cs, dec_cs = hp.pix2ang(32, idx, lonlat=True)
+        circ = plt.Circle((219.1, 37), radius=1.6, fc='None', ec='b', ls=':', lw=1)
+        ax.add_artist(circ)
+
+        circ = plt.Circle((217.1, 36.75), radius=1.6, fc='None', ec='b', ls=':', lw=1)
+        ax.add_artist(circ)
+
+        circ = plt.Circle((219.3, 35.8), radius=1.6, fc='None', ec='b', ls=':', lw=1)
+        ax.add_artist(circ)
+
+        circ = plt.Circle((217.1, 35.55), radius=1.6, fc='None', ec='b', ls=':', lw=1)
+        ax.add_artist(circ)
+
+#        for _ra_c, _dec_c in zip(ra_cs, dec_cs):
+#            circ = plt.Circle((_ra_c, _dec_c), radius=1.6, fc='None', ec='b', ls=':', lw=2)
+#            ax.add_artist(circ)
+
+    _h, _l = ax.get_legend_handles_labels()
+    _h.append(circ)
+    _l.append('DESI FOV')
+
+    ax.legend(handles=_h, labels=_l, fontsize=10, ncol=2)
+
+    cb = fig.colorbar(img, orientation='horizontal', shrink=0.95,
+                      fraction=0.04, pad=0.2, ax=ax)
+    cb.set_label(r'$dp/d\Omega$ [deg$^{-2}$]')
+
+    return fig
+
+
 if __name__ == '__main__':
     p = ArgumentParser(description='GW Event Plotter',
                        formatter_class=ArgumentDefaultsHelpFormatter)
@@ -213,7 +320,8 @@ if __name__ == '__main__':
     elif 'fitsfile' in args:
         fitsFile = args.fitsfile[0]
     
-    fig = plot_gwmap(fitsFile)
+#    fig = plot_mollmap(fitsFile)
+    fig = plot_cartmap(fitsFile, tile_ra=[1,2,3,4], tile_dec=[1,2,3,4])
 
     # Output plot to a PDF file.
     if 'event_id' in args:
