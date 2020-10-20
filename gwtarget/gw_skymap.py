@@ -2,7 +2,7 @@
 and confidence level containing LIGO PDF.
 
 Based on plotting script by Raamis Hussain, UW-Madison, 21 May 2019.
-Updated SYB, Dec 2020.
+Updated SYB, Dec 2019.
 """
 
 import os
@@ -175,7 +175,7 @@ def plot_mollmap(lvc_healpix_file, levels=[0.5, 0.9], rot=255):
     return fig
 
 
-def plot_cartmap(lvc_healpix_file, levels=[0.5, 0.9], angsize=3., tile_ra=None, tile_dec=None):
+def plot_cartmap(lvc_healpix_file, levels=[0.5, 0.9], angsize=3., tile_ra=None, tile_dec=None, targ_ra=None, targ_dec=None):
     """Plot the GW map with the DESI footprint in a Cartesian projection.
     
     Parameters
@@ -190,6 +190,10 @@ def plot_cartmap(lvc_healpix_file, levels=[0.5, 0.9], angsize=3., tile_ra=None, 
         List of RAs for DESI tiles (in deg).
     tile_dec : list or ndarray
         List of declinations for DESI tiles (in deg).
+    targ_ra : list or ndarray
+        List of RAs for DESI targets (in deg).
+    targ_dec : list or ndarray
+        List of declinations for DESI targets (in deg).
     
     Returns
     -------
@@ -221,8 +225,8 @@ def plot_cartmap(lvc_healpix_file, levels=[0.5, 0.9], angsize=3., tile_ra=None, 
     frot = 0.
     if xmax > 90 and xmax < -90:
         frot, cxmin, cmax = 180., xmax-180., xmax+180.
-    ymin = np.round(dec_c - 3)
-    ymax = np.round(dec_c + 3)
+    ymin = np.round(dec_c - angsize)
+    ymax = np.round(dec_c + angsize)
 
     faspect = np.abs(cxmax - cxmin)/np.abs(ymax-ymin)
     fysize = 4
@@ -249,29 +253,20 @@ def plot_cartmap(lvc_healpix_file, levels=[0.5, 0.9], angsize=3., tile_ra=None, 
        ylabel='Dec [deg]')
     ax.grid(ls=':')
 
-    if tile_ra is not None and tile_dec is not None:
-        gw32 = hp.pixelfunc.ud_grade(gwmap, 32)
-        idx = np.argsort(gw32)[-4:-2]
-        ra_cs, dec_cs = hp.pix2ang(32, idx, lonlat=True)
-        circ = plt.Circle((219.1, 37), radius=1.6, fc='None', ec='b', ls=':', lw=1)
-        ax.add_artist(circ)
-
-        circ = plt.Circle((217.1, 36.75), radius=1.6, fc='None', ec='b', ls=':', lw=1)
-        ax.add_artist(circ)
-
-        circ = plt.Circle((219.3, 35.8), radius=1.6, fc='None', ec='b', ls=':', lw=1)
-        ax.add_artist(circ)
-
-        circ = plt.Circle((217.1, 35.55), radius=1.6, fc='None', ec='b', ls=':', lw=1)
-        ax.add_artist(circ)
-
-#        for _ra_c, _dec_c in zip(ra_cs, dec_cs):
-#            circ = plt.Circle((_ra_c, _dec_c), radius=1.6, fc='None', ec='b', ls=':', lw=2)
-#            ax.add_artist(circ)
-
     _h, _l = ax.get_legend_handles_labels()
-    _h.append(circ)
-    _l.append('DESI FOV')
+
+    # Add DESI tile drawings, specified by central RA, Dec.
+    if tile_ra is not None and tile_dec is not None:
+        for _ra_c, _dec_c in zip(tile_ra, tile_dec):
+            circ = plt.Circle((_ra_c, _dec_c), radius=1.6, fc='None', ec='b', ls=':', lw=2)
+            ax.add_artist(circ)
+
+        _h.append(circ)
+        _l.append('DESI FOV')
+
+    # Add DESI targets, specified by RA, Dec.
+    if targ_ra is not None and targ_dec is not None:
+        ax.plot(targ_ra, targ_dec, 'k.', alpha=0.1)
 
     ax.legend(handles=_h, labels=_l, fontsize=10, ncol=2)
 
@@ -321,7 +316,7 @@ if __name__ == '__main__':
         fitsFile = args.fitsfile[0]
     
 #    fig = plot_mollmap(fitsFile)
-    fig = plot_cartmap(fitsFile, tile_ra=[1,2,3,4], tile_dec=[1,2,3,4])
+    fig = plot_cartmap(fitsFile)
 
     # Output plot to a PDF file.
     if 'event_id' in args:
