@@ -6,6 +6,12 @@ The notebook in this folder will estimate the 50%/90% credible localization
 interval of a GW alert and calculate all DR8 targets within the interval
 given an r-band magnitude threshold.
 
+## GW MainInjector
+
+Currently not supported at NERSC. Given a skymap, exposure time, available time, and a date provides the tiling strategy that maximases chances of observing a counterpart in a GW follow up. Produces also animated gifs like:
+
+![GW190412 observing plan](GW190412_animate.gif)
+
 ## GW plots
 
 Grab LIGO reconstruction from GraceDB (currently defaults to bayestar
