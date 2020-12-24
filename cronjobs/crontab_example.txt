@@ -1,0 +1,6 @@
+# crontab -e
+MAILFROM=desi-timedomain@nersc.gov
+MAILTO=palmese@fnal.gov
+PATH=/opt/cray/pe/modules/3.2.11.4/bin:/global/common/cori_cle7/software/jupyter/cori/20-12/bin:/global/common/cori/das/jupyterhub:/usr/common/usg/bin:/usr/bin:/bin
+
+00 12 * * * /bin/bash -lc "sbatch /global/u2/p/palmese/desi/timedomain/cronjobs/cron_test.sh"
