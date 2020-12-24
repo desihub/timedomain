@@ -3,6 +3,108 @@ from desispec.spectra import Spectra
 
 from . import fs_utils
 
+##
+
+class Date_Tile_Iterator:
+    
+    def __init__(self, date, subdir='andes'):
+        self.date = date
+        self.tiles = fs_utils.dateToTiles(date, subdir=subdir)
+        self.index = 0
+        
+    def __iter__(self):
+        
+        if (len(self.tiles) == 0):
+            self.index=1
+        else:
+            self.index = 0
+        return self
+    
+    def __next__(self):
+        
+        if self.index < len(self.tiles):
+            ans = self.tiles[self.index]
+            self.index = self.index+1
+            return ans
+        else:
+            raise StopIteration
+            
+    def hasNext(self):
+        if self.index < len(self.tiles):
+            return True
+        else:
+            return False
+            
+    
+class Panel_Iterator:
+    def __init__(self):
+        self.index = 0
+        
+    def __iter__(self):
+        self.index = 0
+        return self
+    
+    def __next__(self):
+        
+        if self.index < len(fs_utils.panels):
+            ans = fs_utils.panels[self.index]
+            self.index = self.index+1
+            return ans
+        else:
+            raise StopIteration
+            
+    def hasNext(self):
+        if self.index < len(fs_utils.panels):
+            return True
+        else:
+            return False
+            
+            
+class Date_Spectra_Iterator:
+       
+    def __init__(self, date, subdir='andes', trunk='coadd'):
+        self.date = date
+        self.subdir = subdir
+        self.trunk = trunk
+        self.date_tile_iterator = Date_Tile_Iterator(self.date, subdir=subdir)
+        self.panel_iterator = Panel_Iterator()
+        
+        self.tile = None
+        self.panel = None
+
+    def __iter__(self):
+        
+        self.date_tile_iterator = Date_Tile_Iterator(self.date, subdir=self.subdir)
+        self.panel_iterator = Panel_Iterator()
+        self.tile = None
+        self.panel = None
+        return self
+    
+    def __next__(self):
+        
+        while True:
+            if self.tile is None:
+                self.tile = self.date_tile_iterator.__next__()
+
+            if self.panel_iterator.hasNext():
+                self.panel = self.panel_iterator.__next__()
+                fname = fs_utils.fitsfile(self.tile, self.date, self.panel, subdir=self.subdir,trunk=self.trunk)
+                if fname is not None:
+                    break
+
+            elif self.date_tile_iterator.hasNext():
+                self.tile = self.date_tile_iterator.__next__()
+                self.panel_iterator = Panel_Iterator()
+                self.panel = self.panel_iterator.__next__()
+                fname = fs_utils.fitsfile(self.tile, self.date, self.panel, subdir=self.subdir,trunk=self.trunk)
+                if fname is not None:
+                    break
+            else:
+                raise StopIteration
+        
+        return read_spectra(fname), fname
+                    
+
 ## Difference Iterators
 
 
@@ -12,7 +114,7 @@ class PairCoadds:
         self.tile = tile
         self.subdir=subdir
         if dates is None:
-            self.dates = tileToDates(tile,subdir=subdir)
+            self.dates = fs_utils.tileToDates(tile,subdir=subdir)
         else:
             self.dates = dates
         if (len(self.dates) <=1):
@@ -66,34 +168,39 @@ class PairCoadds:
         for c in PairCoadds(tile):
             print (c)
             
-class PairSingle:
+class DailyPairs:
 
-    def __init__(self, tile, date, subdir='andes'):
-        self.tile = tile
+    def __init__(self, date, subdir='daily'):
         self.date = date
+        self.tiles = fs_utils.dateToTiles(date, subdir='daily')
         self.subdir=subdir
         
         self.spec = None
-
+        self.fibermap = None
+        self.tile_index = 0
         self.panel = 0
         
     def __iter__(self):
         self.panel = 0
+        self.tile_index = 0
         self.df = None
         return self
 
     def __next__(self):
         
         # if need a new file
-        if self.df is None:
-            df = fitsfile(tile,self.date,fs_utils.panels[self.panel],trunk='spectra')
+        if self.panel == 0:
+            df = fs_utils.fitsfile(self.tiles[self.tile_index],self.date,fs_utils.panels[self.panel],trunk='spectra')
+            print(df)
             self.spec = read_spectra(df)
+            self.fibermap = self.spec.fibermap
             
+        print(self.fibermap)
+        wef
             
-        
         while self.a+1 < len(self.dates):
-            df0 = fitsfile(tile,self.dates[self.a],fs_utils.panels[self.panel])
-            df1 = fitsfile(tile,self.dates[self.b],fs_utils.panels[self.panel])
+            df0 = fs_utils.fitsfile(tile,self.dates[self.a],fs_utils.panels[self.panel])
+            df1 = fs_utils.fitsfile(tile,self.dates[self.b],fs_utils.panels[self.panel])
 
             if (df0 is not None and df1 is not None):
                 ans = (read_spectra(df0), read_spectra(df1))
@@ -105,7 +212,23 @@ class PairSingle:
 
         else:
             raise StopIteration
+            
+#         while self.a+1 < len(self.dates):
+#             df0 = fs_utils.fitsfile(tile,self.dates[self.a],fs_utils.panels[self.panel])
+#             df1 = fs_utils.fitsfile(tile,self.dates[self.b],fs_utils.panels[self.panel])
+
+#             if (df0 is not None and df1 is not None):
+#                 ans = (read_spectra(df0), read_spectra(df1))
+# #                 ans =  (df0,df1)
+#                 self.__next_index__()
+#                 break
         
+#             self.__next_index__()
+
+#         else:
+#             raise StopIteration
+        
+        print(self.tile_index,self.panel)
         return ans
 
     #staticmethod

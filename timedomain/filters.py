@@ -4,6 +4,8 @@ import numpy.ma as ma
 from desispec.io import read_spectra, write_spectra
 from desispec.spectra import Spectra
 
+from . import plot_utils
+
 # difference between two spectra
 # for now the two spectra are assumed to be single night coadd of matching tile
 
@@ -61,7 +63,7 @@ class CVLogic:
     target_wave = (6562.79, 4861.35, 4340.472, 4101.734, 3970.075)
     R=200.
     ston_cut=5.
-
+    plotter = plot_utils.diffplot_CV
     @staticmethod
     def filter(pspectra0, pspectra1, renorm=False):
         

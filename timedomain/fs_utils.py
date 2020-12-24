@@ -40,7 +40,6 @@ def dateToTiles(date, subdir='andes'):
     if not os.path.isdir(dirname):
         print('{} does not exist.'.format(dirname))
     cafiles =  glob(dirname+'/*/'+date)
-
     tiles=[]
 
     for cafile in cafiles:
