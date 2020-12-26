@@ -1,6 +1,8 @@
 from desispec.io import read_spectra, write_spectra
 from desispec.spectra import Spectra
 
+import numpy as np
+    
 from . import fs_utils
 
 ##
@@ -35,29 +37,29 @@ class Date_Tile_Iterator:
         else:
             return False
             
-    
-class Panel_Iterator:
-    def __init__(self):
-        self.index = 0
+# # This should be an np.nditer
+# class Panel_Iterator:
+#     def __init__(self):
+#         self.index = 0
         
-    def __iter__(self):
-        self.index = 0
-        return self
+#     def __iter__(self):
+#         self.index = 0
+#         return self
     
-    def __next__(self):
+#     def __next__(self):
         
-        if self.index < len(fs_utils.panels):
-            ans = fs_utils.panels[self.index]
-            self.index = self.index+1
-            return ans
-        else:
-            raise StopIteration
+#         if self.index < len(fs_utils.panels):
+#             ans = fs_utils.panels[self.index]
+#             self.index = self.index+1
+#             return ans
+#         else:
+#             raise StopIteration
             
-    def hasNext(self):
-        if self.index < len(fs_utils.panels):
-            return True
-        else:
-            return False
+#     def hasNext(self):
+#         if self.index < len(fs_utils.panels):
+#             return True
+#         else:
+#             return False
             
             
 class Date_Spectra_Iterator:
@@ -67,7 +69,7 @@ class Date_Spectra_Iterator:
         self.subdir = subdir
         self.trunk = trunk
         self.date_tile_iterator = Date_Tile_Iterator(self.date, subdir=subdir)
-        self.panel_iterator = Panel_Iterator()
+        self.panel_iterator = np,nditer(fs_utils.panels) # Panel_Iterator()
         
         self.tile = None
         self.panel = None
@@ -75,7 +77,7 @@ class Date_Spectra_Iterator:
     def __iter__(self):
         
         self.date_tile_iterator = Date_Tile_Iterator(self.date, subdir=self.subdir)
-        self.panel_iterator = Panel_Iterator()
+        self.panel_iterator = np,nditer(fs_utils.panels) # Panel_Iterator()
         self.tile = None
         self.panel = None
         return self
@@ -94,7 +96,7 @@ class Date_Spectra_Iterator:
 
             elif self.date_tile_iterator.hasNext():
                 self.tile = self.date_tile_iterator.__next__()
-                self.panel_iterator = Panel_Iterator()
+                self.panel_iterator = np,nditer(fs_utils.panels) #Panel_Iterator()
                 self.panel = self.panel_iterator.__next__()
                 fname = fs_utils.fitsfile(self.tile, self.date, self.panel, subdir=self.subdir,trunk=self.trunk)
                 if fname is not None:
@@ -104,6 +106,32 @@ class Date_Spectra_Iterator:
         
         return read_spectra(fname), fname
                     
+    
+# class Spectra_Target_Iterator:
+#     def __init__(self, spectrum):
+#         self.spectrum = spectrum
+#         self.targets  = np.array(spectrum.target_ids(),dtype='str')
+#         self.tindex = 0
+#         self.subspectrum = None
+
+#     def __iter__(self):
+#         self.tindex=0
+#         return self
+    
+#     def __next__(self):
+        
+#         if self.subspectrum is None:
+#             print(type(self.targets[self.tindex]))
+#             self.subspectrum = self.spectrum.select(targets=(self.targets[self.tindex]))
+#             print(self.subspectrum.fibermap)
+#             wef
+
+#         if True:
+#             print('wef')
+#         else:
+#             raise StopIteration
+#         return None
+    
 
 ## Difference Iterators
 
