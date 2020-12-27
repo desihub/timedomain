@@ -112,6 +112,7 @@ class Spectra_Subspectra_Iterator:
         
         try:
             ans = self.spectrum.select(targets=np.array(self.titerator.__next__()))
+            print("\n{}".format(ans.fibermap["TARGETID"][0]))
             return ans
         except StopIteration:
             raise StopIteration
@@ -211,7 +212,7 @@ class Spectra_Pairs_Iterator:
                 
             if self.j < self.spectra.num_spectra():
                 ans = (self.spectrai,self.subspectra(self.j))
-                print("Targets {} {} of {}".format(self.i, self.j,self.spectra.num_spectra()))
+#                 print("Targets {} {} of {}".format(self.i, self.j,self.spectra.num_spectra()))
                 self.j = self.j+1
                 break
             else:

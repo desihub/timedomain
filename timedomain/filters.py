@@ -100,7 +100,7 @@ class CVLogic:
                 var += (1./diff.ivar[dindex][:,w]).sum(axis=1)
                 
         significant = (np.abs(signal)/np.sqrt(var) >= CVLogic.ston_cut)
-        print(np.abs(signal)/np.sqrt(var))
+        print(np.abs(signal)/np.sqrt(var),end='')
         triggered = np.logical_and.reduce((significant, isTGT, hasSignal))
         return triggered, diff
     
