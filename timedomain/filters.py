@@ -47,8 +47,17 @@ class HasSignal:
     @staticmethod
     def filter(s0,s1):    
         for i, dindex in enumerate(s0.bands):
-            ston1 = s1.flux[dindex].sum(axis=1) / np.sqrt((1/s1.ivar[dindex]).sum(axis=1)) 
-            ston0 = s0.flux[dindex].sum(axis=1) / np.sqrt((1/s0.ivar[dindex]).sum(axis=1)) 
+            s1flux = ma.array(data=s1.flux[dindex],mask=s1.mask[dindex])
+            s0flux = ma.array(data=s0.flux[dindex],mask=s0.mask[dindex])
+            
+            s1ivar = ma.array(data=s1.ivar[dindex],mask=s1.mask[dindex])
+            s0ivar = ma.array(data=s0.ivar[dindex],mask=s0.mask[dindex])
+ 
+            ston1 = s1.flux[dindex].sum(axis=1) / (1/ma.sqrt(s1.ivar[dindex])).sum(axis=1)
+            ston0 = s0.flux[dindex].sum(axis=1) / (1/ma.sqrt(s0.ivar[dindex])).sum(axis=1) 
+        
+#             ston1 = s1.flux[dindex].sum(axis=1) / ma.sqrt((1/s1.ivar[dindex]).sum(axis=1)) 
+#             ston0 = s0.flux[dindex].sum(axis=1) / ma.sqrt((1/s0.ivar[dindex]).sum(axis=1)) 
 
             if i==0:
                 ans = np.logical_and(np.greater(ston0,HasSignal.ston_cut), np.greater(ston1,HasSignal.ston_cut))
@@ -66,8 +75,6 @@ class CVLogic:
     plotter = plot_utils.diffplot_CV
     @staticmethod
     def filter(pspectra0, pspectra1, renorm=False):
-        
-        
         
         fibermap = pspectra0.fibermap #Table.read(datafile0, 'FIBERMAP')
         isTGT = fibermap['OBJTYPE'] == 'TGT'
@@ -90,9 +97,10 @@ class CVLogic:
                 wmax = wa * np.exp(1/CVLogic.R)
                 w = np.logical_and(diff.wave[dindex] >= wmin, diff.wave[dindex] < wmax)
                 signal +=  diff.flux[dindex][:,w].sum(axis=1)
-                var += (diff.ivar[dindex][:,w]).sum(axis=1)
+                var += (1./diff.ivar[dindex][:,w]).sum(axis=1)
                 
         significant = (np.abs(signal)/np.sqrt(var) >= CVLogic.ston_cut)
+        print(np.abs(signal)/np.sqrt(var))
         triggered = np.logical_and.reduce((significant, isTGT, hasSignal))
         return triggered, diff
     

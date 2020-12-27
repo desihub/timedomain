@@ -56,7 +56,6 @@ class Date_Spectra_Iterator:
         self.panel = None
 
     def __iter__(self):
-        
         self.date_tile_iterator = Date_Tile_Iterator(self.date, subdir=self.subdir)
         self.panel_iterator = np.nditer(fs_utils.panels) # Panel_Iterator()
         self.tile = None
@@ -121,6 +120,60 @@ class Spectra_Subspectra_Iterator:
 ## Difference Iterators
 
 """
+All pairs of the same target taken on a night
+"""
+class Date_SpectraByTarget_Iterator:
+       
+    def __init__(self, date, subdir='daily', trunk='spectra'):
+        self.date = date
+        self.subdir = subdir
+        self.trunk = trunk
+        
+        self.dsiterator=None
+        
+#         self.dsiterator= Date_Spectra_Iterator(date,subdir=self.subdir, trunk=self.trunk)
+#         self.spectrum, self.fname  = self.dsiterator.__next__()
+#         self.ssbtiterator = Spectra_Subspectra_Iterator(self.spectrum)
+#         self.spiterator = Spectra_Pairs_Iterator(self.ssbtiterator.__next__())
+        
+
+    def __iter__(self):
+        
+        self.dsiterator = None
+#         self.dsiterator= Date_Spectra_Iterator(self.date,subdir=self.subdir, trunk=self.trunk)
+
+#         self.spectrum, self.fname  = self.dsiterator.__next__()
+#         self.ssbtiterator = Spectra_Subspectra_Iterator(self.spectrum)
+
+#         self.spiterator = Spectra_Pairs_Iterator(self.ssbtiterator.__next__())
+        return self
+    
+    def __next__(self):
+        
+        if self.dsiterator is None:
+            self.dsiterator= Date_Spectra_Iterator(self.date,subdir=self.subdir, trunk=self.trunk)
+            self.spectrum, self.fname  = self.dsiterator.__next__()
+            self.ssbtiterator = Spectra_Subspectra_Iterator(self.spectrum)
+            self.spiterator = Spectra_Pairs_Iterator(self.ssbtiterator.__next__())
+            
+        
+        while True:
+
+            try:
+                ans = self.spiterator.__next__()
+                break
+            except StopIteration:
+                try:
+                    self.spiterator = Spectra_Pairs_Iterator(self.ssbtiterator.__next__())
+                except StopIteration:
+                    try:
+                        self.spectrum, self.fname  = self.dsiterator.__next__()
+                        self.ssbtiterator = Spectra_Subspectra_Iterator(self.spectrum)
+                    except StopIteration:
+                        raise StopIteration
+        return ans
+
+"""
 Class that returns all Spectra pairs from Spectra
 """
 class Spectra_Pairs_Iterator:
@@ -141,9 +194,10 @@ class Spectra_Pairs_Iterator:
     def subspectra(self, index):
         ans  = copy.deepcopy(self.spectra)
         for band in ans.bands:
-            ans.flux[band] = self.spectra.flux[band][index,:]
-            ans.ivar[band] = self.spectra.ivar[band][index,:]
-            ans.mask[band] =   self.spectra.mask[band][index,:]
+            ans.flux[band] = self.spectra.flux[band][index,:][np.newaxis,:]
+#             print(self.spectra.flux[band].shape,self.spectra.flux[band][index,:].shape,ans.flux[band].shape)
+            ans.ivar[band] = self.spectra.ivar[band][index,:][np.newaxis,:]
+            ans.mask[band] =   self.spectra.mask[band][index,:][np.newaxis,:]
         ans.fibermap = ans.fibermap[[index]]
 
         return ans
