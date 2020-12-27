@@ -2,11 +2,13 @@ from desispec.io import read_spectra, write_spectra
 from desispec.spectra import Spectra
 
 import numpy as np
-    
+import copy
+
 from . import fs_utils
 
-##
-
+"""
+Class that returns Tiles that were observed on a date
+"""
 class Date_Tile_Iterator:
     
     def __init__(self, date, subdir='andes'):
@@ -26,6 +28,7 @@ class Date_Tile_Iterator:
         
         if self.index < len(self.tiles):
             ans = self.tiles[self.index]
+            print("Tile {}".format(ans))
             self.index = self.index+1
             return ans
         else:
@@ -37,31 +40,9 @@ class Date_Tile_Iterator:
         else:
             return False
             
-# # This should be an np.nditer
-# class Panel_Iterator:
-#     def __init__(self):
-#         self.index = 0
-        
-#     def __iter__(self):
-#         self.index = 0
-#         return self
-    
-#     def __next__(self):
-        
-#         if self.index < len(fs_utils.panels):
-#             ans = fs_utils.panels[self.index]
-#             self.index = self.index+1
-#             return ans
-#         else:
-#             raise StopIteration
-            
-#     def hasNext(self):
-#         if self.index < len(fs_utils.panels):
-#             return True
-#         else:
-#             return False
-            
-            
+"""
+Class that returns all spectra frome a date
+"""
 class Date_Spectra_Iterator:
        
     def __init__(self, date, subdir='andes', trunk='coadd'):
@@ -69,7 +50,7 @@ class Date_Spectra_Iterator:
         self.subdir = subdir
         self.trunk = trunk
         self.date_tile_iterator = Date_Tile_Iterator(self.date, subdir=subdir)
-        self.panel_iterator = np,nditer(fs_utils.panels) # Panel_Iterator()
+        self.panel_iterator = np.nditer(fs_utils.panels) # Panel_Iterator()
         
         self.tile = None
         self.panel = None
@@ -77,7 +58,7 @@ class Date_Spectra_Iterator:
     def __iter__(self):
         
         self.date_tile_iterator = Date_Tile_Iterator(self.date, subdir=self.subdir)
-        self.panel_iterator = np,nditer(fs_utils.panels) # Panel_Iterator()
+        self.panel_iterator = np.nditer(fs_utils.panels) # Panel_Iterator()
         self.tile = None
         self.panel = None
         return self
@@ -87,54 +68,106 @@ class Date_Spectra_Iterator:
         while True:
             if self.tile is None:
                 self.tile = self.date_tile_iterator.__next__()
-
-            if self.panel_iterator.hasNext():
+                
+            try:
                 self.panel = self.panel_iterator.__next__()
                 fname = fs_utils.fitsfile(self.tile, self.date, self.panel, subdir=self.subdir,trunk=self.trunk)
                 if fname is not None:
                     break
-
-            elif self.date_tile_iterator.hasNext():
-                self.tile = self.date_tile_iterator.__next__()
-                self.panel_iterator = np,nditer(fs_utils.panels) #Panel_Iterator()
-                self.panel = self.panel_iterator.__next__()
-                fname = fs_utils.fitsfile(self.tile, self.date, self.panel, subdir=self.subdir,trunk=self.trunk)
-                if fname is not None:
-                    break
-            else:
-                raise StopIteration
-        
-        return read_spectra(fname), fname
                     
-    
-# class Spectra_Target_Iterator:
-#     def __init__(self, spectrum):
-#         self.spectrum = spectrum
-#         self.targets  = np.array(spectrum.target_ids(),dtype='str')
-#         self.tindex = 0
-#         self.subspectrum = None
+            except StopIteration:
+                if self.date_tile_iterator.hasNext():
+                    self.tile = self.date_tile_iterator.__next__()
+                    self.panel_iterator = np.nditer(fs_utils.panels) #Panel_Iterator()
+                    self.panel = self.panel_iterator.__next__()
+                    fname = fs_utils.fitsfile(self.tile, self.date, self.panel, subdir=self.subdir,trunk=self.trunk)
+                    if fname is not None:
+                        break
+                else:
+                    raise StopIteration
 
-#     def __iter__(self):
-#         self.tindex=0
-#         return self
+        print("Filename {}".format(fname))
+        return read_spectra(fname), fname
     
-#     def __next__(self):
+    @staticmethod
+    def test():
+        date = "20201223"
         
-#         if self.subspectrum is None:
-#             print(type(self.targets[self.tindex]))
-#             self.subspectrum = self.spectrum.select(targets=(self.targets[self.tindex]))
-#             print(self.subspectrum.fibermap)
-#             wef
+        it = Date_Spectra_Iterator(date,subdir='daily', trunk='coadd')
+        for a in it:
+            print(a)
 
-#         if True:
-#             print('wef')
-#         else:
-#             raise StopIteration
-#         return None
+"""
+Class that returns subspectra by target id from spectra
+"""
+class Spectra_Subspectra_Iterator:
+    def __init__(self, spectrum):
+        self.spectrum = spectrum
+        self.titerator = np.nditer(np.array(self.spectrum.target_ids()))
+
+    def __iter__(self):
+        self.titerator = np.nditer(np.array(self.spectrum.target_ids()))
+        return self
+    
+    def __next__(self):
+        
+        try:
+            ans = self.spectrum.select(targets=np.array(self.titerator.__next__()))
+            return ans
+        except StopIteration:
+            raise StopIteration
     
 
 ## Difference Iterators
 
+"""
+Class that returns all Spectra pairs from Spectra
+"""
+class Spectra_Pairs_Iterator:
+    
+    def __init__(self, spectra):
+        self.spectra = spectra
+        self.i=0
+        self.j=1
+        self.spectrai=None
+
+
+    def __iter__(self):
+        self.i=0
+        self.j=1
+        self.spectrai=None
+        return self
+    
+    def subspectra(self, index):
+        ans  = copy.deepcopy(self.spectra)
+        for band in ans.bands:
+            ans.flux[band] = self.spectra.flux[band][index,:]
+            ans.ivar[band] = self.spectra.ivar[band][index,:]
+            ans.mask[band] =   self.spectra.mask[band][index,:]
+        ans.fibermap = ans.fibermap[[index]]
+
+        return ans
+            
+    def __next__(self):
+
+        while self.i< self.spectra.num_spectra():
+        
+            if self.spectrai is None:
+                self.spectrai = self.subspectra(self.i)    
+                
+            if self.j < self.spectra.num_spectra():
+                ans = (self.spectrai,self.subspectra(self.j))
+                print("Targets {} {} of {}".format(self.i, self.j,self.spectra.num_spectra()))
+                self.j = self.j+1
+                break
+            else:
+                self.i = self.i+1
+                self.j=self.i+1
+                self.spectrai = None
+        else:
+            raise StopIteration
+            
+        return ans
 
 class PairCoadds:
 
