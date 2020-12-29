@@ -1,8 +1,11 @@
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
 import numpy as np
+import os
+from pathlib import Path
 from . import filters
 
+savedir  = '/global/cscratch1/sd/akim/project/timedomain/output/'
 def diffplot_CV(sig,pspectra0, pspectra1, diff,savepdf=False):
 
     lims = []
@@ -27,7 +30,13 @@ def diffplot_CV(sig,pspectra0, pspectra1, diff,savepdf=False):
     fig.show()
     
     if savepdf:
-        pdf = PdfPages('/global/cscratch1/sd/akim/project/timedomain/output/CV_{}.pdf'.format(tile_id))
+        tile = pspectra0.fibermap["TILEID"].data[sig]
+        expid0 = pspectra0.fibermap["EXPID"].data[sig]
+        expid1 = pspectra1.fibermap["EXPID"].data[sig]
+        outdir = os.path.join(savedir,*savepdf)
+        Path(outdir).mkdir(parents=True, exist_ok=True)        
+
+        pdf = PdfPages(os.path.join(outdir,'{}_{}_{}.pdf'.format(tile,expid0,expid1)))
         pdf.savefig()
         pdf.close()
         
