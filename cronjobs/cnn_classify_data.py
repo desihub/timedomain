@@ -65,8 +65,9 @@ bgs_tiles = args.tilenum
 obsdate = args.obsdate
 
 base_path='/global/u2/p/palmese/desi/timedomain/cronjobs/'
-plot_path=base_path+'plots/'
-out_path=base_path+'out/'
+td_path='/global/cfs/cdirs/desi/science/td/daily-search/desitrip/'
+plot_path=td_path+'plots/'
+out_path=td_path+'out/'
 # Set up BGS target bit selection.
 sv1_bgs_bits = '|'.join([_ for _ in bgs_mask.names() if 'BGS' in _])
 
