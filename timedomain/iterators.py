@@ -112,7 +112,7 @@ class Spectra_Subspectra_Iterator:
         
         try:
             ans = self.spectrum.select(targets=np.array(self.titerator.__next__()))
-            print("\n{}".format(ans.fibermap["TARGETID"][0]))
+#             print("\n{}".format(ans.fibermap["TARGETID"][0]))
             return ans
         except StopIteration:
             raise StopIteration

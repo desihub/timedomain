@@ -13,7 +13,7 @@ from . import plot_utils
 
 def maskskylines(s):
     skylam = [4340.,4368]
-    R=500.
+    R=1000.
     mask = dict()
     for dindex in s.bands:
         ans = np.zeros(len(s.wave[dindex]))
@@ -86,9 +86,10 @@ class HasSignal:
 # Cataclysmic Variable
 
 class CVLogic:
-    target_wave = (6562.79, 4861.35, 4340.472, 4101.734, 3970.075)
-    R=500.
-    ston_cut=5.
+#     target_wave = (6562.79, 4861.35, 4340.472, 4101.734, 3970.075)
+    target_wave = (6562.79, 4861.35, 4101.734, 3970.075)
+    R=1000.
+    ston_cut=7.
     plotter = plot_utils.diffplot_CV
     
     @staticmethod
@@ -120,9 +121,8 @@ class CVLogic:
             lmask = np.zeros(len(diff.wave[dindex]))
             
             for wa in CVLogic.target_wave:
-                wmin = wa * np.exp(-1/CVLogic.R)
-                wmax = wa * np.exp(1/CVLogic.R)
-                
+                wmin = wa * np.exp(-1/CVLogic.R/2.)
+                wmax = wa * np.exp(1/CVLogic.R/2.)
                 lmask = np.logical_or(lmask, np.logical_and.reduce((diff.wave[dindex] >= wmin, diff.wave[dindex] < wmax)))
                 
             #remove lines that are by the sky lines
@@ -131,12 +131,10 @@ class CVLogic:
             for sindex in range(nspec):
                 # only include unmasked
                 nmask = np.logical_and(lmask, diff.mask[dindex][sindex,:]==0)
-                
                 signal[sindex] += diff.flux[dindex][sindex,nmask].sum()
                 var[sindex] += (1/diff.ivar[dindex][sindex,nmask]).sum()
 
-        significant = (np.abs(signal)/np.sqrt(var) >= CVLogic.ston_cut)
-#         print(np.abs(signal)/np.sqrt(var))
+        significant = (np.abs(signal)/ma.sqrt(var) >= CVLogic.ston_cut)
         triggered = np.logical_and.reduce((significant, isTGT, hasSignal))
         return triggered, diff
     
