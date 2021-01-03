@@ -5,7 +5,8 @@ import os
 from pathlib import Path
 from . import filters
 
-savedir  = '/global/cscratch1/sd/akim/project/timedomain/output/'
+# savedir  = '/global/cscratch1/sd/akim/project/timedomain/output/'
+savedir = '/global/cfs/cdirs/desi/science/td/daily-search/'
 def diffplot_CV(sig,pspectra0, pspectra1, diff,savepdf=False):
 
     lims = []
