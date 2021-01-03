@@ -49,7 +49,8 @@ def renorm(s0, s1):
 
     for dindex in s1.bands:
         norm = ma.array(data=s1.flux[dindex],mask=s1.mask[dindex])/ ma.array(data=s0.flux[dindex],mask=s0.mask[dindex])
-        norm = np.percentile(norm,(50),axis=1)
+        norm.filled(np.nan)
+        norm = np.nanpercentile(norm,(50),axis=1)
         s0.flux[dindex] = s0.flux[dindex]*norm[:,None]
         s0.ivar[dindex] = s0.ivar[dindex]/((norm*norm)[:,None])
 
