@@ -208,7 +208,9 @@ class Date_SpectraByTarget_Iterator:
 
     
 """
-Class that returns all Spectra pairs from Spectra
+
+Given a Spectra return all pairs
+
 """
 class Spectra_Pairs_Iterator:
     
@@ -258,7 +260,9 @@ class Spectra_Pairs_Iterator:
         return ans
 
 """
-All pairs of the same target taken on a night
+
+Given a date, return all pairs of spectra from that date and preceeding dates
+
 """
 class Date_Spectra_Iterator:
        
@@ -287,6 +291,9 @@ class Date_Spectra_Iterator:
     
     def __next__(self):
         
+        filename = None
+        filename2 = None
+        
         #handle the first case
         if self.it0 is None:
             try:
@@ -298,22 +305,17 @@ class Date_Spectra_Iterator:
                 self.panel=self.it2.__next__()
                 filename = fs_utils.fitsfile(self.tile, self.date, self.panel, subdir=self.subdir,trunk=self.trunk)
                 filename2 = fs_utils.fitsfile(self.tile, self.pdate, self.panel, subdir=self.subdir,trunk=self.trunk)
-#                 return(self.pdate,self.tile, self.panel)
-                return (read_spectra(filename) , read_spectra(filename2))
             except StopIteration:
                 raise StopIteration
                 
-        while True:
-
+        while filename is None or filename2 is None:
             try:
                 self.panel = self.it2.__next__()                
-                break
             except StopIteration:
                 try:
                     self.pdate=self.it1.__next__()
                     self.it2 = fs_utils.panels.flat
                     self.panel=self.it2.__next__()
-                    break
                 except StopIteration:
                     try:
                         self.tile = self.it0.__next__()
@@ -321,13 +323,13 @@ class Date_Spectra_Iterator:
                         self.pdate=self.it1.__next__()
                         self.it2 = fs_utils.panels.flat
                         self.panel=self.it2.__next__()
-                        break
                     except StopIteration:
                         raise StopIteration
 
-        filename = fs_utils.fitsfile(self.tile, self.date, self.panel, subdir=self.subdir,trunk=self.trunk)
-        filename2 = fs_utils.fitsfile(self.tile, self.pdate, self.panel, subdir=self.subdir,trunk=self.trunk)
-#         return(self.pdate,self.tile, self.panel)
+            filename = fs_utils.fitsfile(self.tile, self.date, self.panel, subdir=self.subdir,trunk=self.trunk)
+            filename2 = fs_utils.fitsfile(self.tile, self.pdate, self.panel, subdir=self.subdir,trunk=self.trunk)
+            
+        print(filename,filename2)
         return (read_spectra(filename) , read_spectra(filename2))
 
     # staticmethod
@@ -337,110 +339,95 @@ class Date_Spectra_Iterator:
             print(a)
             
             
-class PairCoadds:
+# class PairCoadds:
 
-    def __init__(self, tile, subdir='andes',dates=None):
-        self.tile = tile
-        self.subdir=subdir
-        if dates is None:
-            self.dates = fs_utils.tileToDates(tile,subdir=subdir)
-        else:
-            self.dates = dates
-        if (len(self.dates) <=1):
-            self.a=1
-        else:
-            self.a = 0
-        self.b = 1
-        self.panel = 0
+#     def __init__(self, tile, subdir='andes',dates=None):
+#         self.tile = tile
+#         self.subdir=subdir
+#         if dates is None:
+#             self.dates = fs_utils.tileToDates(tile,subdir=subdir)
+#         else:
+#             self.dates = dates
+#         if (len(self.dates) <=1):
+#             self.a=1
+#         else:
+#             self.a = 0
+#         self.b = 1
+#         self.panel = 0
         
-    def __iter__(self):
-        if (len(self.dates) <=1):
-            self.a=1
-        else:
-            self.a = 0
-        self.b = 1
-        self.panel = 0
-        return self
+#     def __iter__(self):
+#         if (len(self.dates) <=1):
+#             self.a=1
+#         else:
+#             self.a = 0
+#         self.b = 1
+#         self.panel = 0
+#         return self
     
-    def __next_index__(self):
-        if self.panel+1 < len(fs_utils.panels):
-            self.panel +=1
-        else:
-            self.panel=0
-            if self.b +1 < len(self.dates):
-                self.b+=1
-            else:
-                self.a+=1
-                self.b = self.a+1
+#     def __next_index__(self):
+#         if self.panel+1 < len(fs_utils.panels):
+#             self.panel +=1
+#         else:
+#             self.panel=0
+#             if self.b +1 < len(self.dates):
+#                 self.b+=1
+#             else:
+#                 self.a+=1
+#                 self.b = self.a+1
 
-    def __next__(self):
+#     def __next__(self):
            
-        while self.a+1 < len(self.dates):
-            df0 = fs_utils.fitsfile(self.tile,self.dates[self.a],fs_utils.panels[self.panel])
-            df1 = fs_utils.fitsfile(self.tile,self.dates[self.b],fs_utils.panels[self.panel])
+#         while self.a+1 < len(self.dates):
+#             df0 = fs_utils.fitsfile(self.tile,self.dates[self.a],fs_utils.panels[self.panel])
+#             df1 = fs_utils.fitsfile(self.tile,self.dates[self.b],fs_utils.panels[self.panel])
 
-            if (df0 is not None and df1 is not None):
-                ans =  (read_spectra(df0),read_spectra(df1))
-                self.__next_index__()
-                break
+#             if (df0 is not None and df1 is not None):
+#                 ans =  (read_spectra(df0),read_spectra(df1))
+#                 self.__next_index__()
+#                 break
         
-            self.__next_index__()
+#             self.__next_index__()
 
-        else:
-            raise StopIteration
+#         else:
+#             raise StopIteration
         
-        return ans
+#         return ans
     
-    #staticmethod
-    def test():
-        tile = "70006"
-        for c in PairCoadds(tile):
-            print (c)
+#     #staticmethod
+#     def test():
+#         tile = "70006"
+#         for c in PairCoadds(tile):
+#             print (c)
             
-class DailyPairs:
+# class DailyPairs:
 
-    def __init__(self, date, subdir='daily'):
-        self.date = date
-        self.tiles = fs_utils.dateToTiles(date, subdir='daily')
-        self.subdir=subdir
+#     def __init__(self, date, subdir='daily'):
+#         self.date = date
+#         self.tiles = fs_utils.dateToTiles(date, subdir='daily')
+#         self.subdir=subdir
         
-        self.spec = None
-        self.fibermap = None
-        self.tile_index = 0
-        self.panel = 0
+#         self.spec = None
+#         self.fibermap = None
+#         self.tile_index = 0
+#         self.panel = 0
         
-    def __iter__(self):
-        self.panel = 0
-        self.tile_index = 0
-        self.df = None
-        return self
+#     def __iter__(self):
+#         self.panel = 0
+#         self.tile_index = 0
+#         self.df = None
+#         return self
 
-    def __next__(self):
+#     def __next__(self):
         
-        # if need a new file
-        if self.panel == 0:
-            df = fs_utils.fitsfile(self.tiles[self.tile_index],self.date,fs_utils.panels[self.panel],trunk='spectra')
-            print(df)
-            self.spec = read_spectra(df)
-            self.fibermap = self.spec.fibermap
+#         # if need a new file
+#         if self.panel == 0:
+#             df = fs_utils.fitsfile(self.tiles[self.tile_index],self.date,fs_utils.panels[self.panel],trunk='spectra')
+#             print(df)
+#             self.spec = read_spectra(df)
+#             self.fibermap = self.spec.fibermap
             
-        print(self.fibermap)
-        wef
-            
-        while self.a+1 < len(self.dates):
-            df0 = fs_utils.fitsfile(tile,self.dates[self.a],fs_utils.panels[self.panel])
-            df1 = fs_utils.fitsfile(tile,self.dates[self.b],fs_utils.panels[self.panel])
-
-            if (df0 is not None and df1 is not None):
-                ans = (read_spectra(df0), read_spectra(df1))
-#                 ans =  (df0,df1)
-                self.__next_index__()
-                break
-        
-            self.__next_index__()
-
-        else:
-            raise StopIteration
+#         print(self.fibermap)
+#         wef
             
 #         while self.a+1 < len(self.dates):
 #             df0 = fs_utils.fitsfile(tile,self.dates[self.a],fs_utils.panels[self.panel])
@@ -456,46 +443,61 @@ class DailyPairs:
 
 #         else:
 #             raise StopIteration
+            
+# #         while self.a+1 < len(self.dates):
+# #             df0 = fs_utils.fitsfile(tile,self.dates[self.a],fs_utils.panels[self.panel])
+# #             df1 = fs_utils.fitsfile(tile,self.dates[self.b],fs_utils.panels[self.panel])
+
+# #             if (df0 is not None and df1 is not None):
+# #                 ans = (read_spectra(df0), read_spectra(df1))
+# # #                 ans =  (df0,df1)
+# #                 self.__next_index__()
+# #                 break
         
-        print(self.tile_index,self.panel)
-        return ans
+# #             self.__next_index__()
 
-    #staticmethod
-    def test():
-        for c in PairSingle("70006","20200305"):
-            print (c)
-
-# PairSingle.test()
-
-class TileDate:
-    
-    def __init__(self, tile, date, subdir='andes'):
-        dirname = os.path.join(redux,subdir,'tiles',tile,date)
-        if not os.path.isdir(dirname):
-            print('{} does not exist.'.format(dirname))    
-        self.tile = tile
-        self.date = date
-        self.subdir = subdir
-        cafiles =  glob(os.path.join(dirname,'cframe-??-*.fits'))
-        exposures=[]
-
-        for cafile in cafiles:
-            index0 = cafile.find('cframe-')
-            index1 = cafile.find('.fits',index0+10)
-            exposures.append(cafile[index0+10:index1])
-
-        exposures = np.unique(exposures)
-        print(exposures)
+# #         else:
+# #             raise StopIteration
         
-    def __iter__(self):
-        self.a = 1
-        return self
+#         print(self.tile_index,self.panel)
+#         return ans
 
-    def __next__(self):
-        x = self.a
-        self.a += 1
-        return x
+#     #staticmethod
+#     def test():
+#         for c in PairSingle("70006","20200305"):
+#             print (c)
+
+# # PairSingle.test()
+
+# class TileDate:
     
-# tile = "70006"
-# date = "20200305"
+#     def __init__(self, tile, date, subdir='andes'):
+#         dirname = os.path.join(redux,subdir,'tiles',tile,date)
+#         if not os.path.isdir(dirname):
+#             print('{} does not exist.'.format(dirname))    
+#         self.tile = tile
+#         self.date = date
+#         self.subdir = subdir
+#         cafiles =  glob(os.path.join(dirname,'cframe-??-*.fits'))
+#         exposures=[]
+
+#         for cafile in cafiles:
+#             index0 = cafile.find('cframe-')
+#             index1 = cafile.find('.fits',index0+10)
+#             exposures.append(cafile[index0+10:index1])
+
+#         exposures = np.unique(exposures)
+#         print(exposures)
+        
+#     def __iter__(self):
+#         self.a = 1
+#         return self
+
+#     def __next__(self):
+#         x = self.a
+#         self.a += 1
+#         return x
+    
+# # tile = "70006"
+# # date = "20200305"
 

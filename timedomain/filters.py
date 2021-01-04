@@ -51,8 +51,9 @@ def renorm(s0, s1):
         norm = ma.array(data=s1.flux[dindex],mask=s1.mask[dindex])/ ma.array(data=s0.flux[dindex],mask=s0.mask[dindex])
         norm.filled(np.nan)
         norm = np.nanpercentile(norm,(50),axis=1)
-        s0.flux[dindex] = s0.flux[dindex]*norm[:,None]
-        s0.ivar[dindex] = s0.ivar[dindex]/((norm*norm)[:,None])
+        
+        s1.flux[dindex] = s1.flux[dindex]/ma.array(norm[:,None])
+        s1.ivar[dindex] = s1.ivar[dindex]*((norm*norm)[:,None])
 
     return s0,s1
 
@@ -87,14 +88,12 @@ class HasSignal:
 # Cataclysmic Variable
 
 class CVLogic:
-#     target_wave = (6562.79, 4861.35, 4340.472, 4101.734, 3970.075)
-    target_wave = (6562.79, 4861.35, 4101.734, 3970.075)
+    target_wave = (6562.79, 4861.35, 4340.472, 4101.734, 3970.075)
     R=1000.
-    ston_cut=7.
     plotter = plot_utils.diffplot_CV
     
     @staticmethod
-    def filter(pspectra0, pspectra1, norm=False):
+    def filter(pspectra0, pspectra1, norm=False, ston_cut=7.):
         
         fibermap = pspectra0.fibermap #Table.read(datafile0, 'FIBERMAP')
         isTGT = fibermap['OBJTYPE'] == 'TGT'
@@ -135,7 +134,7 @@ class CVLogic:
                 signal[sindex] += diff.flux[dindex][sindex,nmask].sum()
                 var[sindex] += (1/diff.ivar[dindex][sindex,nmask]).sum()
 
-        significant = (np.abs(signal)/ma.sqrt(var) >= CVLogic.ston_cut)
+        significant = (np.abs(signal)/ma.sqrt(var) >= ston_cut)
         triggered = np.logical_and.reduce((significant, isTGT, hasSignal))
         return triggered, diff
     
