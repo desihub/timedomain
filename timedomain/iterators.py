@@ -87,10 +87,12 @@ Class that returns all spectra frome a date
 """
 class Date_Spectra_Iterator:
        
-    def __init__(self, date, subdir='andes', trunk='coadd'):
+    def __init__(self, date, subdir='andes', trunk='coadd', verbose=False):
         self.date = date
         self.subdir = subdir
         self.trunk = trunk
+        self.verbose = verbose
+        
         self.date_tile_iterator = Date_Tile_Iterator(self.date, subdir=subdir)
         self.panel_iterator = fs_utils.panels.flat #panel_Iterator()
         
@@ -127,7 +129,8 @@ class Date_Spectra_Iterator:
                 else:
                     raise StopIteration
 
-        print("Filename {}".format(fname))
+        if self.verbose:
+            print("Filename {}".format(fname))
         return read_spectra(fname), fname
     
     @staticmethod
@@ -142,10 +145,11 @@ class Date_Spectra_Iterator:
 Class that returns subspectra by target id from spectra
 """
 class Spectra_Subspectra_Iterator:
-    def __init__(self, spectrum):
+    def __init__(self, spectrum, verbose=False):
         self.spectrum = spectrum
         self.titerator = np.array(self.spectrum.target_ids()).flat
-
+        self.verbose = verbose
+        
     def __iter__(self):
         self.titerator = np.array(self.spectrum.target_ids()).flat
         return self
@@ -154,59 +158,14 @@ class Spectra_Subspectra_Iterator:
         
         try:
             ans = self.spectrum.select(targets=np.array(self.titerator.__next__()))
-#             print("\n{}".format(ans.fibermap["TARGETID"][0]))
+            if self.verbose:
+                print("TARGETID {}".format(ans.fibermap["TARGETID"][0]))
             return ans
         except StopIteration:
             raise StopIteration
     
 
 ## Difference Iterators
-
-"""
-All pairs of the same target taken on a night
-"""
-class Date_SpectraByTarget_Iterator:
-       
-    def __init__(self, date, subdir='daily', trunk='spectra'):
-        self.date = date
-        self.subdir = subdir
-        self.trunk = trunk
-        
-        self.dsiterator=None
-        
-
-    def __iter__(self):
-        
-        self.dsiterator = None
-        return self
-    
-    def __next__(self):
-        
-        if self.dsiterator is None:
-            self.dsiterator= Date_Spectra_Iterator(self.date,subdir=self.subdir, trunk=self.trunk)
-            self.spectrum, self.fname  = self.dsiterator.__next__()
-            self.ssbtiterator = Spectra_Subspectra_Iterator(self.spectrum)
-            self.spiterator = Spectra_Pairs_Iterator(self.ssbtiterator.__next__())
-            
-        
-        while True:
-
-            try:
-                ans = self.spiterator.__next__()
-                break
-            except StopIteration:
-                try:
-                    self.spiterator = Spectra_Pairs_Iterator(self.ssbtiterator.__next__())
-                except StopIteration:
-                    try:
-                        self.spectrum, self.fname  = self.dsiterator.__next__()
-                        self.ssbtiterator = Spectra_Subspectra_Iterator(self.spectrum)
-                    except StopIteration:
-                        raise StopIteration
-        return ans
-
-
-    
 """
 
 Given a Spectra return all pairs
@@ -214,11 +173,12 @@ Given a Spectra return all pairs
 """
 class Spectra_Pairs_Iterator:
     
-    def __init__(self, spectra):
+    def __init__(self, spectra, verbose=False):
         self.spectra = spectra
         self.i=0
         self.j=1
         self.spectrai=None
+        self.verbose = verbose
 
 
     def __iter__(self):
@@ -256,20 +216,95 @@ class Spectra_Pairs_Iterator:
                 self.spectrai = None
         else:
             raise StopIteration
-            
+        
+        if self.verbose:
+            print("EXPID 1: {}  EXPID 2: {}".format(ans[0].fibermap["EXPID"].data, ans[1].fibermap["EXPID"].data))
+        
         return ans
+
+    
+"""
+All pairs of the same target taken on a night
+"""
+class Date_TargetPairs_Iterator:
+       
+    def __init__(self, date, subdir='daily', trunk='spectra', verbose=False):
+        self.date = date
+        self.subdir = subdir
+        self.trunk = trunk
+        self.verbose = verbose
+        
+        self.it0 = None    # Date_Spectra_Iterator
+        self.it1 = None    # Spectra_Subspectra_Iterator
+        self.it2 = None    # Spectra_Pairs_Iterator
+        
+#         self.spectra = None
+#         self.fname = None
+
+#         self.subspectra = None
+        
+    def __iter__(self):
+        
+        self.it0 = None    # Date_Spectra_Iterator
+        self.it1 = None    # Spectra_Subspectra_Iterator
+        self.it2 = None    # Spectra_Pairs_Iterator
+        
+#         self.spectra = None
+#         self.fname = None
+        return self
+    
+    def __next__(self):
+        
+        # the first
+        
+        if self.it0 is None:
+            try:
+                self.it0 = Date_Spectra_Iterator(self.date,subdir=self.subdir, trunk=self.trunk, verbose=self.verbose)
+                self.spectra, self.fname  = self.it0.__next__()
+                self.it1 = Spectra_Subspectra_Iterator(self.spectra, verbose=False)
+#                 self.subspectra = self.it1.__next__()
+                self.it2 = Spectra_Pairs_Iterator(self.it1.__next__(), verbose=False)
+                ans = self.it2.__next__()
+            except:
+                raise StopIteration
+        
+        while True:
+
+            try:
+                ans = self.it2.__next__()
+                break
+            except StopIteration:
+                try:
+                    self.it2 = Spectra_Pairs_Iterator(self.it1.__next__(), verbose=False)
+                except StopIteration:
+                    try:
+                        self.spectra, self.fname  = self.it0.__next__()
+                        self.it1 = Spectra_Subspectra_Iterator(self.spectra, verbose=False)
+                        self.it2 = Spectra_Pairs_Iterator(self.it1.__next__(), verbose = False)
+                    except StopIteration:
+                        raise StopIteration
+
+        return ans
+
+
+    @staticmethod
+    def test():
+        it = Date_TargetPairs_Iterator("20201223",verbose=True) 
+        for a in it:
+            pass
 
 """
 
 Given a date, return all pairs of spectra from that date and preceeding dates
 
 """
-class Date_Spectra_Iterator:
+class Date_SpectraPairs_Iterator:
        
-    def __init__(self, date, subdir='daily', trunk='coadd'):
+    def __init__(self, date, subdir='daily', trunk='coadd', verbose =False):
         self.date = date
         self.subdir = subdir
         self.trunk = trunk
+        self.verbose = verbose
         
         # less I/O if the latter two were swapped
         self.it0 = None     # Date_Tile_Iterator
@@ -329,14 +364,16 @@ class Date_Spectra_Iterator:
             filename = fs_utils.fitsfile(self.tile, self.date, self.panel, subdir=self.subdir,trunk=self.trunk)
             filename2 = fs_utils.fitsfile(self.tile, self.pdate, self.panel, subdir=self.subdir,trunk=self.trunk)
             
-        print(filename,filename2)
+        if self.verbose:
+            print("Iterator: Tile {}, Panel {}, Date {}, Date 2 {}".format(self.tile, self.panel,self.date,self.pdate))
+            
         return (read_spectra(filename) , read_spectra(filename2))
 
     # staticmethod
     def test():
-        it = Date_Spectra_Iterator("20201223")
+        it = Date_SpectraPairs_Iterator("20201223",verbose=True)
         for a in it:
-            print(a)
+            pass
             
             
 # class PairCoadds:
