@@ -1,7 +1,7 @@
 import numpy as np
 import numpy.ma as ma
 
-from desispec.io import read_spectra, write_spectra
+# from desispec.io import read_spectra, write_spectra
 from desispec.spectra import Spectra
 
 import matplotlib.pyplot as plt

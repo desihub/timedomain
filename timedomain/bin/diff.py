@@ -10,12 +10,13 @@ __version__=0.1
 
 def main(args):
     """ Main entry point of the app """
+    print("Start ", args)
     logic = getattr(sys.modules[__name__], args.logic)
     iterator = getattr(sys.modules[__name__], args.iterator)
 
     # make this none for results to appear in the notebook
     spdf = ["diff",logic.__name__,args.subdir,args.trunk,args.date]
-    for pspectra0,pspectra1 in iterator(args.date,subdir=args.subdir,trunk=args.trunk):
+    for pspectra0,pspectra1 in iterator(args.date,subdir=args.subdir,trunk=args.trunk, verbose=True):
         # which of these are real targets
         triggered, diff = logic.filter(pspectra0,pspectra1, norm=True,ston_cut=5)
 
@@ -29,8 +30,7 @@ def main(args):
 #                 targetid = diff.fibermap['TARGETID'].data[sig].astype('str')
 #                 SkyPortal.postSpectra(targetid, diff)
                 logic.plotter(sig,pspectra0, pspectra1, diff, savepdf=spdf)
-
-
+    print("End")
                 
 if __name__ == "__main__":
     
