@@ -3,6 +3,7 @@
 import argparse
 from timedomain.filters import *
 from timedomain.iterators import *
+from timedomain.sp_utils import *
 import sys
 
 
@@ -26,9 +27,11 @@ def main(args):
             wheretriggered = np.where(triggered)[0]
 
             for sig in wheretriggered.flat:
-#                 SkyPortal.postCandidate(sig, diff.fibermap)
-#                 targetid = diff.fibermap['TARGETID'].data[sig].astype('str')
-#                 SkyPortal.postSpectra(targetid, diff)
+                SkyPortal.postCandidate(sig, diff.fibermap)
+                targetid = diff.fibermap['TARGETID'].data[sig].astype('str')
+                SkyPortal.postSpectra(targetid, diff)
+                SkyPortal.postSpectra(targetid, pspectra0)
+                SkyPortal.postSpectra(targetid, pspectra1)
                 logic.plotter(sig,pspectra0, pspectra1, diff, savepdf=spdf)
     print("End")
                 
