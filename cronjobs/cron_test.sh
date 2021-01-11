@@ -44,10 +44,27 @@ fi
 
 echo "Tile numbers: ${tilenums[@]}"
 
+echo "---------- Starting DESITrIP ----------"
+
 #Here we will want to make sure that we send only BGS tiles to desitrip - reading through petals takes time
 
 echo "python ${run_path}/cnn_classify_data.py --tilenum ${tilenums[@]} --obsdate $lastnite"
 #python ${run_path}/cnn_classify_data.py --tilenum ${tilenums[@]} --obsdate $lastnite
 srun python ${run_path}/cnn_classify_data.py --tilenum ${tilenums[@]} --obsdate $lastnite >& ${run_path}/test.log
 
+##################
+
+echo "---------- Starting coadd differencing ----------"
+
+run_path_diff="/global/u2/p/palmese/desi/timedomain/timedomain/bin/"
+
+echo "${run_path_diff}/diff.py $lastnite CVLogic Date_SpectraPairs_Iterator daily coadd"
+
+srun ${run_path_diff}/diff.py $lastnite CVLogic Date_SpectraPairs_Iterator daily coadd
+
+echo "Jobs for coadd differencing sent"
+
+
+
+##################
 #If a run has successfully finished, we want to add the tile+date in a file to keep track 
