@@ -48,6 +48,15 @@ mpl.rc('font', size=14)
 
 from argparse import ArgumentParser
 
+import sqlite3
+
+
+#sqlite commands
+db_filename = '/global/cfs/cdirs/desi/science/td/daily-search/transients_search.db'
+conn = sqlite3.connect(db_filename)
+c = conn.cursor()
+
+
 if __name__ == '__main__':
     parser = ArgumentParser(description='Run CNN classifier on selected tile and day')
 
@@ -217,18 +226,18 @@ if __name__ == '__main__':
                     # Save data to file - we need to add ra dec, and some id
                     
                     if ntr > 0:
-                        if tr_z is None:
-                            tr_z = allzbest[idx]['Z']
-                            tr_label = label_names_arr[labels[idx]]
-                            tr_tile = np.full(ntr,tile_number)
-                            tr_date = np.full(ntr,obsdate)
-                            tr_spectrum = rsflux[idx]
-                        else:
-                            tr_z = np.vstack((tr_z,allzbest[idx]['Z']))
-                            tr_label = np.vstack((tr_label,label_names_arr[labels[idx]]))
-                            tr_tile = np.vstack((tr_tile,np.full(ntr,tile_number)))
-                            tr_date = np.vstack((tr_date,np.full(ntr,obsdate)))
-                            tr_spectrum = np.vstack((tr_spectrum,rsflux[idx]))
+                    #    if tr_z is None:
+                    #        tr_z = allzbest[idx]['Z']
+                    #        tr_label = label_names_arr[labels[idx]]
+                    #        tr_tile = np.full(ntr,tile_number)
+                    #        tr_date = np.full(ntr,obsdate)
+                    #        tr_spectrum = rsflux[idx]
+                    #    else:
+                    #        tr_z = np.vstack((tr_z,allzbest[idx]['Z']))
+                    #        tr_label = np.vstack((tr_label,label_names_arr[labels[idx]]))
+                    #        tr_tile = np.vstack((tr_tile,np.full(ntr,tile_number)))
+                    #        tr_date = np.vstack((tr_date,np.full(ntr,obsdate)))
+                    #        tr_spectrum = np.vstack((tr_spectrum,rsflux[idx]))
 
                         # Save classification info to a table.
                         classification = Table()
@@ -268,6 +277,14 @@ if __name__ == '__main__':
                         outplot = '{}/transient_candidates_{}_{}.png'.format(plot_path, obsdate, tile_number)
                         fig.savefig(outplot, dpi=200)
                         print('Figure saved in {}', outplot)
+                        
+                    #Now add this tile info to the sqlite db
+                    #Maybe expid is important for spectraldiff? Here we coadd
+                    #expids = set([int(cframefile.split('-')[-1][:-5]) for cframefile in cframefiles])
+                    prog=cframe_fibermap['PROGRAM']
+                    sql = """ INSERT OR IGNORE INTO desitrip_exposures(tileid,program,obsdate)
+                  VALUES(?,?,?) """
+                    c.execute(sql,(tile_number, prog, obsdate))
 
             else:
                 print('Not a BGS tile')
@@ -284,3 +301,7 @@ if __name__ == '__main__':
 #        t = fits.BinTableHDU.from_columns([c1, c2, c3, c4]) #, c5])
 #        t.writeto(out_path+'transients_'+obsdate+'.fits', overwrite=True)
 #        print('Output file saved in ', out_path)
+
+#Close connection to sqlite
+conn.commit()
+conn.close()  
