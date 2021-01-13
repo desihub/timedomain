@@ -205,10 +205,8 @@ if __name__ == '__main__':
                     # The classification is based on argmax(pred).
                     pred = classifier.predict(rsflux)
                     ymax = np.max(pred, axis=1)
-                    
                         
-                    # ### Selection on Classifier Output
-                    # 
+                    ### Selection on Classifier Output
                     # To be conservative we can select only spectra where the classifier is very confident in its output, e.g., ymax > 0.99. See the [CNN training notebook](https://github.com/desihub/timedomain/blob/master/desitrip/docs/nb/cnn_multilabel-restframe.ipynb) for the motivation behind this cut.
 
                     idx = np.argwhere(ymax > 0.99).flatten()
@@ -232,12 +230,23 @@ if __name__ == '__main__':
                             tr_date = np.vstack((tr_date,np.full(ntr,obsdate)))
                             tr_spectrum = np.vstack((tr_spectrum,rsflux[idx]))
 
+                        # Save classification info to a table.
+                        classification = Table()
+                        classification['TARGETID'] = allfmap[idx]['TARGETID']
+                        classification['CNNPRED'] = pred[idx]
+                        classification['CNNLABEL'] = label_names_arr[labels[idx]]
+
+                        # Merge the classification and redrock fit to the fibermap.
+                        fmap = join(allfmap[idx], allzbest[idx], keys='TARGETID')
+                        fmap = join(fmap, classification, keys='TARGETID')
+
+                        # Pack data into Spectra and write to FITS.
                         cand_spectra = Spectra(bands=['brz'],
                                                wave={'brz' : allwave},
                                                flux={'brz' : allflux[idx]},
                                                ivar={'brz' : allivar[idx]},
                                                resolution_data={'brz' : allres[idx]},
-                                               fibermap=join(allfmap[idx], allzbest[idx], keys='TARGETID')
+                                               fibermap=fmap
                                            )
                         
                         outfits = '{}/transient_candidate_spectra_{}_{}.fits'.format(out_path, obsdate, tile_number)
