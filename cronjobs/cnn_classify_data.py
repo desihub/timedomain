@@ -51,10 +51,12 @@ from argparse import ArgumentParser
 if __name__ == '__main__':
     parser = ArgumentParser(description='Run CNN classifier on selected tile and day')
 
-    parser.add_argument('-t', '--tilenum', nargs='+', type=str,default='80611',
-                        help='Tile Numbers to be processed')
     parser.add_argument('-d', '--obsdate', type=str,default='20201221',
                         help='Night to be processed')
+    parser.add_argument('-t', '--tilenum', nargs='+', type=str,default='80611',
+                        help='Tile Numbers to be processed')
+    parser.add_argument('-r', '--redux', default='daily',
+                        help='Spectroscopic reduction: daily, andes, blanc, ...')
 
     args = parser.parse_args()
 
@@ -120,11 +122,10 @@ if __name__ == '__main__':
     tr_date=None
     tr_spectrum=None
 
-
     # Access redux folder.
     for tile_number in tile_numbers:
-        redux='/global/project/projectdirs/desi/spectro/redux/daily/tiles'
-        prefix_in='/'.join([redux, tile_number+"/"+obsdate])
+        redux = '/'.join([os.environ['DESI_SPECTRO_REDUX'], args.redux, 'tiles'])
+        prefix_in = '/'.join([redux, tile_number, obsdate])
         if not os.path.isdir(prefix_in):
             print('{} does not exist.'.format(prefix_in))
         else:
@@ -236,7 +237,8 @@ if __name__ == '__main__':
                                                flux={'brz' : allflux[idx]},
                                                ivar={'brz' : allivar[idx]},
                                                resolution_data={'brz' : allres[idx]},
-                                               fibermap=allfmap[idx])
+                                               fibermap=join(allfmap[idx], allzbest[idx], keys='TARGETID')
+                                           )
                         
                         outfits = '{}/transient_candidate_spectra_{}_{}.fits'.format(out_path, obsdate, tile_number)
                         write_spectra(outfits, cand_spectra)
