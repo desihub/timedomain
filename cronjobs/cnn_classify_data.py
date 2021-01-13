@@ -51,10 +51,12 @@ from argparse import ArgumentParser
 if __name__ == '__main__':
     parser = ArgumentParser(description='Run CNN classifier on selected tile and day')
 
-    parser.add_argument('-t', '--tilenum', nargs='+', type=str,default='80611',
-                        help='Tile Numbers to be processed')
     parser.add_argument('-d', '--obsdate', type=str,default='20201221',
                         help='Night to be processed')
+    parser.add_argument('-t', '--tilenum', nargs='+', type=str,default='80611',
+                        help='Tile Numbers to be processed')
+    parser.add_argument('-r', '--redux', default='daily',
+                        help='Spectroscopic reduction: daily, andes, blanc, ...')
 
     args = parser.parse_args()
 
@@ -120,11 +122,10 @@ if __name__ == '__main__':
     tr_date=None
     tr_spectrum=None
 
-
     # Access redux folder.
     for tile_number in tile_numbers:
-        redux='/global/project/projectdirs/desi/spectro/redux/daily/tiles'
-        prefix_in='/'.join([redux, tile_number+"/"+obsdate])
+        redux = '/'.join([os.environ['DESI_SPECTRO_REDUX'], args.redux, 'tiles'])
+        prefix_in = '/'.join([redux, tile_number, obsdate])
         if not os.path.isdir(prefix_in):
             print('{} does not exist.'.format(prefix_in))
         else:
@@ -204,10 +205,8 @@ if __name__ == '__main__':
                     # The classification is based on argmax(pred).
                     pred = classifier.predict(rsflux)
                     ymax = np.max(pred, axis=1)
-                    
                         
-                    # ### Selection on Classifier Output
-                    # 
+                    ### Selection on Classifier Output
                     # To be conservative we can select only spectra where the classifier is very confident in its output, e.g., ymax > 0.99. See the [CNN training notebook](https://github.com/desihub/timedomain/blob/master/desitrip/docs/nb/cnn_multilabel-restframe.ipynb) for the motivation behind this cut.
 
                     idx = np.argwhere(ymax > 0.99).flatten()
@@ -231,12 +230,24 @@ if __name__ == '__main__':
                             tr_date = np.vstack((tr_date,np.full(ntr,obsdate)))
                             tr_spectrum = np.vstack((tr_spectrum,rsflux[idx]))
 
+                        # Save classification info to a table.
+                        classification = Table()
+                        classification['TARGETID'] = allfmap[idx]['TARGETID']
+                        classification['CNNPRED'] = pred[idx]
+                        classification['CNNLABEL'] = label_names_arr[labels[idx]]
+
+                        # Merge the classification and redrock fit to the fibermap.
+                        fmap = join(allfmap[idx], allzbest[idx], keys='TARGETID')
+                        fmap = join(fmap, classification, keys='TARGETID')
+
+                        # Pack data into Spectra and write to FITS.
                         cand_spectra = Spectra(bands=['brz'],
                                                wave={'brz' : allwave},
                                                flux={'brz' : allflux[idx]},
                                                ivar={'brz' : allivar[idx]},
                                                resolution_data={'brz' : allres[idx]},
-                                               fibermap=allfmap[idx])
+                                               fibermap=fmap
+                                           )
                         
                         outfits = '{}/transient_candidate_spectra_{}_{}.fits'.format(out_path, obsdate, tile_number)
                         write_spectra(outfits, cand_spectra)
