@@ -66,13 +66,27 @@ if __name__ == '__main__':
                         help='Spectroscopic reduction: daily, andes, blanc, ...')
     parser.add_argument('-g', '--gradcam', default=True,
                         help='Set to true if you want to apply GRADCam to the plotting -takes more time')
+    
+    #If there are more than 1 obsdate, provide a 2D array
+    parser.add_argument('-o', '--obsdates_tilenumbers', nargs='+', type=str,default=None,
+                        help='str array with columns obsdate, tilenumber, separated by |')
 
     args = parser.parse_args()
-
-    tile_numbers = args.tilenum
-    obsdate = args.obsdate
     gradcam = args.gradcam
-
+    
+    if args.obsdates_tilenumbers!=None:
+        obsdates_tilenumbers_str = args.obsdates_tilenumbers
+        obsdates_tilenumbers = np.chararray((len(obsdates_tilenumbers_str),2),itemsize=10,unicode=True)
+        for i in range(len(obsdates_tilenumbers_str)):
+            obsdates_tilenumbers[i,:]=obsdates_tilenumbers_str[i].split('|')
+        print(obsdates_tilenumbers_str,obsdates_tilenumbers)
+    else:    
+        obsdates = args.obsdate
+        tilenums = args.tilenum
+        obsdates_tilenumbers = np.chararray((len(obsdates),len(tilenums)),itemsize=10)
+        obsdates_tilenumbers[:,0]=obsdates
+        obsdates_tilenumbers[:,1]=tilenums
+        
     base_path='/global/u2/p/palmese/desi/timedomain/cronjobs/'
     td_path='/global/cfs/cdirs/desi/science/td/daily-search/desitrip/'
     plot_path=td_path+'plots/'
@@ -205,13 +219,9 @@ if __name__ == '__main__':
     tr_spectrum=None
 
     # Access redux folder.
-    for tile_number in tile_numbers:
+    for obsdate,tile_number in obsdates_tilenumbers:
         redux = '/'.join([os.environ['DESI_SPECTRO_REDUX'], args.redux, 'tiles'])
         prefix_in = '/'.join([redux, tile_number, obsdate])
-        
-        #Open db only here
-        conn = sqlite3.connect(db_filename)
-        c = conn.cursor()
 
         if not os.path.isdir(prefix_in):
             print('{} does not exist.'.format(prefix_in))
@@ -292,7 +302,7 @@ if __name__ == '__main__':
                     # The classification is based on argmax(pred).
                     pred = classifier.predict(rsflux)
                     ymax = np.max(pred, axis=1)
-                        
+
                     ### Selection on Classifier Output
                     # To be conservative we can select only spectra where the classifier is very confident in its output, e.g., ymax > 0.99. See the [CNN training notebook](https://github.com/desihub/timedomain/blob/master/desitrip/docs/nb/cnn_multilabel-restframe.ipynb) for the motivation behind this cut.
 
@@ -300,9 +310,9 @@ if __name__ == '__main__':
                     labels = np.argmax(pred, axis=1)
                     ntr = len(idx)
                     print(ntr,' transients found')
-                    
+
                     # Save data to file - we need to add ra dec, and some id
-                    
+
                     if ntr > 0:
                     #    if tr_z is None:
                     #        tr_z = allzbest[idx]['Z']
@@ -335,7 +345,7 @@ if __name__ == '__main__':
                                                resolution_data={'brz' : allres[idx]},
                                                fibermap=fmap
                                            )
-                        
+
                         outfits = '{}/transient_candidate_spectra_{}_{}.fits'.format(out_path, obsdate, tile_number)
                         write_spectra(outfits, cand_spectra)
                         print('Output file saved in {}'.format(outfits))
@@ -346,7 +356,7 @@ if __name__ == '__main__':
 
                         fig, axes = plt.subplots(4,4, figsize=(15,10), sharex=True, sharey=True,
                                                  gridspec_kw={'wspace':0, 'hspace':0})
-                        
+
                         #these lines are to add to the output plot the wavelengths between the arms
                         br_band=[5600,6000]
                         rz_band=[7400,7800]
@@ -373,7 +383,7 @@ if __name__ == '__main__':
                                     else:
                                         ax.plot(rewave[first_bin:last_bin+1], this_flux[0,first_bin:last_bin+1],c=color,alpha=alpha)
                                     first_bin=last_bin
-                            
+
                             else:
                                 ax.plot(rewave, rsflux[j], alpha=0.7, label='label: '+label_names[labels[j]]+'\nz={:.2f}'.format(allzbest[j]['Z']))
                             this_br_band=br_band/(1.+(allzbest[j]['Z']))
@@ -386,14 +396,22 @@ if __name__ == '__main__':
                         outplot = '{}/transient_candidates_{}_{}.png'.format(plot_path, obsdate, tile_number)
                         fig.savefig(outplot, dpi=200)
                         print('Figure saved in {}', outplot)
-                        
+
                     #Now add this tile info to the sqlite db
                     #Maybe expid is important for spectraldiff? Here we coadd
                     #expids = set([int(cframefile.split('-')[-1][:-5]) for cframefile in cframefiles])
+                    #Open db only here
+                    conn = sqlite3.connect(db_filename)
+                    c = conn.cursor()
                     prog=cframe_fibermap['PROGRAM']
-                    sql = """ INSERT OR IGNORE INTO desitrip_exposures(tileid,program,obsdate)
-                  VALUES(?,?,?) """
+                    sql = """ INSERT OR IGNORE INTO desitrip_exposures(tileid,program,obsdate) VALUES(?,?,?) """
                     c.execute(sql,(tile_number, prog, obsdate))
+                    #Close connection to sqlite
+                    #We open and close in the loop to minimize the amount of time
+                    #the db is open to minimize clashes with outer jobs opening the
+                    #same db
+                    conn.commit()
+                    conn.close()  
 
             else:
                 print('Not a BGS tile')
@@ -410,7 +428,3 @@ if __name__ == '__main__':
 #        t = fits.BinTableHDU.from_columns([c1, c2, c3, c4]) #, c5])
 #        t.writeto(out_path+'transients_'+obsdate+'.fits', overwrite=True)
 #        print('Output file saved in ', out_path)
-
-#Close connection to sqlite
-conn.commit()
-conn.close()  
