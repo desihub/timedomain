@@ -23,6 +23,10 @@ td_path="/global/cfs/cdirs/desi/science/td/daily-search/"
 
 ##################
 #Now double check that we have run over all new exposures. If not, we send new runs.
+#The database is updated in the next lines starting where it calls python ${run_path}exposure_db.py
+#That script updates the exposures table, which is later compared to the processed exposures in 
+#desitrip_exposures to find unprocessed exposures. 
+#desitrip_exposures is then updated with new exposures that went through the classifier in the classifier script
 #ATM this only works for desitrip outputs - needs to be added to specdiff
 
 echo "Looking for new exposures"
