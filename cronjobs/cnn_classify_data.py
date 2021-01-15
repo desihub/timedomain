@@ -51,10 +51,8 @@ from argparse import ArgumentParser
 import sqlite3
 
 
-#sqlite commands
+#sqlite db path
 db_filename = '/global/cfs/cdirs/desi/science/td/daily-search/transients_search.db'
-conn = sqlite3.connect(db_filename)
-c = conn.cursor()
 
 
 if __name__ == '__main__':
@@ -66,11 +64,14 @@ if __name__ == '__main__':
                         help='Tile Numbers to be processed')
     parser.add_argument('-r', '--redux', default='daily',
                         help='Spectroscopic reduction: daily, andes, blanc, ...')
+    parser.add_argument('-g', '--gradcam', default=True,
+                        help='Set to true if you want to apply GRADCam to the plotting -takes more time')
 
     args = parser.parse_args()
 
     tile_numbers = args.tilenum
     obsdate = args.obsdate
+    gradcam = args.gradcam
 
     base_path='/global/u2/p/palmese/desi/timedomain/cronjobs/'
     td_path='/global/cfs/cdirs/desi/science/td/daily-search/desitrip/'
@@ -106,7 +107,79 @@ if __name__ == '__main__':
               'SN IIP',
               'KN']
     label_names_arr=np.array(label_names)
+    
+    #Only import tf and define stuff if you want to applt gradcam - otherwise save time
+    #This function needs to be changed if the keras model architecture is changed
+    
+    if gradcam:
+        import tensorflow as tf
+        last_conv_layer_name = "conv1d_23"
+        classifier_layer_names = [
+        "batch_normalization_23",
+        "activation_23",
+        "max_pooling1d_23",
+        "flatten_5",
+        "dense_5",
+        "dropout_5",
+        "Output_Classes"
+        ]
+        
+        def make_gradcam_heatmap(
+            img_array, model, last_conv_layer_name, classifier_layer_names
+        ):
+            # First, we create a model that maps the input image to the activations
+            # of the last conv layer
+            last_conv_layer = model.get_layer(last_conv_layer_name)
+            last_conv_layer_model = keras.Model(model.inputs, last_conv_layer.output)
 
+            # Second, we create a model that maps the activations of the last conv
+            # layer to the final class predictions
+            classifier_input = keras.Input(shape=last_conv_layer.output.shape[1:])
+            x = classifier_input
+            for layer_name in classifier_layer_names:
+                #print(layer_name,x.shape)
+                x = model.get_layer(layer_name)(x)
+            classifier_model = keras.Model(classifier_input, x)
+
+            # Then, we compute the gradient of the top predicted class for our input image
+            # with respect to the activations of the last conv layer
+            with tf.GradientTape() as tape:
+                # Compute activations of the last conv layer and make the tape watch it
+                last_conv_layer_output = last_conv_layer_model(img_array)
+                tape.watch(last_conv_layer_output)
+                # Compute class predictions
+                preds = classifier_model(last_conv_layer_output)
+                top_pred_index = tf.argmax(preds[0])
+                top_class_channel = preds[:, top_pred_index]
+
+            # This is the gradient of the top predicted class with regard to
+            # the output feature map of the last conv layer
+            grads = tape.gradient(top_class_channel, last_conv_layer_output)
+            # This is a vector where each entry is the mean intensity of the gradient
+            # over a specific feature map channel
+            pooled_grads = tf.reduce_mean(grads, axis=(0, 1))
+            #print(grads.shape,pooled_grads.shape)
+
+            # We multiply each channel in the feature map array
+            # by "how important this channel is" with regard to the top predicted class
+            last_conv_layer_output = last_conv_layer_output.numpy()[0]
+            pooled_grads = pooled_grads.numpy()
+            for i in range(pooled_grads.shape[-1]):
+                last_conv_layer_output[:, i] *= pooled_grads[i]
+
+            # The channel-wise mean of the resulting feature map
+            # is our heatmap of class activation
+            heatmap = np.mean(last_conv_layer_output, axis=-1)
+
+            #We apply ReLU here and select only elements>0
+            # For visualization purpose, we will also normalize the heatmap between 0 & 1
+            heatmap = np.maximum(heatmap, 0) / np.max(heatmap)
+            return heatmap
+        
+        preprocess_input = keras.applications.xception.preprocess_input
+        decode_predictions = keras.applications.xception.decode_predictions
+        
+        
     # ## Loop Through Spectra and Classify
 
     def get_petal_id(filename):
@@ -135,6 +208,11 @@ if __name__ == '__main__':
     for tile_number in tile_numbers:
         redux = '/'.join([os.environ['DESI_SPECTRO_REDUX'], args.redux, 'tiles'])
         prefix_in = '/'.join([redux, tile_number, obsdate])
+        
+        #Open db only here
+        conn = sqlite3.connect(db_filename)
+        c = conn.cursor()
+
         if not os.path.isdir(prefix_in):
             print('{} does not exist.'.format(prefix_in))
         else:
@@ -268,9 +346,40 @@ if __name__ == '__main__':
 
                         fig, axes = plt.subplots(4,4, figsize=(15,10), sharex=True, sharey=True,
                                                  gridspec_kw={'wspace':0, 'hspace':0})
+                        
+                        #these lines are to add to the output plot the wavelengths between the arms
+                        br_band=[5600,6000]
+                        rz_band=[7400,7800]
 
                         for j, ax in zip(selection, axes.flatten()):
-                            ax.plot(rewave, rsflux[j], alpha=0.7, label='label: '+label_names[labels[j]]+'\nz={:.2f}'.format(allzbest[j]['Z']))
+
+                            if gradcam:
+                                this_flux=rsflux[j,:].reshape((1,150)) 
+
+                                # Generate class activation heatmap
+                                heatmap = make_gradcam_heatmap(
+                                    this_flux, classifier, last_conv_layer_name, classifier_layer_names
+                                )
+
+                                color='blue'
+                                rewave_nbin_inblock=rewave.shape[0]/float(heatmap.shape[0])
+                                first_bin=0
+                                for i in range(1,heatmap.shape[0]+1):
+                                    alpha=np.min([1,heatmap[i-1]+0.2])
+                                    last_bin=int(i*rewave_nbin_inblock)
+                                    if (i==1):
+                                        ax.plot(rewave[first_bin:last_bin+1], this_flux[0,first_bin:last_bin+1],c=color,alpha=alpha,\
+                                                label=label_names[labels[j]]+'\nz={:.2f}'.format(allzbest[j]['Z']))
+                                    else:
+                                        ax.plot(rewave[first_bin:last_bin+1], this_flux[0,first_bin:last_bin+1],c=color,alpha=alpha)
+                                    first_bin=last_bin
+                            
+                            else:
+                                ax.plot(rewave, rsflux[j], alpha=0.7, label='label: '+label_names[labels[j]]+'\nz={:.2f}'.format(allzbest[j]['Z']))
+                            this_br_band=br_band/(1.+(allzbest[j]['Z']))
+                            this_rz_band=rz_band/(1.+(allzbest[j]['Z']))  
+                            ax.fill_between(this_br_band,[0,0],[1,1],alpha=0.1,color='k')
+                            ax.fill_between(this_rz_band,[0,0],[1,1],alpha=0.1,color='k')                      
                             ax.legend(fontsize=10)
 
                         fig.tight_layout()
@@ -289,8 +398,8 @@ if __name__ == '__main__':
             else:
                 print('Not a BGS tile')
 
-    if tr_z is None:
-        print("No transients found on night ",obsdate)
+#    if tr_z is None:
+#        print("No transients found on night ",obsdate)
 #    else:
 #        c1 = fits.Column(name='Z', array=tr_z, format='F')
 #        c2 = fits.Column(name='LABEL', array=tr_label, format='6A')
