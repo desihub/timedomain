@@ -375,7 +375,89 @@ class Date_SpectraPairs_Iterator:
         for a in it:
             pass
             
+"""
+
+Given a date, return all pairs of spectra from that date and preceeding dates
+
+"""
+class TileDate_SpectraPairs_Iterator:
+       
+    def __init__(self, tile, date, subdir='daily', trunk='coadd', verbose =False):
+        
+#         self.list = tdlist
+        self.list = [[x,y] for x,y in zip(tile,date)]
+        self.subdir = subdir
+        self.trunk = trunk
+        self.verbose = verbose
+        
+        # less I/O if the latter two were swapped
+        self.it0 = None
+        self.it1 = None     # TileDate_PreDate_Iterator 
+        self.it2 = None     #  np.nditer(fs_utils.panels)
             
+        #current store
+        self.tile = None
+        self.date = None        
+        self.pdate = None
+        self.panel = None
+        
+
+    def __iter__(self):
+        self.it1 = None     # TileDate_PreDate_Iterator 
+        self.it2 = None     #  np.nditer(fs_utils.panels)        
+        return self
+    
+    def __next__(self):
+        
+        filename = None
+        filename2 = None
+        
+        #handle the first case
+        if self.it0 is None:
+            try:
+                self.it0 = iter(self.list)
+                (self.tile,self.date)= self.it0.__next__()
+                self.it1 =  TileDate_PreDate_Iterator(self.tile, self.date, subdir=self.subdir)
+                self.pdate = self.it1.__next__()
+                self.it2 = fs_utils.panels.flat
+                self.panel=self.it2.__next__()
+                filename = fs_utils.fitsfile(self.tile, self.date, self.panel, subdir=self.subdir,trunk=self.trunk)
+                filename2 = fs_utils.fitsfile(self.tile, self.pdate, self.panel, subdir=self.subdir,trunk=self.trunk)
+            except StopIteration:
+                raise StopIteration
+                
+        while filename is None or filename2 is None:
+            try:
+                self.panel = self.it2.__next__()                
+            except StopIteration:
+                try:
+                    self.pdate=self.it1.__next__()
+                    self.it2 = fs_utils.panels.flat
+                    self.panel=self.it2.__next__()
+                except StopIteration:
+                    try:
+                        (self.tile,self.date)= self.it0.__next__()
+                        self.it1 =  TileDate_PreDate_Iterator(self.tile, self.date, subdir=self.subdir)
+                        self.pdate = self.it1.__next__()
+                        self.it2 = fs_utils.panels.flat
+                        self.panel=self.it2.__next__()
+                    except:
+                        raise StopIteration
+
+            filename = fs_utils.fitsfile(self.tile, self.date, self.panel, subdir=self.subdir,trunk=self.trunk)
+            filename2 = fs_utils.fitsfile(self.tile, self.pdate, self.panel, subdir=self.subdir,trunk=self.trunk)
+            
+        if self.verbose:
+            print("Iterator: Tile {}, Panel {}, Date {}, Date 2 {}".format(self.tile, self.panel,self.date,self.pdate))
+            
+        return (read_spectra(filename) , read_spectra(filename2))
+
+    # staticmethod
+    def test():
+        it = TileDate_SpectraPairs_Iterator(["80613","80622"],["20201223","20201223"],verbose=True)
+        for a in it:
+            pass
+        
 # class PairCoadds:
 
 #     def __init__(self, tile, subdir='andes',dates=None):
