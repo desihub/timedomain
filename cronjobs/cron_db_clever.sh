@@ -31,7 +31,6 @@ td_path="/global/cfs/cdirs/desi/science/td/daily-search/"
 
 echo "Looking for new exposures"
 
-#I think this part can be quicker - it doesn't need to open files for rows that already exist
 python ${run_path}exposure_db.py
 
 query="select distinct obsdate,tileid from exposures
