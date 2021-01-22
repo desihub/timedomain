@@ -50,6 +50,10 @@ from argparse import ArgumentParser
 
 import sqlite3
 
+#DESITRIP_daily
+from timedomain.sp_utils import *
+from timedomain.filters import *
+from timedomain.iterators import *
 
 #sqlite commands
 db_filename = '/global/cfs/cdirs/desi/science/td/daily-search/transients_search.db'
@@ -68,6 +72,9 @@ if __name__ == '__main__':
                         help='Spectroscopic reduction: daily, andes, blanc, ...')
 
     args = parser.parse_args()
+
+    #DESITRIP_daily
+    logic = getattr(sys.modules[__name__], args.logic)
 
     tile_numbers = args.tilenum
     obsdate = args.obsdate
@@ -261,6 +268,12 @@ if __name__ == '__main__':
                         outfits = '{}/transient_candidate_spectra_{}_{}.fits'.format(out_path, obsdate, tile_number)
                         write_spectra(outfits, cand_spectra)
                         print('Output file saved in {}'.format(outfits))
+
+                        #DESITRIP_daily - Send the selected fluxes to SkyPortal - Divij Sharma
+                        for _id, _flux in zip(fmap['TARGETID'], allflux[idx]):
+                            SkyPortal.postCandidate(idx, fmap)
+                            SkyPortal.postSpectra(_id, _flux)
+#                             logic.plotter(idx, _flux, savepdf=spdf)
 
                         # Make a plot of up to 16 transients
 
