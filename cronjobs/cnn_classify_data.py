@@ -272,49 +272,49 @@ if __name__ == '__main__':
                         #DESITRIP_daily - Send the selected fluxes to SkyPortal - Divij Sharma
                         for _id, _flux in zip(fmap['TARGETID'], allflux[idx]):
                             SkyPortal.postCandidate(idx, fmap)
-                            SkyPortal.postSpectra(_id, _flux)
+                            SkyPortal.postSpectra(_id, pspectra)
 #                             logic.plotter(idx, _flux, savepdf=spdf)
 
-                        # Make a plot of up to 16 transients
+#                         # Make a plot of up to 16 transients
 
-                        selection = sorted(np.random.choice(idx.flatten(), size=np.minimum(len(idx), 16), replace=False))
+#                         selection = sorted(np.random.choice(idx.flatten(), size=np.minimum(len(idx), 16), replace=False))
 
-                        fig, axes = plt.subplots(4,4, figsize=(15,10), sharex=True, sharey=True,
-                                                 gridspec_kw={'wspace':0, 'hspace':0})
+#                         fig, axes = plt.subplots(4,4, figsize=(15,10), sharex=True, sharey=True,
+#                                                  gridspec_kw={'wspace':0, 'hspace':0})
 
-                        for j, ax in zip(selection, axes.flatten()):
-                            ax.plot(rewave, rsflux[j], alpha=0.7, label='label: '+label_names[labels[j]]+'\nz={:.2f}'.format(allzbest[j]['Z']))
-                            ax.legend(fontsize=10)
+#                         for j, ax in zip(selection, axes.flatten()):
+#                             ax.plot(rewave, rsflux[j], alpha=0.7, label='label: '+label_names[labels[j]]+'\nz={:.2f}'.format(allzbest[j]['Z']))
+#                             ax.legend(fontsize=10)
 
-                        fig.tight_layout()
-                        outplot = '{}/transient_candidates_{}_{}.png'.format(plot_path, obsdate, tile_number)
-                        fig.savefig(outplot, dpi=200)
-                        print('Figure saved in {}', outplot)
+#                         fig.tight_layout()
+#                         outplot = '{}/transient_candidates_{}_{}.png'.format(plot_path, obsdate, tile_number)
+#                         fig.savefig(outplot, dpi=200)
+#                         print('Figure saved in {}', outplot)
                         
-                    #Now add this tile info to the sqlite db
-                    #Maybe expid is important for spectraldiff? Here we coadd
-                    #expids = set([int(cframefile.split('-')[-1][:-5]) for cframefile in cframefiles])
-                    prog=cframe_fibermap['PROGRAM']
-                    sql = """ INSERT OR IGNORE INTO desitrip_exposures(tileid,program,obsdate)
-                  VALUES(?,?,?) """
-                    c.execute(sql,(tile_number, prog, obsdate))
+#                     #Now add this tile info to the sqlite db
+#                     #Maybe expid is important for spectraldiff? Here we coadd
+#                     #expids = set([int(cframefile.split('-')[-1][:-5]) for cframefile in cframefiles])
+#                     prog=cframe_fibermap['PROGRAM']
+#                     sql = """ INSERT OR IGNORE INTO desitrip_exposures(tileid,program,obsdate)
+#                   VALUES(?,?,?) """
+#                     c.execute(sql,(tile_number, prog, obsdate))
 
-            else:
-                print('Not a BGS tile')
+#             else:
+#                 print('Not a BGS tile')
 
-    if tr_z is None:
-        print("No transients found on night ",obsdate)
-#    else:
-#        c1 = fits.Column(name='Z', array=tr_z, format='F')
-#        c2 = fits.Column(name='LABEL', array=tr_label, format='6A')
-#        c3 = fits.Column(name='TILE', array=tr_tile, format='10A')
-#        c4 = fits.Column(name='DATE', array=tr_date, format='10A')
-#        #Will think of a more clever way to save the spectra
-#        #c5 = fits.Column(name='SPECTRUM', array=tr_spectrum[0], format='F')
-#        t = fits.BinTableHDU.from_columns([c1, c2, c3, c4]) #, c5])
-#        t.writeto(out_path+'transients_'+obsdate+'.fits', overwrite=True)
-#        print('Output file saved in ', out_path)
+#     if tr_z is None:
+#         print("No transients found on night ",obsdate)
+# #    else:
+# #        c1 = fits.Column(name='Z', array=tr_z, format='F')
+# #        c2 = fits.Column(name='LABEL', array=tr_label, format='6A')
+# #        c3 = fits.Column(name='TILE', array=tr_tile, format='10A')
+# #        c4 = fits.Column(name='DATE', array=tr_date, format='10A')
+# #        #Will think of a more clever way to save the spectra
+# #        #c5 = fits.Column(name='SPECTRUM', array=tr_spectrum[0], format='F')
+# #        t = fits.BinTableHDU.from_columns([c1, c2, c3, c4]) #, c5])
+# #        t.writeto(out_path+'transients_'+obsdate+'.fits', overwrite=True)
+# #        print('Output file saved in ', out_path)
 
-#Close connection to sqlite
-conn.commit()
-conn.close()  
+# #Close connection to sqlite
+# conn.commit()
+# conn.close()  
