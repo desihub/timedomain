@@ -15,9 +15,11 @@ class SkyPortal:
     
     instrument_name = 'DESI'
     telescope_name ='Kitt Peak Mayall 4-m Telescope'
+    filter_name = 'DESITRIP_daily'
     
     inst_id = None
     tel_id = None
+    filt_id = None
 
     @staticmethod
     def instrument_id():
@@ -45,7 +47,21 @@ class SkyPortal:
             else:
                 raise NameError('Telescope Not Defined')
         
-        return SkyPortal.tel_id       
+        return SkyPortal.tel_id 
+    
+    @staticmethod
+    def filter_id():
+        
+        if SkyPortal.filt_id is None:       
+            response = SkyPortal.api('GET', '{}/api/filter'.format(SkyPortal.url))
+            data = response.json()['data']
+            theOne = list(filter(lambda datum: datum['name']==SkyPortal.filter_name,data))
+            if len(theOne) !=0:
+                SkyPortal.filt_id = theOne[0]['id']
+            else:
+                raise NameError('Filter Not Defined')
+        
+        return SkyPortal.filt_id
         
     @staticmethod
     def api(method, endpoint, data=None):
@@ -73,6 +89,8 @@ class SkyPortal:
         print(f'HTTP code: {response.status_code}, {response.reason}')
         if response.status_code in (200, 400):
             print(f'JSON response: {response.json()}')
+    
+    
 
     @staticmethod            
     def postSpectra(target_id, spectra_in):
