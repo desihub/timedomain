@@ -70,9 +70,13 @@ class SkyPortal:
         if filter_name in SkyPortal.filt_id:
             return SkyPortal.filt_id[filter_name]
         else:
-            filt_list = list(filt_id.items())
-            last_id = filt_list[-1][1]
-            SkyPortal.filt_id[filter_name] = last_id + 1
+            response = SkyPortal.api('GET', '{}/api/filter'.format(SkyPortal.url))
+            data = response.json()['data']
+            theOne = list(filter(lambda datum: datum['name']==filter_name,data))
+            if len(theOne) !=0:
+                SkyPortal.filt_id[filter_name] = theOne[0]['id']
+            else:
+                raise NameError('Filter Not Defined')
         
     @staticmethod
     def api(method, endpoint, data=None):
