@@ -35,7 +35,7 @@ class SkyPortal:
                "AMPEL.HU_TNS_PARTNER": 15,
                "DESI Difference CV": 16,
                "DESITRIP_daily": 17,
-               "DESIDIFF_CV_daily":19, } 
+               "DESIDIFF_CV_daily": 19} 
 
     @staticmethod
     def instrument_id():
