@@ -2,13 +2,15 @@ import requests
 import time
 from astropy.time import Time
 
+
 class SkyPortal:
 
     #skyportal location and 
     url = "http://desi2.lbl.gov:5000"
     
     #skyportal token im a secret file
-    secret_file = "/global/cscratch1/sd/akim/secrets/desi_sp.txt"
+#     secret_file = "/global/cscratch1/sd/akim/secrets/desi_sp.txt"
+    secret_file = "/global/cfs/cdirs/desi/science/td/secrets/desi_sp.txt"
     with open(secret_file, 'r') as file:
         token = file.read().replace('\n', '')
     headers = {'Authorization': f'token {token}'}
@@ -70,6 +72,8 @@ class SkyPortal:
         if filter_name in SkyPortal.filt_id:
             return SkyPortal.filt_id[filter_name]
         else:
+#             filt_list = list(filt_id.items())
+#             last_id = filt_list[-1][1]
             response = SkyPortal.api('GET', '{}/api/filter'.format(SkyPortal.url))
             data = response.json()['data']
             theOne = list(filter(lambda datum: datum['name']==filter_name,data))
@@ -77,6 +81,7 @@ class SkyPortal:
                 SkyPortal.filt_id[filter_name] = theOne[0]['id']
             else:
                 raise NameError('Filter Not Defined')
+            
         
     @staticmethod
     def api(method, endpoint, data=None):
@@ -170,22 +175,31 @@ class SkyPortal:
     def test():
 
         
-#         response = SkyPortal.api('DELETE', '{}/api/candidates/{}'.format(SkyPortal.url,"35191288252861933"))
+        response = SkyPortal.api('DELETE', '{}/api/candidates/{}'.format(SkyPortal.url,"35191288252861933"))
 
-#         print(f'HTTP code: {response.status_code}, {response.reason}')
-#         if response.status_code in (200, 400):
-#             print(f'JSON response: {response.json()}')
+        print(f'HTTP code: {response.status_code}, {response.reason}')
+        if response.status_code in (200, 400):
+            print(f'JSON response: {response.json()}')
             
         filename = fitsfile("70006","20200305", "6", subdir='andes',trunk='coadd') 
-#         fibermap = Table.read(filename, 'FIBERMAP')
-#         index = np.where(fibermap['TARGETID'].data== 35191288252861933)[0]
-#         SkyPortal.postCandidate(index[0],fibermap)
+        fibermap = Table.read(filename, 'FIBERMAP')
+        index = np.where(fibermap['TARGETID'].data== 35191288252861933)[0]
+        SkyPortal.postCandidate(index[0],fibermap)
         
         spectra = read_spectra(filename)
-#         SkyPortal.postSpectra("35191288252861933",spectra)
+        SkyPortal.postSpectra("35191288252861933",spectra)
 
         
         
-# SkyPortal.instrument_id()
+SkyPortal.instrument_id()
 
-# SkyPortal.test()
+SkyPortal.test()
+
+    @staticmethod
+    def test2():
+        print(SkyPortal.filter_id("DESI Difference CV"))
+        print(SkyPortal.filter_id("AMPEL.HU_RANDOM"))
+        print(SkyPortal.filter_id("DESIDIFF_CV_daily"))
+        print(SkyPortal.filter_id("xyz"))
+        
+SkyPortal.test2()
