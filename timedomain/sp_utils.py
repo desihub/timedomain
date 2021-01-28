@@ -17,28 +17,10 @@ class SkyPortal:
     
     instrument_name = 'DESI'
     telescope_name ='Kitt Peak Mayall 4-m Telescope'
-    filter_name = 'DESITRIP_daily'
     
     inst_id = None
     tel_id = None
     filt_id = {}
-    # filt_id = {"TestFilt1" : 2,
-    #            "AMPEL.TDE_RANKING" : 3,
-    #            "AMPEL.WEIZMANN_ELLIPTICAL_TRANSIENTS": 4,
-    #            "AMPEL.WEIZMANN_GENERALSN": 5,
-    #            "AMPEL.WEIZMANN_INFANTSN": 6,
-    #            "AMPEL.RCF_2020B": 7,
-    #            "AMPEL.ZTF_SLSN": 8,
-    #            "AMPEL.HU_GP_10": 9,
-    #            "AMPEL.HU_GP_59": 10,
-    #            "AMPEL.HU_PARTNER_10": 11,
-    #            "AMPEL.HU_PARTNER_59": 12,
-    #            "AMPEL.HU_RANDOM": 13,
-    #            "AMPEL.HU_TNS_MSIP": 14,
-    #            "AMPEL.HU_TNS_PARTNER": 15,
-    #            "DESI Difference CV": 16,
-    #            "DESITRIP_daily": 17,
-    #            "DESIDIFF_CV_daily": 19} 
 
     @staticmethod
     def instrument_id():
@@ -176,31 +158,31 @@ class SkyPortal:
     def test():
 
         
-        response = SkyPortal.api('DELETE', '{}/api/candidates/{}'.format(SkyPortal.url,"35191288252861933"))
+        # response = SkyPortal.api('DELETE', '{}/api/candidates/{}'.format(SkyPortal.url,"35191288252861933"))
 
-        print(f'HTTP code: {response.status_code}, {response.reason}')
-        if response.status_code in (200, 400):
-            print(f'JSON response: {response.json()}')
+        # print(f'HTTP code: {response.status_code}, {response.reason}')
+        # if response.status_code in (200, 400):
+        #     print(f'JSON response: {response.json()}')
             
         filename = fitsfile("70006","20200305", "6", subdir='andes',trunk='coadd') 
-        fibermap = Table.read(filename, 'FIBERMAP')
-        index = np.where(fibermap['TARGETID'].data== 35191288252861933)[0]
-        SkyPortal.postCandidate(index[0],fibermap)
+        # fibermap = Table.read(filename, 'FIBERMAP')
+        # index = np.where(fibermap['TARGETID'].data== 35191288252861933)[0]
+        # SkyPortal.postCandidate(index[0],fibermap)
         
         spectra = read_spectra(filename)
-        SkyPortal.postSpectra("35191288252861933",spectra)
+#         SkyPortal.postSpectra("35191288252861933",spectra)
 
         
         
-SkyPortal.instrument_id()
+# SkyPortal.instrument_id()
 
-SkyPortal.test()
+# SkyPortal.test()
 
-    @staticmethod
-    def test2():
-        print(SkyPortal.filter_id("DESI Difference CV"))
-        print(SkyPortal.filter_id("AMPEL.HU_RANDOM"))
-        print(SkyPortal.filter_id("DESIDIFF_CV_daily"))
-        print(SkyPortal.filter_id("xyz"))
+#     @staticmethod
+#     def test2():
+#         print(SkyPortal.filter_id("DESI Difference CV"))
+#         print(SkyPortal.filter_id("AMPEL.HU_RANDOM"))
+#         print(SkyPortal.filter_id("DESIDIFF_CV_daily"))
+#         print(SkyPortal.filter_id("xyz"))
         
-SkyPortal.test2()
+# SkyPortal.test2()
