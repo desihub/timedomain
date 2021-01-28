@@ -21,23 +21,24 @@ class SkyPortal:
     
     inst_id = None
     tel_id = None
-    filt_id = {"TestFilt1" : 2,
-               "AMPEL.TDE_RANKING" : 3,
-               "AMPEL.WEIZMANN_ELLIPTICAL_TRANSIENTS": 4,
-               "AMPEL.WEIZMANN_GENERALSN": 5,
-               "AMPEL.WEIZMANN_INFANTSN": 6,
-               "AMPEL.RCF_2020B": 7,
-               "AMPEL.ZTF_SLSN": 8,
-               "AMPEL.HU_GP_10": 9,
-               "AMPEL.HU_GP_59": 10,
-               "AMPEL.HU_PARTNER_10": 11,
-               "AMPEL.HU_PARTNER_59": 12,
-               "AMPEL.HU_RANDOM": 13,
-               "AMPEL.HU_TNS_MSIP": 14,
-               "AMPEL.HU_TNS_PARTNER": 15,
-               "DESI Difference CV": 16,
-               "DESITRIP_daily": 17,
-               "DESIDIFF_CV_daily": 19} 
+    filt_id = {}
+    # filt_id = {"TestFilt1" : 2,
+    #            "AMPEL.TDE_RANKING" : 3,
+    #            "AMPEL.WEIZMANN_ELLIPTICAL_TRANSIENTS": 4,
+    #            "AMPEL.WEIZMANN_GENERALSN": 5,
+    #            "AMPEL.WEIZMANN_INFANTSN": 6,
+    #            "AMPEL.RCF_2020B": 7,
+    #            "AMPEL.ZTF_SLSN": 8,
+    #            "AMPEL.HU_GP_10": 9,
+    #            "AMPEL.HU_GP_59": 10,
+    #            "AMPEL.HU_PARTNER_10": 11,
+    #            "AMPEL.HU_PARTNER_59": 12,
+    #            "AMPEL.HU_RANDOM": 13,
+    #            "AMPEL.HU_TNS_MSIP": 14,
+    #            "AMPEL.HU_TNS_PARTNER": 15,
+    #            "DESI Difference CV": 16,
+    #            "DESITRIP_daily": 17,
+    #            "DESIDIFF_CV_daily": 19} 
 
     @staticmethod
     def instrument_id():
