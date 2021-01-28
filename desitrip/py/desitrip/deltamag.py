@@ -1,5 +1,5 @@
 """
-Calculate the difference between fiber and spectral magnitudes
+Calculate the difference between spectral and fiber magnitudes
 """
 
 import numpy as np
