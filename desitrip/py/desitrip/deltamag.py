@@ -3,7 +3,6 @@ Calculate the difference between fiber and spectral magnitudes
 """
 
 import numpy as np
-from astropy.table import hstack
 from pkg_resources import resource_filename
 
 def delta_mag(cspectra, fibermap, select):
@@ -46,7 +45,7 @@ def delta_mag(cspectra, fibermap, select):
     zwave = 10. * zfile[0]
     zresponse = zfile[1]
 
-    # Extrapolate to cframe wavelength grid as filters have per nm resolution
+    # Extrapolate to cframe wavelength grid as filter data have per nm resolution
     wave = cspectra.wave['brz']
     flux = 1e-17 * cspectra.flux['brz'][select]
     # g band
@@ -88,7 +87,7 @@ def delta_mag(cspectra, fibermap, select):
     rflux = np.trapz(wave*flux*rres, wave) / np.trapz(wave*rres, wave)
     zflux = np.trapz(wave*flux*zres, wave) / np.trapz(wave*zres, wave)
 
-    # Convert flux to nanomaggies using effective wavelengths
+    # Convert flux units to nanomaggies using effective wavelengths
     eff_gwave = np.trapz(wave*flux*gres, wave) / np.trapz(flux*gres, wave)
     eff_rwave = np.trapz(wave*flux*rres, wave) / np.trapz(flux*rres, wave)
     eff_zwave = np.trapz(wave*flux*zres, wave) / np.trapz(flux*zres, wave)
@@ -96,7 +95,7 @@ def delta_mag(cspectra, fibermap, select):
     specflux_r = (3.34e4 * eff_rwave**2 * rflux) / 3.631e-6
     specflux_z = (3.34e4 * eff_zwave**2 * zflux) / 3.631e-6
 
-    # Convert integrated flux to spectral magnitudes
+    # Convert flux to spectral magnitudes
     spec_gmag = 22.5 - 2.5*np.log10(specflux_g)
     spec_rmag = 22.5 - 2.5*np.log10(specflux_r)
     spec_zmag = 22.5 - 2.5*np.log10(specflux_z)
