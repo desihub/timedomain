@@ -13,6 +13,7 @@ class SkyPortal:
     secret_file = "/global/cfs/cdirs/desi/science/td/secrets/desi_sp.txt"
     with open(secret_file, 'r') as file:
         token = file.read().replace('\n', '')
+#     token='5e126952-11b8-4f37-af2c-2e0056635c09'
     headers = {'Authorization': f'token {token}'}
     
     instrument_name = 'DESI'
@@ -120,39 +121,39 @@ class SkyPortal:
                     print(f'JSON response: {response.json()}')
         
 
-    @staticmethod
-    def postMayallTelescope():
-        data = {
-          "name": SkyPortal.telescope_name,
-          "nickname": "KPNO 4-m",
-          "lat": 31.9634,
-          "lon": -111.6,
-          "elevation": 2120,
-          "diameter": 4,
-          "robotic": False,
-          "fixed_location": True
-        }
+#     @staticmethod
+#     def postMayallTelescope():
+#         data = {
+#           "name": SkyPortal.telescope_name,
+#           "nickname": "KPNO 4-m",
+#           "lat": 31.9634,
+#           "lon": -111.6,
+#           "elevation": 2120,
+#           "diameter": 4,
+#           "robotic": False,
+#           "fixed_location": True
+#         }
         
-        print(data)
-        response = SkyPortal.api('POST', '{}/api/telescope'.format(SkyPortal.url),data=data)
-        print(f'HTTP code: {response.status_code}, {response.reason}')
-        if response.status_code in (200, 400):
-            print(f'JSON response: {response.json()}')
+#         print(data)
+#         response = SkyPortal.api('POST', '{}/api/telescope'.format(SkyPortal.url),data=data)
+#         print(f'HTTP code: {response.status_code}, {response.reason}')
+#         if response.status_code in (200, 400):
+#             print(f'JSON response: {response.json()}')
             
-    @staticmethod
-    def postDESIInstrument():
-        data = {
-          "name": SkyPortal.instrument_name,
-          "type": "spectrograph",
-          "band": "optical",
-          "telescope_id": SkyPortal.telescope_id()
-        }
+#     @staticmethod
+#     def postDESIInstrument():
+#         data = {
+#           "name": SkyPortal.instrument_name,
+#           "type": "spectrograph",
+#           "band": "optical",
+#           "telescope_id": SkyPortal.telescope_id()
+#         }
         
-        print(data)
-        response = SkyPortal.api('POST', '{}/api/instrument'.format(SkyPortal.url),data=data)
-        print(f'HTTP code: {response.status_code}, {response.reason}')
-        if response.status_code in (200, 400):
-            print(f'JSON response: {response.json()}')
+#         print(data)
+#         response = SkyPortal.api('POST', '{}/api/instrument'.format(SkyPortal.url),data=data)
+#         print(f'HTTP code: {response.status_code}, {response.reason}')
+#         if response.status_code in (200, 400):
+#             print(f'JSON response: {response.json()}')
             
     @staticmethod
     def test():
