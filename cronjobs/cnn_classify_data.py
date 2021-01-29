@@ -79,6 +79,21 @@ if __name__ == '__main__':
     tile_numbers = args.tilenum
     obsdate = args.obsdate
 
+    gradcam = args.gradcam
+    
+    if args.obsdates_tilenumbers!=None:
+        obsdates_tilenumbers_str = args.obsdates_tilenumbers
+        obsdates_tilenumbers = np.chararray((len(obsdates_tilenumbers_str),2),itemsize=10,unicode=True)
+        for i in range(len(obsdates_tilenumbers_str)):
+            obsdates_tilenumbers[i,:]=obsdates_tilenumbers_str[i].split('|')
+        print(obsdates_tilenumbers_str,obsdates_tilenumbers)
+    else:    
+        obsdates = args.obsdate
+        tilenums = args.tilenum
+        obsdates_tilenumbers = np.chararray((len(obsdates),len(tilenums)),itemsize=10)
+        obsdates_tilenumbers[:,0]=obsdates
+        obsdates_tilenumbers[:,1]=tilenums
+
     base_path='/global/u2/p/palmese/desi/timedomain/cronjobs/'
     td_path='/global/cfs/cdirs/desi/science/td/daily-search/desitrip/'
     plot_path=td_path+'plots/'
