@@ -53,6 +53,11 @@ if __name__ == "__main__":
     parser.add_argument("subdir", help="Required positional argument")
     parser.add_argument("trunk", help="Required positional argument")
     
+    
+    #If there are more than 1 obsdate, provide a 2D array
+    parser.add_argument('-o', '--obsdates_tilenumbers', nargs='+', type=str,default=None,
+                        help='str array with columns obsdate, tilenumber, separated by |')
+    
     # Optional argument flag which defaults to False
 #     parser.add_argument('-f', '--flag', action="store_true", default=False)
 
