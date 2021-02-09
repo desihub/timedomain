@@ -22,7 +22,7 @@
 
 import os
 import sys
-sys.path.append('/global/homes/p/palmese/desi/timedomain/desitrip/py/') #Note:change this path as needed!
+sys.path.append('/global/homes/d/divij18/timedomain/desitrip/py/') #Note:change this path as needed!
 
 from desispec.io import read_spectra, write_spectra
 from desispec.spectra import Spectra
@@ -72,27 +72,12 @@ if __name__ == '__main__':
                         help='Spectroscopic reduction: daily, andes, blanc, ...')
 
     args = parser.parse_args()
-
+    
     #DESITRIP_daily
-    logic = getattr(sys.modules[__name__], args.logic)
+#     logic = getattr(sys.modules[__name__], args.logic)
 
     tile_numbers = args.tilenum
     obsdate = args.obsdate
-
-    gradcam = args.gradcam
-    
-    if args.obsdates_tilenumbers!=None:
-        obsdates_tilenumbers_str = args.obsdates_tilenumbers
-        obsdates_tilenumbers = np.chararray((len(obsdates_tilenumbers_str),2),itemsize=10,unicode=True)
-        for i in range(len(obsdates_tilenumbers_str)):
-            obsdates_tilenumbers[i,:]=obsdates_tilenumbers_str[i].split('|')
-        print(obsdates_tilenumbers_str,obsdates_tilenumbers)
-    else:    
-        obsdates = args.obsdate
-        tilenums = args.tilenum
-        obsdates_tilenumbers = np.chararray((len(obsdates),len(tilenums)),itemsize=10)
-        obsdates_tilenumbers[:,0]=obsdates
-        obsdates_tilenumbers[:,1]=tilenums
 
     base_path='/global/u2/p/palmese/desi/timedomain/cronjobs/'
     td_path='/global/cfs/cdirs/desi/science/td/daily-search/desitrip/'
@@ -154,7 +139,8 @@ if __name__ == '__main__':
     tr_spectrum=None
 
     # Access redux folder.
-    for tile_number in tile_numbers:
+    for i in range(1):
+        tile_number = tile_numbers
         redux = '/'.join([os.environ['DESI_SPECTRO_REDUX'], args.redux, 'tiles'])
         prefix_in = '/'.join([redux, tile_number, obsdate])
         if not os.path.isdir(prefix_in):
@@ -202,6 +188,13 @@ if __name__ == '__main__':
 
                     # Accumulate spectrum data.
                     if (np.sum(select) > 0):
+#                         spectra = Spectra(bands=['brz'],
+#                                                wave={'brz' : allwave},
+#                                                flux={'brz' : allflux[idx]},
+#                                                ivar={'brz' : allivar[idx]},
+#                                                resolution_data={'brz' : allres[idx]},
+#                                                fibermap=fmap
+#                                            )
                         if allzbest is None:
                             allzbest = zbest[select]
                             allfmap = fibermap[select]
@@ -239,11 +232,11 @@ if __name__ == '__main__':
                         
                     ### Selection on Classifier Output
                     # To be conservative we can select only spectra where the classifier is very confident in its output, e.g., ymax > 0.99. See the [CNN training notebook](https://github.com/desihub/timedomain/blob/master/desitrip/docs/nb/cnn_multilabel-restframe.ipynb) for the motivation behind this cut.
-
                     idx = np.argwhere(ymax > 0.99).flatten()
                     labels = np.argmax(pred, axis=1)
                     ntr = len(idx)
                     print(ntr,' transients found')
+#                     print(idx)
                     
                     # Save data to file - we need to add ra dec, and some id
                     
@@ -279,18 +272,29 @@ if __name__ == '__main__':
                                                resolution_data={'brz' : allres[idx]},
                                                fibermap=fmap
                                            )
+#                         print(fmap.columns)
+                        
                         
                         outfits = '{}/transient_candidate_spectra_{}_{}.fits'.format(out_path, obsdate, tile_number)
                         write_spectra(outfits, cand_spectra)
                         print('Output file saved in {}'.format(outfits))
+                        
+                        
+#                         print(allflux)
+#                         print(fmap)
 
                         #DESITRIP_daily - Send the selected fluxes to SkyPortal - Divij Sharma
+                        i = 0
                         for _id, _flux in zip(fmap['TARGETID'], allflux[idx]):
-                            SkyPortal.postCandidate(idx, fmap)
-                            SkyPortal.postSpectra(_id, pspectra)
+                            SkyPortal.postCandidate(i, fmap)
+                            SkyPortal.postSpectra(fmap['TARGETID'][i].astype('str'), cand_spectra)
+                            i += 1
+        
+                            
 #                             logic.plotter(idx, _flux, savepdf=spdf)
 
-#                         # Make a plot of up to 16 transients
+
+                        # Make a plot of up to 16 transients
 
 #                         selection = sorted(np.random.choice(idx.flatten(), size=np.minimum(len(idx), 16), replace=False))
 
