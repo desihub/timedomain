@@ -284,11 +284,10 @@ if __name__ == '__main__':
 #                         print(fmap)
 
                         #DESITRIP_daily - Send the selected fluxes to SkyPortal - Divij Sharma
-                        i = 0
-                        for _id, _flux in zip(fmap['TARGETID'], allflux[idx]):
+                        for i in range(len(fmap['TARGETID'])):
                             SkyPortal.postCandidate(i, fmap)
                             SkyPortal.postSpectra(fmap['TARGETID'][i].astype('str'), cand_spectra)
-                            i += 1
+                            
         
                             
 #                             logic.plotter(idx, _flux, savepdf=spdf)
