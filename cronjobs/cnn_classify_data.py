@@ -30,6 +30,7 @@ from desispec.coaddition import coadd_cameras
 from desitarget.sv1.sv1_targetmask import bgs_mask
 
 from desitrip.preproc import rebin_flux, rescale_flux
+from desitrip.deltamag import delta_mag
 
 from astropy.io import fits
 from astropy.table import Table, vstack, hstack, join
@@ -263,6 +264,7 @@ if __name__ == '__main__':
                     isGoodFiber = fibermap['FIBERSTATUS'] == 0
                     isGoodZbest = (zbest['DELTACHI2'] > 25.) & (zbest['ZWARN'] == 0)
                     select = isTGT & isGAL & isBGS & isGoodFiber & isGoodZbest
+                    fibermap = delta_mag(cspectra, fibermap, select)
 
                     print('     + selected: {}'.format(np.sum(select)))
 
