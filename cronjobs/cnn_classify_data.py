@@ -445,4 +445,8 @@ if __name__ == '__main__':
 #        #c5 = fits.Column(name='SPECTRUM', array=tr_spectrum[0], format='F')
 #        t = fits.BinTableHDU.from_columns([c1, c2, c3, c4]) #, c5])
 #        t.writeto(out_path+'transients_'+obsdate+'.fits', overwrite=True)
+
 #        print('Output file saved in ', out_path)
+
+#        print('Output file saved in ', out_path)
+
