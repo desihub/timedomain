@@ -84,9 +84,15 @@ if __name__ == '__main__':
     else:    
         obsdates = args.obsdate
         tilenums = args.tilenum
-        obsdates_tilenumbers = np.chararray((len(obsdates),len(tilenums)),itemsize=10)
-        obsdates_tilenumbers[:,0]=obsdates
-        obsdates_tilenumbers[:,1]=tilenums
+        if type(obsdates) is str: nobs=1
+        else: nobs=len(obsdates)
+        if type(tilenums) is str: ntiles=1
+        else: ntiles=len(tilenums)
+        obsdates_tilenumbers = np.chararray((ntiles,2),itemsize=10,unicode=True)
+        obsdates_tilenumbers[:,0] =obsdates
+        obsdates_tilenumbers[:,1] = tilenums#np.chararray((nobs,ntiles),itemsize=10)
+        #obsdates_tilenumbers[:,0]=obsdates
+        #obsdates_tilenumbers[:,1]=tilenums
         
     base_path='/global/u2/p/palmese/desi/timedomain/cronjobs/'
     td_path='/global/cfs/cdirs/desi/science/td/daily-search/desitrip/'

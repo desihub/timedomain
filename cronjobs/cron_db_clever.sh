@@ -31,7 +31,7 @@ td_path="/global/cfs/cdirs/desi/science/td/daily-search/"
 
 echo "Looking for new exposures"
 
-python ${run_path}exposure_db.py
+python ${run_path}exposure_db.py daily
 
 query="select distinct obsdate,tileid from exposures
 where (tileid,obsdate) not in (select tileid,obsdate from desitrip_exposures)
