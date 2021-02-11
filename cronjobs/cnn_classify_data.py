@@ -49,6 +49,11 @@ mpl.rc('font', size=14)
 
 from argparse import ArgumentParser
 
+#DESITRIP_daily
+from timedomain.sp_utils import *
+from timedomain.filters import *
+from timedomain.iterators import *
+
 import sqlite3
 
 
@@ -358,6 +363,11 @@ if __name__ == '__main__':
                         write_spectra(outfits, cand_spectra)
                         print('Output file saved in {}'.format(outfits))
 
+                        #DESITRIP_daily - Send the selected fluxes to SkyPortal - Divij Sharma
+                        for i in range(len(fmap['TARGETID'])):
+                            SkyPortal.postCandidate(i, fmap)
+                            SkyPortal.postSpectra(fmap['TARGETID'][i].astype('str'), cand_spectra)
+
                         # Make a plot of up to 16 transients
 
                         selection = sorted(np.random.choice(idx.flatten(), size=np.minimum(len(idx), 16), replace=False))
@@ -435,4 +445,8 @@ if __name__ == '__main__':
 #        #c5 = fits.Column(name='SPECTRUM', array=tr_spectrum[0], format='F')
 #        t = fits.BinTableHDU.from_columns([c1, c2, c3, c4]) #, c5])
 #        t.writeto(out_path+'transients_'+obsdate+'.fits', overwrite=True)
+
 #        print('Output file saved in ', out_path)
+
+#        print('Output file saved in ', out_path)
+
