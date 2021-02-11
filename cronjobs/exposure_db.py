@@ -161,6 +161,15 @@ if __name__ == '__main__':
     db_filename = '/global/cfs/cdirs/desi/science/td/daily-search/transients_search.db'
 
     db = ReduxDB(db_filename)
+    
+    #Save the expids that are already in the db
+    conn = sqlite3.connect(db_filename)
+    c = conn.cursor()    
+    check_expids_query="select expid from exposures;"
+    cursor = c.execute(check_expids_query)
+    expids_list = cursor.fetchall()
+    expids_done  = np.array(expids_list).flatten()
+    conn.close()
 
     # Observatory object for some astronomical calculations.
     mayall = None
@@ -192,58 +201,67 @@ if __name__ == '__main__':
             print('  + {}'.format(date))
 
             cframefiles = sorted(glob('{}/cframe*.fits'.format(date)))
-            spectfiles = sorted(glob('{}/spectra*.fits'.format(date)))
-            coaddfiles = sorted(glob('{}/coadd*.fits'.format(date)))
 
             # Extract unique list of expids from the cframe filenames.
-            expids = set([int(cframefile.split('-')[-1][:-5]) for cframefile in cframefiles])
+            expids_all = np.array([int(cframefile.split('-')[-1][:-5]) for cframefile in cframefiles])
+            
+            # Now check if this expid is already in db
+            # If it is don't bother with opening files
+            expids_arr = np.setdiff1d(expids_all,expids_done)
+            
+            expids = set(expids_arr)
+            
+            if (expids_arr.shape[0]>0):
 
-            # Access fiberassign file and DESI exposure file for each exposure.
-            for expid in expids:
-                fassign = os.environ['DESI_SPECTRO_DATA'] + '/{}/{:08d}/fiberassign-{:06d}.fits'.format(obsdate, expid, tileid)
-                desiexp = os.environ['DESI_SPECTRO_DATA'] + '/{}/{:08d}/desi-{:08d}.fits.fz'.format(obsdate, expid, expid)
+                spectfiles = sorted(glob('{}/spectra*.fits'.format(date)))
+                coaddfiles = sorted(glob('{}/coadd*.fits'.format(date)))
 
-                if os.path.exists(fassign) and os.path.exists(desiexp):
-                    # Add tile info.
-                    fhdr = fitsio.read_header(fassign, 'PRIMARY')
+                # Access fiberassign file and DESI exposure file for each exposure.
+                for expid in expids:
+                    fassign = os.environ['DESI_SPECTRO_DATA'] + '/{}/{:08d}/fiberassign-{:06d}.fits'.format(obsdate, expid, tileid)
+                    desiexp = os.environ['DESI_SPECTRO_DATA'] + '/{}/{:08d}/desi-{:08d}.fits.fz'.format(obsdate, expid, expid)
 
-                    _id, _ra, _dec = [fhdr[_] for _ in ['TILEID', 'TILERA', 'TILEDEC']]
-                    if 'FAFLAVOR' in fhdr:
-                        _flav = fhdr['FAFLAVOR']
-                    elif 'FA_SURV' in fhdr:
-                        _flav = fhdr['FA_SURV']
-                    else:
-                        _flav = 'None'
+                    if os.path.exists(fassign) and os.path.exists(desiexp):
+                        # Add tile info.
+                        fhdr = fitsio.read_header(fassign, 'PRIMARY')
 
-                    db.add_tile(_id, _ra, _dec, _flav)
+                        _id, _ra, _dec = [fhdr[_] for _ in ['TILEID', 'TILERA', 'TILEDEC']]
+                        if 'FAFLAVOR' in fhdr:
+                            _flav = fhdr['FAFLAVOR']
+                        elif 'FA_SURV' in fhdr:
+                            _flav = fhdr['FA_SURV']
+                        else:
+                            _flav = 'None'
 
-                    # Add exposure info.
-                    dhdr = fitsio.read_header(desiexp, 1)
+                        db.add_tile(_id, _ra, _dec, _flav)
 
-                    mra, mdec = dhdr['MOONRA'], dhdr['MOONDEC']
-                    if 'MOONSEP' in dhdr:
-                        msep = dhdr['MOONSEP']
-                    else:
-                        cosA = np.sin(_dec)*np.sin(mdec) + np.cos(_dec)*np.cos(mdec)*np.cos(_ra - mra) 
-                        msep = np.degrees(np.arccos(cosA))
+                        # Add exposure info.
+                        dhdr = fitsio.read_header(desiexp, 1)
 
-                    mjd, date, time = dhdr['MJD-OBS'], obsdate, dhdr['DATE-OBS']
-                    lat, lon, elev = dhdr['OBS-LAT'], dhdr['OBS-LONG'], dhdr['OBS-ELEV']
+                        mra, mdec = dhdr['MOONRA'], dhdr['MOONDEC']
+                        if 'MOONSEP' in dhdr:
+                            msep = dhdr['MOONSEP']
+                        else:
+                            cosA = np.sin(_dec)*np.sin(mdec) + np.cos(_dec)*np.cos(mdec)*np.cos(_ra - mra) 
+                            msep = np.degrees(np.arccos(cosA))
 
-                    if mayall is None:
-                        mayall = ephem.Observer()
-                        mayall.lat = lat
-                        mayall.lon = lon
-                        mayall.elev = elev
-                    mayall.date = Time(mjd, format='mjd', scale='utc').iso
-                    moon = ephem.Moon(mayall)
-                    mfrac = moon.moon_phase
-                    malt = moon.alt * 180/np.pi
+                        mjd, date, time = dhdr['MJD-OBS'], obsdate, dhdr['DATE-OBS']
+                        lat, lon, elev = dhdr['OBS-LAT'], dhdr['OBS-LONG'], dhdr['OBS-ELEV']
 
-                    prog = dhdr['PROGRAM']
-                    et = dhdr['EXPTIME']
-                    am = dhdr['EXPTIME']
+                        if mayall is None:
+                            mayall = ephem.Observer()
+                            mayall.lat = lat
+                            mayall.lon = lon
+                            mayall.elev = elev
+                        mayall.date = Time(mjd, format='mjd', scale='utc').iso
+                        moon = ephem.Moon(mayall)
+                        mfrac = moon.moon_phase
+                        malt = moon.alt * 180/np.pi
 
-                    print('    - {}'.format((expid, tileid, prog, date, time, mjd, et, am, malt, msep, mfrac)))
-                    db.add_exposure(expid, tileid, prog, date, time, mjd, et, am, malt, msep, mfrac)
+                        prog = dhdr['PROGRAM']
+                        et = dhdr['EXPTIME']
+                        am = dhdr['EXPTIME']
+
+                        print('    - {}'.format((expid, tileid, prog, date, time, mjd, et, am, malt, msep, mfrac)))
+                        db.add_exposure(expid.item(), tileid, prog, date, time, mjd, et, am, malt, msep, mfrac)
 
