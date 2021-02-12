@@ -55,8 +55,6 @@ class SkyPortal:
         if filter_name in SkyPortal.filt_id:
             return SkyPortal.filt_id[filter_name]
         else:
-#             filt_list = list(filt_id.items())
-#             last_id = filt_list[-1][1]
             response = SkyPortal.api('GET', '{}/api/filters'.format(SkyPortal.url))
             data = response.json()['data']
             theOne = list(filter(lambda datum: datum['name']==filter_name,data))
@@ -75,7 +73,8 @@ class SkyPortal:
     
     
     @staticmethod
-    def postCandidate(index,fibermap):
+    def postCandidate(index,fibermap,filt):
+    	filterid = SkyPortal.filter_id(filt)
 
         data = {
           "ra": fibermap['TARGET_RA'].data[index],
@@ -83,7 +82,7 @@ class SkyPortal:
           "id": "DESI{}".format(fibermap['TARGETID'].data[index].astype('str')),
           "origin": "DESI",
           "filter_ids": [
-            16
+            filterid
           ],
           "passing_alert_id": 0,
           "passed_at": time.strftime("20%y-%m-%d",time.gmtime())
