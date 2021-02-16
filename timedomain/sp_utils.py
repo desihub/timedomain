@@ -2,6 +2,7 @@ import requests
 import time
 from astropy.time import Time
 
+
 class SkyPortal:
 
     #skyportal location and 
@@ -20,6 +21,7 @@ class SkyPortal:
     
     inst_id = None
     tel_id = None
+    filt_id = {}
 
     @staticmethod
     def instrument_id():
@@ -47,7 +49,25 @@ class SkyPortal:
             else:
                 raise NameError('Telescope Not Defined')
         
-        return SkyPortal.tel_id       
+        return SkyPortal.tel_id 
+    
+    @staticmethod
+    def filter_id(filter_name):
+        if filter_name in SkyPortal.filt_id:
+            return SkyPortal.filt_id[filter_name]
+        else:
+#             filt_list = list(filt_id.items())
+#             last_id = filt_list[-1][1]
+            response = SkyPortal.api('GET', '{}/api/filters'.format(SkyPortal.url))
+            data = response.json()['data']
+            theOne = list(filter(lambda datum: datum['name']==filter_name,data))
+            if len(theOne) !=0:
+                SkyPortal.filt_id[filter_name] = theOne[0]['id']
+            else:
+                raise NameError('Filter Not Defined')
+            return SkyPortal.filt_id[filter_name]
+            
+            
         
     @staticmethod
     def api(method, endpoint, data=None):
@@ -75,6 +95,8 @@ class SkyPortal:
         print(f'HTTP code: {response.status_code}, {response.reason}')
         if response.status_code in (200, 400):
             print(f'JSON response: {response.json()}')
+    
+    
 
     @staticmethod            
     def postSpectra(target_id, spectra_in):
@@ -139,16 +161,16 @@ class SkyPortal:
     def test():
 
         
-#         response = SkyPortal.api('DELETE', '{}/api/candidates/{}'.format(SkyPortal.url,"35191288252861933"))
+        # response = SkyPortal.api('DELETE', '{}/api/candidates/{}'.format(SkyPortal.url,"35191288252861933"))
 
-#         print(f'HTTP code: {response.status_code}, {response.reason}')
-#         if response.status_code in (200, 400):
-#             print(f'JSON response: {response.json()}')
+        # print(f'HTTP code: {response.status_code}, {response.reason}')
+        # if response.status_code in (200, 400):
+        #     print(f'JSON response: {response.json()}')
             
         filename = fitsfile("70006","20200305", "6", subdir='andes',trunk='coadd') 
-#         fibermap = Table.read(filename, 'FIBERMAP')
-#         index = np.where(fibermap['TARGETID'].data== 35191288252861933)[0]
-#         SkyPortal.postCandidate(index[0],fibermap)
+        # fibermap = Table.read(filename, 'FIBERMAP')
+        # index = np.where(fibermap['TARGETID'].data== 35191288252861933)[0]
+        # SkyPortal.postCandidate(index[0],fibermap)
         
         spectra = read_spectra(filename)
 #         SkyPortal.postSpectra("35191288252861933",spectra)
@@ -158,3 +180,12 @@ class SkyPortal:
 # SkyPortal.instrument_id()
 
 # SkyPortal.test()
+
+#     @staticmethod
+#     def test2():
+#         print(SkyPortal.filter_id("DESI Difference CV"))
+#         print(SkyPortal.filter_id("AMPEL.HU_RANDOM"))
+#         print(SkyPortal.filter_id("DESIDIFF_CV_daily"))
+#         print(SkyPortal.filter_id("xyz"))
+        
+# SkyPortal.test2()

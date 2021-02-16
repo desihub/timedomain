@@ -23,6 +23,7 @@
 import os
 import sys
 sys.path.append('/global/homes/p/palmese/desi/timedomain/desitrip/py/') #Note:change this path as needed!
+sys.path.append('/global/homes/p/palmese/desi/timedomain/timedomain/')
 
 from desispec.io import read_spectra, write_spectra
 from desispec.spectra import Spectra
@@ -48,6 +49,11 @@ from tensorflow import keras
 mpl.rc('font', size=14)
 
 from argparse import ArgumentParser
+
+#DESITRIP_daily
+from timedomain.sp_utils import *
+from timedomain.filters import *
+from timedomain.iterators import *
 
 import sqlite3
 
@@ -84,9 +90,15 @@ if __name__ == '__main__':
     else:    
         obsdates = args.obsdate
         tilenums = args.tilenum
-        obsdates_tilenumbers = np.chararray((len(obsdates),len(tilenums)),itemsize=10)
-        obsdates_tilenumbers[:,0]=obsdates
-        obsdates_tilenumbers[:,1]=tilenums
+        if type(obsdates) is str: nobs=1
+        else: nobs=len(obsdates)
+        if type(tilenums) is str: ntiles=1
+        else: ntiles=len(tilenums)
+        obsdates_tilenumbers = np.chararray((ntiles,2),itemsize=10,unicode=True)
+        obsdates_tilenumbers[:,0] =obsdates
+        obsdates_tilenumbers[:,1] = tilenums#np.chararray((nobs,ntiles),itemsize=10)
+        #obsdates_tilenumbers[:,0]=obsdates
+        #obsdates_tilenumbers[:,1]=tilenums
         
     base_path='/global/u2/p/palmese/desi/timedomain/cronjobs/'
     td_path='/global/cfs/cdirs/desi/science/td/daily-search/desitrip/'
@@ -352,6 +364,11 @@ if __name__ == '__main__':
                         write_spectra(outfits, cand_spectra)
                         print('Output file saved in {}'.format(outfits))
 
+                        #DESITRIP_daily - Send the selected fluxes to SkyPortal - Divij Sharma
+                        for i in range(len(fmap['TARGETID'])):
+                            SkyPortal.postCandidate(i, fmap)
+                            SkyPortal.postSpectra(fmap['TARGETID'][i].astype('str'), cand_spectra)
+
                         # Make a plot of up to 16 transients
 
                         selection = sorted(np.random.choice(idx.flatten(), size=np.minimum(len(idx), 16), replace=False))
@@ -364,6 +381,10 @@ if __name__ == '__main__':
                         rz_band=[7400,7800]
 
                         for j, ax in zip(selection, axes.flatten()):
+                            
+                            delta_fibermag_g=allfmap['DELTAMAG_G'][j]
+                            delta_fibermag_r=allfmap['DELTAMAG_R'][j]
+                            delta_fibermag_z=allfmap['DELTAMAG_Z'][j]
 
                             if gradcam:
                                 this_flux=rsflux[j,:].reshape((1,150)) 
@@ -381,7 +402,11 @@ if __name__ == '__main__':
                                     last_bin=int(i*rewave_nbin_inblock)
                                     if (i==1):
                                         ax.plot(rewave[first_bin:last_bin+1], this_flux[0,first_bin:last_bin+1],c=color,alpha=alpha,\
-                                                label=label_names[labels[j]]+'\nz={:.2f}'.format(allzbest[j]['Z']))
+                                                label=label_names[labels[j]]+'\nz={:.2f}'.format(allzbest[j]['Z'])\
+                                               +'\n dg={:.2f}'.format(delta_fibermag_g)\
+                                                +'\n dr={:.2f}'.format(delta_fibermag_r)\
+                                               +'\n dz={:.2f}'.format(delta_fibermag_z)\
+                                               )
                                     else:
                                         ax.plot(rewave[first_bin:last_bin+1], this_flux[0,first_bin:last_bin+1],c=color,alpha=alpha)
                                     first_bin=last_bin
@@ -429,4 +454,8 @@ if __name__ == '__main__':
 #        #c5 = fits.Column(name='SPECTRUM', array=tr_spectrum[0], format='F')
 #        t = fits.BinTableHDU.from_columns([c1, c2, c3, c4]) #, c5])
 #        t.writeto(out_path+'transients_'+obsdate+'.fits', overwrite=True)
+
 #        print('Output file saved in ', out_path)
+
+#        print('Output file saved in ', out_path)
+

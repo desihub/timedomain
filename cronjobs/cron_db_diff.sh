@@ -31,7 +31,7 @@ td_path="/global/cfs/cdirs/desi/science/td/daily-search/"
 
 echo "Looking for new exposures"
 
-python ${run_path}exposure_db.py daily
+python ${run_path}exposure_db.py
 
 query="select distinct obsdate,tileid from exposures
 where (tileid,obsdate) not in (select tileid,obsdate from desitrip_exposures)
@@ -49,7 +49,7 @@ echo "Putting log into "$logfile
 #It would be more clever to run multiple obsdate together
 
 echo "#!/bin/bash
-#SBATCH --qos=debug
+#SBATCH --qos=regular
 #SBATCH --time=20
 #SBATCH --nodes=1
 #SBATCH --tasks-per-node=1
@@ -64,11 +64,8 @@ else
     echo "$Nobsdates_tileids new observations found"
     echo "Sendingjobs for: "
     echo "python ${run_path}cnn_classify_data.py --obsdates_tilenumbers ${obsdates_tileids[@]}"
-    echo "srun python ${run_path}cnn_classify_data.py --obsdates_tilenumbers ${obsdates_tileids[@]}">>${run_path}sbatch_file.sh        
 
-    echo "---------- Starting DESITrIP ----------"
-    #sbatch ${run_path}sbatch_file.sh
-    python ${run_path}cnn_classify_data.py --obsdates_tilenumbers ${obsdates_tileids[@]}
+    diff-db CVLogic daily coadd --obsdates_tilenumbers ${obsdates_tileids[@]}
 fi
 
 
