@@ -28,9 +28,11 @@ url = f"{base_url}&page=0"
 csv_data = requests.get(url, verify=False).content
 data = pd.read_csv(io.StringIO(csv_data.decode("utf-8")), error_bad_lines=False)
 npages = int(data['ID'].max()/len(data))+1
+print("there are %s pages to loop through" %npages)
 
 # Have to loop through TNS page by page
 for page in np.arange(npages):
+    print(page)
     url = f"{base_url}&page={page}"
     csv_data = requests.get(url, verify=False).content
     data = pd.read_csv(io.StringIO(csv_data.decode("utf-8")), error_bad_lines=False)
