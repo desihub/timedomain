@@ -1,6 +1,7 @@
-""" Download entries from TNS into a sqlite3 database
+""" Download the last three months of TNS entries into a sqlite3 database
 
-Eventually this could be run on a regular basis
+Eventually this could be run on a regular basis...
+Currently takes ~30 minutes to run.
 
 Anna Ho, 10 Feb 2021
 """
