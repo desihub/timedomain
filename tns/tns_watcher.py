@@ -4,8 +4,10 @@
 Eventually this should be run automatically on a regular basis...
 Currently takes ~30 minutes to run for 3 months worth of transient entries.
 
-Code initially written by Anna Y. Q. Ho
 Last modified 16 Feb 2021
+
+borrows from Dima Duev's script
+https://github.com/dmitryduev/kowalski/blob/master/kowalski/tns_watcher.py
 """
 
 # Import packages
