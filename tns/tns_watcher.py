@@ -1,9 +1,11 @@
-""" Download the last three months of TNS entries into a sqlite3 database
+""" Download the last three months of TNS entries into a table in the database:
+/global/cfs/cdirs/desi/science/td/daily-search/transients_search.db
 
-Eventually this could be run on a regular basis...
-Currently takes ~30 minutes to run.
+Eventually this should be run automatically on a regular basis...
+Currently takes ~30 minutes to run for 3 months worth of transient entries.
 
-Anna Ho, 10 Feb 2021
+Code initially written by Anna Y. Q. Ho
+Last modified 16 Feb 2021
 """
 
 # Import packages
@@ -17,11 +19,10 @@ from tns_watcher_utils import *
 
 # Create a table to ingest tns sources
 # In the future this could instead add rows to the table, instead of creating a new one from scratch
-conn = sqlite3.connect('tns.db')
+conn = sqlite3.connect('/global/cfs/cdirs/desi/science/td/daily-search/transients_search.db')
 c = conn.cursor()
 c.execute('''CREATE TABLE tns_sources 
              (ID text, RA real, Dec real)''')
-
 
 # Download all sources on TNS from the last three months
 base_url = "https://www.wis-tns.org/search?&discovered_period_value=3&format=csv"
