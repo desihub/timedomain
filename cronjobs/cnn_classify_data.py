@@ -366,7 +366,7 @@ if __name__ == '__main__':
 
                         #DESITRIP_daily - Send the selected fluxes to SkyPortal - Divij Sharma
                         for i in range(len(fmap['TARGETID'])):
-                            SkyPortal.postCandidate(i, fmap)
+                            SkyPortal.postCandidate(i, fmap, "DESITRIP_daily")
                             SkyPortal.postSpectra(fmap['TARGETID'][i].astype('str'), cand_spectra)
 
                         # Make a plot of up to 16 transients
