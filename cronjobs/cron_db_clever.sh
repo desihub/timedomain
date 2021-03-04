@@ -17,7 +17,7 @@ if [ -z "$DESI_ROOT" ]; then
 fi
 
 tiles_path="/global/project/projectdirs/desi/spectro/redux/daily/tiles"
-run_path="/global/homes/d/divij18/timedomain/cronjobs/"
+run_path="/global/u2/p/palmese/desi/timedomain/cronjobs/"
 td_path="/global/cfs/cdirs/desi/science/td/daily-search/"
 
 
@@ -31,12 +31,11 @@ td_path="/global/cfs/cdirs/desi/science/td/daily-search/"
 
 echo "Looking for new exposures"
 
-
 python ${run_path}exposure_db.py daily
 
 query="select distinct obsdate,tileid from exposures
-where (tileid,obsdate) not in (select tileid,obsdate from desidiff_cv_daily);"
-
+where (tileid,obsdate) not in (select tileid,obsdate from desitrip_exposures)
+and program LIKE '%bgs%';"
 
 mapfile -t -d $'\n' obsdates_tileids < <( sqlite3 ${td_path}transients_search.db "$query" )
 
@@ -50,7 +49,7 @@ echo "Putting log into "$logfile
 #It would be more clever to run multiple obsdate together
 
 echo "#!/bin/bash
-#SBATCH --qos=regular
+#SBATCH --qos=debug
 #SBATCH --time=20
 #SBATCH --nodes=1
 #SBATCH --tasks-per-node=1
@@ -63,19 +62,13 @@ if [ $Nobsdates_tileids -eq 0 ]; then
     echo "No new observations found today"
 else
     echo "$Nobsdates_tileids new observations found"
+    echo "Sendingjobs for: "
+    echo "python ${run_path}cnn_classify_data.py --obsdates_tilenumbers ${obsdates_tileids[@]}"
+    echo "srun python ${run_path}cnn_classify_data.py --obsdates_tilenumbers ${obsdates_tileids[@]}">>${run_path}sbatch_file.sh        
 
-    echo "---------- Starting coadd differencing ----------"
-
-    run_path_diff="/global/homes/d/divij18/timedomain/timedomain/bin/"
-    logfile="${td_path}/desitrip/log/${now}.log"
-#     echo "${run_path_diff}/diff-db.py $lastnite CVLogic Date_SpectraPairs_Iterator daily
-#     coadd"
-#     srun -o ${logfile} ${run_path_diff}/diff.py $lastnite CVLogic
-#     Date_SpectraPairs_Iterator daily coadd
-    python ${run_path_diff}diff-db.py CVLogic daily coadd --obsdates_tilenumbers ${obsdates_tileids[@]}
-    echo "Jobs for coadd differencing sent"
-
-
+    echo "---------- Starting DESITrIP ----------"
+    #sbatch ${run_path}sbatch_file.sh
+    python ${run_path}cnn_classify_data.py --obsdates_tilenumbers ${obsdates_tileids[@]}
 fi
 
 
@@ -94,4 +87,7 @@ fi
 #srun -o ${logfile} ${run_path_diff}/diff.py $lastnite CVLogic Date_SpectraPairs_Iterator daily coadd
 
 #echo "Jobs for coadd differencing sent"
+
+
+
 

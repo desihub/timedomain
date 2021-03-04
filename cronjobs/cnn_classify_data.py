@@ -23,6 +23,7 @@
 import os
 import sys
 sys.path.append('/global/homes/p/palmese/desi/timedomain/desitrip/py/') #Note:change this path as needed!
+sys.path.append('/global/homes/p/palmese/desi/timedomain/timedomain/')
 
 from desispec.io import read_spectra, write_spectra
 from desispec.spectra import Spectra
@@ -380,6 +381,10 @@ if __name__ == '__main__':
                         rz_band=[7400,7800]
 
                         for j, ax in zip(selection, axes.flatten()):
+                            
+                            delta_fibermag_g=allfmap['DELTAMAG_G'][j]
+                            delta_fibermag_r=allfmap['DELTAMAG_R'][j]
+                            delta_fibermag_z=allfmap['DELTAMAG_Z'][j]
 
                             if gradcam:
                                 this_flux=rsflux[j,:].reshape((1,150)) 
@@ -397,7 +402,11 @@ if __name__ == '__main__':
                                     last_bin=int(i*rewave_nbin_inblock)
                                     if (i==1):
                                         ax.plot(rewave[first_bin:last_bin+1], this_flux[0,first_bin:last_bin+1],c=color,alpha=alpha,\
-                                                label=label_names[labels[j]]+'\nz={:.2f}'.format(allzbest[j]['Z']))
+                                                label=label_names[labels[j]]+'\nz={:.2f}'.format(allzbest[j]['Z'])\
+                                               +'\n dg={:.2f}'.format(delta_fibermag_g)\
+                                                +'\n dr={:.2f}'.format(delta_fibermag_r)\
+                                               +'\n dz={:.2f}'.format(delta_fibermag_z)\
+                                               )
                                     else:
                                         ax.plot(rewave[first_bin:last_bin+1], this_flux[0,first_bin:last_bin+1],c=color,alpha=alpha)
                                     first_bin=last_bin
@@ -445,4 +454,8 @@ if __name__ == '__main__':
 #        #c5 = fits.Column(name='SPECTRUM', array=tr_spectrum[0], format='F')
 #        t = fits.BinTableHDU.from_columns([c1, c2, c3, c4]) #, c5])
 #        t.writeto(out_path+'transients_'+obsdate+'.fits', overwrite=True)
+
 #        print('Output file saved in ', out_path)
+
+#        print('Output file saved in ', out_path)
+

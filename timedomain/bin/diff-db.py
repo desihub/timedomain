@@ -15,6 +15,7 @@ def main(args):
     logic = getattr(sys.modules[__name__], args.logic)
     
     ### Get the tile and array from the arguments
+
     if args.obsdates_tilenumbers!=None:
         obsdates_tilenumbers_str = args.obsdates_tilenumbers
         obsdates_tilenumbers = np.chararray((len(obsdates_tilenumbers_str),2),itemsize=10,unicode=True)
@@ -26,11 +27,14 @@ def main(args):
     for obsdate,tile_number in obsdates_tilenumbers:
         date.append(obsdate)
         tile.append(tile_number)  
+
     iterator = TileDate_TargetPairs_Iterator(tile, date)
 
     # make this none for results to appear in the notebook
 #     spdf = ["diff",logic.__name__,args.subdir,args.trunk,args.date]
+
     for pspectra0,pspectra1 in iterator:
+
         print(pspectra0,pspectra1)
 
     print("End")
