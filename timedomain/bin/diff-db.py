@@ -35,7 +35,21 @@ def main(args):
 
     for pspectra0,pspectra1 in iterator:
 
-        print(pspectra0,pspectra1)
+        # which of these are real targets
+        triggered, diff = logic.filter(pspectra0,pspectra1, norm=True,ston_cut=5)
+
+        # plot triggered objects
+        if triggered.sum() > 0:
+
+            wheretriggered = np.where(triggered)[0]
+
+            for sig in wheretriggered.flat:
+                SkyPortal.postCandidate(sig, diff.fibermap, "DESIDIFF_CV_daily")
+                targetid = diff.fibermap['TARGETID'].data[sig].astype('str')
+                SkyPortal.postSpectra(targetid, diff)
+                SkyPortal.postSpectra(targetid, pspectra0)
+                SkyPortal.postSpectra(targetid, pspectra1)
+                logic.plotter(sig,pspectra0, pspectra1, diff, savepdf=spdf)
 
     print("End")
                 
