@@ -28,7 +28,7 @@ def main(args):
         date.append(obsdate)
         tile.append(tile_number)  
 
-    iterator = TileDate_TargetPairs_Iterator(tile, date)
+    iterator = TileDate_TargetPairs_Iterator(tile, date, subdir=args.subdir,trunk=args.trunk, verbose=True)
 
     # make this none for results to appear in the notebook
 #     spdf = ["diff",logic.__name__,args.subdir,args.trunk,args.date]
