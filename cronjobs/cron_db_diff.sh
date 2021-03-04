@@ -34,8 +34,7 @@ echo "Looking for new exposures"
 python ${run_path}exposure_db.py daily
 
 query="select distinct obsdate,tileid from exposures
-where (tileid,obsdate) not in (select tileid,obsdate from specdiff_cvdaily_exposures)
-and program LIKE '%bgs%';"
+where (tileid,obsdate) not in (select tileid,obsdate from desitrip_exposures);"
 
 mapfile -t -d $'\n' obsdates_tileids < <( sqlite3 ${td_path}transients_search.db "$query" )
 
@@ -66,6 +65,10 @@ else
 
     run_path_diff="/global/homes/d/divij18/timedomain/timedomain/bin/"
     logfile="${td_path}/desitrip/log/${now}.log"
+#     echo "${run_path_diff}/diff-db.py $lastnite CVLogic Date_SpectraPairs_Iterator daily
+#     coadd"
+#     srun -o ${logfile} ${run_path_diff}/diff.py $lastnite CVLogic
+#     Date_SpectraPairs_Iterator daily coadd
     python ${run_path_diff}diff-db.py CVLogic daily coadd --obsdates_tilenumbers ${obsdates_tileids[@]}
     echo "Jobs for coadd differencing sent"
 
