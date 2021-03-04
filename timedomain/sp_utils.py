@@ -1,7 +1,7 @@
 import requests
 import time
 from astropy.time import Time
-
+import json
 
 class SkyPortal:
 
@@ -74,8 +74,16 @@ class SkyPortal:
     
     
     @staticmethod
-    def postCandidate(index,fibermap,filt):
-    	filterid = SkyPortal.filter_id(filt)
+    def postCandidate(index,fibermap,filt, data_override=None):
+        
+        filterid = SkyPortal.filter_id(filt)
+        
+        # information we want to save from fibermap
+        fibermap_keys=['FIBER','TILEID','EXPID','PETAL_LOC','MJD']
+        fiber_dict = dict()
+        for key in fibermap_keys:
+            fiber_dict[key] = fibermap[key].data[index].astype('str')
+        altdata = {'fibermap': fiber_dict}
 
         data = {
           "ra": fibermap['TARGET_RA'].data[index],
@@ -85,10 +93,20 @@ class SkyPortal:
           "filter_ids": [
             filterid
           ],
-          "passing_alert_id": 0,
-          "passed_at": time.strftime("20%y-%m-%d",time.gmtime())
+          "passing_alert_id": filterid,
+          "passed_at": time.strftime("20%y-%m-%d",time.gmtime()),
+          "altdata": altdata
         }
-
+        
+        if data_override is not None:
+            for k,v in data_override.items():
+                if isinstance(v,dict) and k in data:
+                    data[k].update(v)
+                    data_override[k]=data[k]
+                    
+        data.update(data_override)
+        print(data)
+        wefwe
         response = SkyPortal.api('POST', '{}/api/candidates'.format(SkyPortal.url),data=data)
 
         print(f'HTTP code: {response.status_code}, {response.reason}')
