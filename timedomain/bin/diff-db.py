@@ -4,14 +4,13 @@ import argparse
 from timedomain.filters import *
 from timedomain.iterators import *
 from timedomain.sp_utils import *
+import timedomain.config as config
 import sys
 
 __version__=0.1
 
-mindate = "20201201"
-
-
 def main(args):
+    
     """ Main entry point of the app """
     print("Start ", args)
     logic = getattr(sys.modules[__name__], args.logic)
@@ -27,7 +26,7 @@ def main(args):
     date = []
     tile = []
     for obsdate,tile_number in obsdates_tilenumbers:
-        if obsdate >= mindate:
+        if obsdate >= config.mindate:
             date.append(obsdate)
             tile.append(tile_number)
 
