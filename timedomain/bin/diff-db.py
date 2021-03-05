@@ -6,7 +6,6 @@ from timedomain.iterators import *
 from timedomain.sp_utils import *
 import sys
 
-
 __version__=0.1
 
 def main(args):
@@ -26,15 +25,15 @@ def main(args):
     tile = []
     for obsdate,tile_number in obsdates_tilenumbers:
         date.append(obsdate)
-        tile.append(tile_number)  
+        tile.append(tile_number)
 
-    iterator = TileDate_TargetPairs_Iterator(tile, date, subdir=args.subdir,trunk=args.trunk, verbose=True)
+    iterator = TileDate_SpectraPairs_Iterator(tile, date, subdir=args.subdir,trunk=args.trunk, verbose=True)
+
 
     # make this none for results to appear in the notebook
 #     spdf = ["diff",logic.__name__,args.subdir,args.trunk,args.date]
 
     for pspectra0,pspectra1 in iterator:
-
         # which of these are real targets
         triggered, diff = logic.filter(pspectra0,pspectra1, norm=True,ston_cut=5)
 
