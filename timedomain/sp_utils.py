@@ -82,7 +82,11 @@ class SkyPortal:
         fibermap_keys=['FIBER','TILEID','EXPID','PETAL_LOC','MJD']
         fiber_dict = dict()
         for key in fibermap_keys:
-            fiber_dict[key] = fibermap[key].data[index].astype('str')
+            if key in fibermap.keys():
+                fiber_dict[key] = fibermap[key].data[index].astype('str')
+            else:
+                print('missing ',key)
+              
         altdata = {'fibermap': fiber_dict}
 
         data = {
@@ -104,14 +108,24 @@ class SkyPortal:
                     data[k].update(v)
                     data_override[k]=data[k]
                     
-        data.update(data_override)
-        print(data)
-        wefwe
+            data.update(data_override)
+
         response = SkyPortal.api('POST', '{}/api/candidates'.format(SkyPortal.url),data=data)
 
         print(f'HTTP code: {response.status_code}, {response.reason}')
         if response.status_code in (200, 400):
             print(f'JSON response: {response.json()}')
+            
+        data = {
+          "obj_id": "DESI{}".format(fibermap['TARGETID'].data[index].astype('str')),
+          "origin": 'postCandidate',
+          "data": altdata
+        }            
+        response = SkyPortal.api('POST', '{}/api/annotation'.format(SkyPortal.url),data=data)
+
+        print(f'HTTP code: {response.status_code}, {response.reason}')
+        if response.status_code in (200, 400):
+            print(f'JSON response: {response.json()}')        
     
     
 
