@@ -8,6 +8,8 @@ import sys
 
 __version__=0.1
 
+mindate = "20201201"
+
 def main(args):
     """ Main entry point of the app """
     print("Start ", args)
@@ -24,8 +26,9 @@ def main(args):
     date = []
     tile = []
     for obsdate,tile_number in obsdates_tilenumbers:
-        date.append(obsdate)
-        tile.append(tile_number)
+        if obsdate >= mindate:
+            date.append(obsdate)
+            tile.append(tile_number)
 
     iterator = TileDate_SpectraPairs_Iterator(tile, date, subdir=args.subdir,trunk=args.trunk, verbose=True)
 
@@ -45,10 +48,13 @@ def main(args):
             for sig in wheretriggered.flat:
                 SkyPortal.postCandidate(sig, diff.fibermap, "DESIDIFF_CV_daily")
                 targetid = diff.fibermap['TARGETID'].data[sig].astype('str')
-                SkyPortal.postSpectra(targetid, diff)
-                SkyPortal.postSpectra(targetid, pspectra0)
-                SkyPortal.postSpectra(targetid, pspectra1)
-                logic.plotter(sig,pspectra0, pspectra1, diff, savepdf=spdf)
+                data_override = {
+                  "origin": "DESIDIFF",
+                }
+                SkyPortal.postSpectra(targetid, diff, data_override=data_override,coadd_camera=True)
+                SkyPortal.postSpectra(targetid, pspectra0,coadd_camera=True)
+                SkyPortal.postSpectra(targetid, pspectra1,coadd_camera=True)
+#                 logic.plotter(sig,pspectra0, pspectra1, diff, savepdf=spdf)
 
     print("End")
                 

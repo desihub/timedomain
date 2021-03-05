@@ -40,7 +40,7 @@ def difference(s0, s1):
         ivar[dindex] = 1/(1/ivar0 + 1/ivar1)
         mask[dindex] = diff[dindex].mask.astype('int')
         
-    return Spectra(bands=s1.bands.copy(), wave=dict(s1.wave), flux=diff,ivar=ivar,mask=mask,fibermap = s0.fibermap)
+    return Spectra(bands=s1.bands.copy(), wave=dict(s1.wave), flux=diff,ivar=ivar,mask=mask,fibermap = s0.fibermap, resolution_data=s0.resolution_data)
 
 # renormalize two spectra
 # for now the two spectra are assumed to be single night coadd of matching tile

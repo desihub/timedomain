@@ -2,6 +2,7 @@ import requests
 import time
 from astropy.time import Time
 import json
+from desispec.coaddition import coadd_cameras
 
 class SkyPortal:
 
@@ -130,63 +131,40 @@ class SkyPortal:
     
 
     @staticmethod            
-    def postSpectra(target_id, spectra_in):
+    def postSpectra(target_id, spectra_in, data_override=None,coadd_camera=False):
         spectra = spectra_in.select(targets=[int(target_id)])
+        if coadd_camera:
+            spectra = coadd_cameras(spectra)
         fibermap = spectra.fibermap
 
         objID = 'DESI{}'.format(target_id)
         for index, mjd in enumerate(fibermap.iterrows('MJD')):
             t = Time(mjd[0], format='mjd')
-            for band in spectra.bands:
+            for band in spectra.bands:            
                 data = {
                   "obj_id": objID,
                   "origin": "DESI",
                   "group_ids": [23, 24],
                   "fluxes": spectra.flux[band][index,:].tolist(),
-#                   "errors": (1./np.sqrt(spectra.ivar[band][index,:])).tolist(),  
+    #                   "errors": (1./np.sqrt(spectra.ivar[band][index,:])).tolist(),  
                   "wavelengths": spectra.wave[band].tolist(),
                   "observed_at": t.isot,
                   "instrument_id": SkyPortal.instrument_id()
                 }
+
+                if data_override is not None:
+                    for k,v in data_override.items():
+                        if isinstance(v,dict) and k in data:
+                            data[k].update(v)
+                            data_override[k]=data[k]
+
+                    data.update(data_override)
+
                 response = SkyPortal.api('POST', '{}/api/spectrum'.format(SkyPortal.url),data=data)
                 print(f'HTTP code: {response.status_code}, {response.reason}')
                 if response.status_code in (200, 400):
-                    print(f'JSON response: {response.json()}')
-        
-
-#     @staticmethod
-#     def postMayallTelescope():
-#         data = {
-#           "name": SkyPortal.telescope_name,
-#           "nickname": "KPNO 4-m",
-#           "lat": 31.9634,
-#           "lon": -111.6,
-#           "elevation": 2120,
-#           "diameter": 4,
-#           "robotic": False,
-#           "fixed_location": True
-#         }
-        
-#         print(data)
-#         response = SkyPortal.api('POST', '{}/api/telescope'.format(SkyPortal.url),data=data)
-#         print(f'HTTP code: {response.status_code}, {response.reason}')
-#         if response.status_code in (200, 400):
-#             print(f'JSON response: {response.json()}')
-            
-#     @staticmethod
-#     def postDESIInstrument():
-#         data = {
-#           "name": SkyPortal.instrument_name,
-#           "type": "spectrograph",
-#           "band": "optical",
-#           "telescope_id": SkyPortal.telescope_id()
-#         }
-        
-#         print(data)
-#         response = SkyPortal.api('POST', '{}/api/instrument'.format(SkyPortal.url),data=data)
-#         print(f'HTTP code: {response.status_code}, {response.reason}')
-#         if response.status_code in (200, 400):
-#             print(f'JSON response: {response.json()}')
+                    print(f'JSON response: {response.json()}')            
+ 
             
     @staticmethod
     def test():
