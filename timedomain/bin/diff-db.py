@@ -10,6 +10,7 @@ __version__=0.1
 
 mindate = "20201201"
 
+
 def main(args):
     """ Main entry point of the app """
     print("Start ", args)

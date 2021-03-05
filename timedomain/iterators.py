@@ -6,6 +6,8 @@ import copy
 
 from . import fs_utils
 
+mindate = "20201201"
+
 """
 Class that returns Tiles that were observed on a date
 """
@@ -62,7 +64,7 @@ class TileDate_PreDate_Iterator:
         if self.it0 is None:
             predates = fs_utils.tileToDates(self.tile, subdir=self.subdir)
             predates = np.array(predates,dtype='str')
-            w = predates < self.date
+            w = np.logical_and(predates < self.date, predates > mindate)
             predates = predates[w]
             if len(predates)==0:
                 raise StopIteration
