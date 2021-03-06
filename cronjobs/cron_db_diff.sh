@@ -17,7 +17,7 @@ if [ -z "$DESI_ROOT" ]; then
 fi
 
 tiles_path="/global/project/projectdirs/desi/spectro/redux/daily/tiles"
-run_path="/global/homes/d/divij18/timedomain/cronjobs/"
+run_path="/global/cscratch1/sd/akim/project/timedomain/cronjobs/"
 td_path="/global/cfs/cdirs/desi/science/td/daily-search/"
 
 
@@ -35,8 +35,10 @@ echo "Looking for new exposures"
 python ${run_path}exposure_db.py daily
 
 query="select distinct obsdate,tileid from exposures
-where (tileid,obsdate) not in (select tileid,obsdate from desidiff_cv_daily);"
+where (tileid,obsdate) not in (select tileid,obsdate from specdiff_cvdaily_exposures);"
 
+query="select distinct obsdate,tileid from exposures
+where (tileid,obsdate) not in (select tileid,obsdate from specdiff_cvdaily_exposures) limit 90;"
 
 mapfile -t -d $'\n' obsdates_tileids < <( sqlite3 ${td_path}transients_search.db "$query" )
 
@@ -66,14 +68,21 @@ else
 
     echo "---------- Starting coadd differencing ----------"
 
-    run_path_diff="/global/homes/d/divij18/timedomain/timedomain/bin/"
+    run_path_diff="/global/cscratch1/sd/akim/project/timedomain/timedomain/bin/"
     logfile="${td_path}/desitrip/log/${now}.log"
 #     echo "${run_path_diff}/diff-db.py $lastnite CVLogic Date_SpectraPairs_Iterator daily
 #     coadd"
 #     srun -o ${logfile} ${run_path_diff}/diff.py $lastnite CVLogic
 #     Date_SpectraPairs_Iterator daily coadd
     python ${run_path_diff}diff-db.py CVLogic daily coadd --obsdates_tilenumbers ${obsdates_tileids[@]}
-    echo "Jobs for coadd differencing sent"
+    if [ $? -eq 0 ]
+    then
+      echo "Successfully executed script"
+      echo "Filling database"
+    else
+      # Redirect stdout from echo command to stderr.
+      echo "Script exited with error." >&2
+    fi
 
 
 fi

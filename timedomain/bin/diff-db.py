@@ -10,7 +10,6 @@ import sys
 __version__=0.1
 
 def main(args):
-    
     """ Main entry point of the app """
     print("Start ", args)
     logic = getattr(sys.modules[__name__], args.logic)
@@ -37,23 +36,24 @@ def main(args):
 #     spdf = ["diff",logic.__name__,args.subdir,args.trunk,args.date]
 
     for pspectra0,pspectra1 in iterator:
-        # which of these are real targets
-        triggered, diff = logic.filter(pspectra0,pspectra1, norm=True,ston_cut=5)
+        pass
+#         # which of these are real targets
+#         triggered, diff = logic.filter(pspectra0,pspectra1, norm=True,ston_cut=5)
 
-        # plot triggered objects
-        if triggered.sum() > 0:
+#         # plot triggered objects
+#         if triggered.sum() > 0:
 
-            wheretriggered = np.where(triggered)[0]
+#             wheretriggered = np.where(triggered)[0]
 
-            for sig in wheretriggered.flat:
-                SkyPortal.postCandidate(sig, diff.fibermap, "DESIDIFF_CV_daily")
-                targetid = diff.fibermap['TARGETID'].data[sig].astype('str')
-                data_override = {
-                  "origin": "DESIDIFF",
-                }
-                SkyPortal.postSpectra(targetid, diff, data_override=data_override,coadd_camera=True)
-                SkyPortal.postSpectra(targetid, pspectra0,coadd_camera=True)
-                SkyPortal.postSpectra(targetid, pspectra1,coadd_camera=True)
+#             for sig in wheretriggered.flat:
+#                 SkyPortal.postCandidate(sig, diff.fibermap, "DESIDIFF_CV_daily")
+#                 targetid = diff.fibermap['TARGETID'].data[sig].astype('str')
+#                 data_override = {
+#                   "origin": "DESIDIFF",
+#                 }
+#                 SkyPortal.postSpectra(targetid, diff, data_override=data_override,coadd_camera=True)
+#                 SkyPortal.postSpectra(targetid, pspectra0,coadd_camera=True)
+#                 SkyPortal.postSpectra(targetid, pspectra1,coadd_camera=True)
 #                 logic.plotter(sig,pspectra0, pspectra1, diff, savepdf=spdf)
 
     print("End")
