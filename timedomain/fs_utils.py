@@ -24,8 +24,6 @@ def fitsfile(tile, date, panel, subdir='recent',trunk='coadd'):
     
     if subdir == 'recent':
         subdir = recentRelease(redux,tile,date, panel, trunk)
-        
-    print('in fitsfile', subdir)
     
     name  = os.path.join(redux,subdir,'tiles',tile, date, '{}-{}-{}-{}.fits'.format(trunk,panel,tile,date))
     exists = os.path.exists(name)
