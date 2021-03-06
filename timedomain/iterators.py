@@ -46,7 +46,7 @@ Class that returns Tiles that were observed on a date
 """
 class TileDate_PreDate_Iterator:
     
-    def __init__(self, tile, date, subdir='andes'):
+    def __init__(self, tile, date, subdir='daily'):
         self.tile = tile
         self.date = date
         self.subdir= subdir
@@ -380,6 +380,8 @@ class Date_SpectraPairs_Iterator:
 
 Given a date, return all pairs of spectra from that date and preceeding dates
 
+Default is to compare relative to the most recent release, not necessarily the "subdir"
+
 """
 class TileDate_SpectraPairs_Iterator:
        
@@ -439,7 +441,7 @@ class TileDate_SpectraPairs_Iterator:
                 self.panel=self.it2.__next__()
 
         filename = fs_utils.fitsfile(self.tile, self.date, self.panel, subdir=self.subdir,trunk=self.trunk)
-        filename2 = fs_utils.fitsfile(self.tile, self.pdate, self.panel, subdir=self.subdir,trunk=self.trunk)
+        filename2 = fs_utils.fitsfile(self.tile, self.pdate, self.panel, subdir='recent',trunk=self.trunk)
             
         if self.verbose:
             print("Iterator: Tile {}, Panel {}, Date {}, Date 2 {}".format(self.tile, self.panel,self.date,self.pdate))

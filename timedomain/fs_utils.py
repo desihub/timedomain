@@ -1,12 +1,32 @@
 import os
 from glob import glob
 import numpy as np
+from . import config
 
 redux='/global/project/projectdirs/desi/spectro/redux/'
 filts = ['b','r','z']
 panels = np.arange(10).astype('str')
 
-def fitsfile(tile, date, panel, subdir='andes',trunk='coadd'):
+def recentRelease(redux,tile, date, panel, trunk):
+    ans = None
+    for testdir in config.releases:
+        name  = os.path.join(redux,testdir,'tiles',tile, date, '{}-{}-{}-{}.fits'.format(trunk,panel,tile,date))
+        if os.path.exists(name):
+            ans = testdir
+    if ans is None:
+        name  = os.path.join(redux,'daily','tiles',tile, date, '{}-{}-{}-{}.fits'.format(trunk,panel,tile,date))
+        if os.path.exists(name):
+            ans = 'daily'
+    return ans
+        
+
+def fitsfile(tile, date, panel, subdir='recent',trunk='coadd'):
+    
+    if subdir == 'recent':
+        subdir = recentRelease(redux,tile,date, panel, trunk)
+        
+    print('in fitsfile', subdir)
+    
     name  = os.path.join(redux,subdir,'tiles',tile, date, '{}-{}-{}-{}.fits'.format(trunk,panel,tile,date))
     exists = os.path.exists(name)
     if exists:
