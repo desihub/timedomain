@@ -399,24 +399,30 @@ class TileDate_SpectraPairs_Iterator:
 
     def __iter__(self):
         self.pdate = None
+        self.tile = None
         self.it0 = iter(self.list)
-        (self.tile,self.date)= self.it0.__next__()
-        self.it1 = TileDate_PreDate_Iterator(self.tile, self.date, subdir=self.subdir)     # TileDate_PreDate_Iterator 
-        while self.pdate is None:
-            try:
-                self.pdate = self.it1.__next__()
-            except StopIteration:
-                try:
-                    (self.tile,self.date)= self.it0.__next__()
-                except StopIteration:
-                    raise StopIteration
-                self.it1 =  TileDate_PreDate_Iterator(self.tile, self.date, subdir=self.subdir)
-                
-        self.it2 = fs_utils.panels.flat     #  np.nditer(fs_utils.panels)        
+
         return self
     
     def __next__(self):
-                
+
+        # this sets up the first call
+        if self.tile is None:
+            (self.tile,self.date)= self.it0.__next__()
+            self.it1 = TileDate_PreDate_Iterator(self.tile, self.date, subdir=self.subdir)     # TileDate_PreDate_Iterator 
+            while self.pdate is None:
+                try:
+                    self.pdate = self.it1.__next__()
+                except StopIteration:
+                    try:
+                        (self.tile,self.date)= self.it0.__next__()
+                    except StopIteration:
+                        raise StopIteration
+                    self.it1 =  TileDate_PreDate_Iterator(self.tile, self.date, subdir=self.subdir)
+
+            self.it2 = fs_utils.panels.flat     #  np.nditer(fs_utils.panels)  
+        
+        # all calls go through this
         try:
             self.panel = self.it2.__next__()
         except StopIteration:
@@ -427,10 +433,7 @@ class TileDate_SpectraPairs_Iterator:
             except StopIteration:
                 self.pdate = None
                 while self.pdate is None:
-                    try:
-                        (self.tile,self.date)= self.it0.__next__()
-                    except StopIteration:
-                        raise StopIteration 
+                    (self.tile,self.date)= self.it0.__next__()
                     self.it1 =  TileDate_PreDate_Iterator(self.tile, self.date, subdir=self.subdir)
                     try:
                         self.pdate = self.it1.__next__()
