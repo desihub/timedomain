@@ -35,10 +35,10 @@ echo "Looking for new exposures"
 python ${run_path}exposure_db.py daily
 
 query="select distinct obsdate,tileid from exposures
-where (tileid,obsdate) not in (select tileid,obsdate from specdiff_cvdaily_exposures);"
+where (tileid,obsdate) not in (select tileid,obsdate from desidiff_cvspectra_exposures);"
 
 query="select distinct obsdate,tileid from exposures
-where (tileid,obsdate) not in (select tileid,obsdate from specdiff_cvdaily_exposures) limit 2;"
+where (tileid,obsdate) not in (select tileid,obsdate from desidiff_cvspectra_exposures) limit 2;"
 
 mapfile -t -d $'\n' obsdates_tileids < <( sqlite3 ${td_path}transients_search.db "$query" )
 
@@ -79,19 +79,18 @@ else
     if [ $? -eq 0 ]
     then
         echo "Successfully executed script"
-        echo "Filling database"
         #Now add this tile info to the sqlite db
 #         prog=cframe_fibermap['PROGRAM']
         for t in ${obsdates_tileids[@]}; do
             arrt=(${t//|/ })
-            query="INSERT OR IGNORE INTO specdiff_cvdaily_exposures(tileid,program,obsdate) VALUES(${arrt[0]}, ,${arrt[1]})"
+            query="INSERT OR IGNORE INTO desidiff_cvspectra_exposures(obsdate, tileid) VALUES(${arrt[0]},${arrt[1]});"
             echo $query
-#         sqlite3 ${td_path}transients_search.db "$query"
-    done
-
+            sqlite3 ${td_path}transients_search.db "$query"
+        done
     else
       # Redirect stdout from echo command to stderr.
       echo "Script exited with error." >&2
+      echo "Failure in $query" |  mail -s 'Failure: cron_db_diff.sh' agkim@lbl.gov
     fi
 
 
