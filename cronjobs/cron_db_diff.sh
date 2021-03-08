@@ -5,7 +5,6 @@
 ## /global/cfs/cdirs/desi/science/td/daily-search/transients_search.db
 ## Blame Antonella Palmese version Jan 2021 for the ugliness of this code
 
-
 ### set -e
 echo `date` Running daily time domain pipeline on `hostname`
 #- Configure desi environment if needed
@@ -38,7 +37,7 @@ query="select distinct obsdate,tileid from exposures
 where (tileid,obsdate) not in (select tileid,obsdate from desidiff_cvspectra_exposures);"
 
 query="select distinct obsdate,tileid from exposures
-where (tileid,obsdate) not in (select tileid,obsdate from desidiff_cvspectra_exposures) limit 2;"
+where (tileid,obsdate) not in (select tileid,obsdate from desidiff_cvspectra_exposures) limit 7;"
 
 mapfile -t -d $'\n' obsdates_tileids < <( sqlite3 ${td_path}transients_search.db "$query" )
 
@@ -69,30 +68,46 @@ else
 
     echo "---------- Starting coadd differencing ----------"
 
+
+    
     run_path_diff="/global/cscratch1/sd/akim/project/timedomain/timedomain/bin/"
     logfile="${td_path}/desitrip/log/${now}.log"
-#     echo "${run_path_diff}/diff-db.py $lastnite CVLogic Date_SpectraPairs_Iterator daily
-#     coadd"
-#     srun -o ${logfile} ${run_path_diff}/diff.py $lastnite CVLogic
-#     Date_SpectraPairs_Iterator daily coadd
-#     python ${run_path_diff}diff-db.py CVLogic daily coadd --obsdates_tilenumbers ${obsdates_tileids[@]}
-    if [ $? -eq 0 ]
-    then
-        echo "Successfully executed script"
-        #Now add this tile info to the sqlite db
-#         prog=cframe_fibermap['PROGRAM']
-        for t in ${obsdates_tileids[@]}; do
-            arrt=(${t//|/ })
-            query="INSERT OR IGNORE INTO desidiff_cvspectra_exposures(obsdate, tileid) VALUES(${arrt[0]},${arrt[1]});"
-            echo $query
-            sqlite3 ${td_path}transients_search.db "$query"
-        done
-    else
-      # Redirect stdout from echo command to stderr.
-      echo "Script exited with error." >&2
-      echo "Failure in $query" |  mail -s 'Failure: cron_db_diff.sh' agkim@lbl.gov
-    fi
 
+    # instead of doing all the date/tile pairs at once, split into pieces
+    # the purpose is to have more things get processed/saved in case of
+    # any kind of error
+    declare -i nper=3 nloop
+    nloop=($Nobsdates_tileids+$nper-1)/$nper
+
+    for ((i=0;i<$nloop;i++)); 
+        do 
+            declare -i lowindex=$i*$nper
+            subarr=("${obsdates_tileids[@]:$lowindex:$nper}")
+            echo "${subarr[@]}"
+
+    #     echo "${run_path_diff}/diff-db.py $lastnite CVLogic Date_SpectraPairs_Iterator daily
+    #     coadd"
+    #     srun -o ${logfile} ${run_path_diff}/diff.py $lastnite CVLogic
+    #     Date_SpectraPairs_Iterator daily coadd
+    
+            python ${run_path_diff}diff-db.py CVLogic daily coadd --obsdates_tilenumbers ${subarr[@]}
+            if [ $? -eq 0 ]
+            then
+                echo "Successfully executed script"
+                #Now add this tile info to the sqlite db
+        #         prog=cframe_fibermap['PROGRAM']
+                for t in ${subarr[@]}; do
+                    arrt=(${t//|/ })
+                    query="INSERT OR IGNORE INTO desidiff_cvspectra_exposures(obsdate, tileid) VALUES(${arrt[0]},${arrt[1]});"
+                    echo $query
+#                     sqlite3 ${td_path}transients_search.db "$query"
+                done
+            else
+              # Redirect stdout from echo command to stderr.
+              echo "Script encountered error." >&2
+              echo "Failure in $query" |  mail -s 'Failure: cron_db_diff.sh' agkim@lbl.gov
+            fi
+        done
 
 fi
 

@@ -33,9 +33,10 @@ def main(args):
 
 
     # make this none for results to appear in the notebook
-#     spdf = ["diff",logic.__name__,args.subdir,args.trunk,args.date]
+
 
     for pspectra0,pspectra1 in iterator:
+#         spdf = ["diff",logic.__name__,args.subdir,args.trunk,date]
         pass
 #         # which of these are real targets
 #         triggered, diff = logic.filter(pspectra0,pspectra1, norm=True,ston_cut=5)
