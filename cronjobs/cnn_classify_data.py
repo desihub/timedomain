@@ -304,10 +304,10 @@ if __name__ == '__main__':
                                 allmask = np.vstack([allmask, cspectra.mask['brz'][select]])
                                 allres  = np.vstack([allres, cspectra.resolution_data['brz'][select]])
 
-                    except RuntimeError as e: # known error
-                        print("{}\nSkipping this spectrum.".format(e))
+                    except KeyError as e: # known error with cspectra keys
+                        print("Key not found: {}\nSkipping this spectrum...".format(e))
                         continue
-                    except: # any unidentified error
+                    except: # any other error
                         print("Unidentified problem with the spectrum!")
                         continue
 
