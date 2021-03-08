@@ -76,13 +76,12 @@ else
     # instead of doing all the date/tile pairs at once, split into pieces
     # the purpose is to have more things get processed/saved in case of
     # any kind of error
-    declare -i nper=3 nloop
-    nloop=($Nobsdates_tileids+$nper-1)/$nper
+    nper=3
+    nloop=$(((Nobsdates_tileids+nper-1)/nper))
 
     for ((i=0;i<$nloop;i++)); 
         do 
-            declare -i lowindex=$i*$nper
-            subarr=("${obsdates_tileids[@]:$lowindex:$nper}")
+            subarr=("${obsdates_tileids[@]:$(($i*$nper)):$nper}")
             echo "${subarr[@]}"
 
     #     echo "${run_path_diff}/diff-db.py $lastnite CVLogic Date_SpectraPairs_Iterator daily
