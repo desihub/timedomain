@@ -14,9 +14,9 @@ def recentRelease(redux,tile, date, panel, trunk):
         if os.path.exists(name):
             ans = testdir
     if ans is None:
-        name  = os.path.join(redux,'daily','tiles',tile, date, '{}-{}-{}-{}.fits'.format(trunk,panel,tile,date))
-        if os.path.exists(name):
-            ans = 'daily'
+#         name  = os.path.join(redux,'daily','tiles',tile, date, '{}-{}-{}-{}.fits'.format(trunk,panel,tile,date))
+#         if os.path.exists(name):
+        ans = 'daily'
     return ans
         
 
@@ -24,7 +24,6 @@ def fitsfile(tile, date, panel, subdir='recent',trunk='coadd'):
     
     if subdir == 'recent':
         subdir = recentRelease(redux,tile,date, panel, trunk)
-    
     name  = os.path.join(redux,subdir,'tiles',tile, date, '{}-{}-{}-{}.fits'.format(trunk,panel,tile,date))
     exists = os.path.exists(name)
     if exists:
