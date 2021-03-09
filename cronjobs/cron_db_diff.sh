@@ -37,7 +37,7 @@ query="select distinct obsdate,tileid from exposures
 where (tileid,obsdate) not in (select tileid,obsdate from desidiff_cvspectra_exposures);"
 
 query="select distinct obsdate,tileid from exposures
-where (tileid,obsdate) not in (select tileid,obsdate from desidiff_cvspectra_exposures) limit 7;"
+where (tileid,obsdate) not in (select tileid,obsdate from desidiff_cv_spectra_exposures) limit 90;"
 
 mapfile -t -d $'\n' obsdates_tileids < <( sqlite3 ${td_path}transients_search.db "$query" )
 
@@ -76,7 +76,7 @@ else
     # instead of doing all the date/tile pairs at once, split into pieces
     # the purpose is to have more things get processed/saved in case of
     # any kind of error
-    nper=3
+    nper=1
     nloop=$(((Nobsdates_tileids+nper-1)/nper))
 
     for ((i=0;i<$nloop;i++)); 
@@ -89,22 +89,23 @@ else
     #     srun -o ${logfile} ${run_path_diff}/diff.py $lastnite CVLogic
     #     Date_SpectraPairs_Iterator daily coadd
     
-            python ${run_path_diff}diff-db.py CVLogic daily coadd --obsdates_tilenumbers ${subarr[@]}
+#             python ${run_path_diff}diff-db.py TileDate_SpectraPairs_Iterator CVLogic daily coadd --obsdates_tilenumbers ${subarr[@]}
+            python ${run_path_diff}diff-db.py TileDate_TargetPairs_Iterator CVLogic daily spectra --obsdates_tilenumbers ${subarr[@]}
             if [ $? -eq 0 ]
             then
                 echo "Successfully executed script"
                 #Now add this tile info to the sqlite db
-        #         prog=cframe_fibermap['PROGRAM']
                 for t in ${subarr[@]}; do
                     arrt=(${t//|/ })
-                    query="INSERT OR IGNORE INTO desidiff_cvspectra_exposures(obsdate, tileid) VALUES(${arrt[0]},${arrt[1]});"
+                    query="INSERT OR IGNORE INTO desidiff_cv_spectra_exposures(obsdate, tileid) VALUES(${arrt[0]},${arrt[1]});"
                     echo $query
-#                     sqlite3 ${td_path}transients_search.db "$query"
+                    sqlite3 ${td_path}transients_search.db "$query"
                 done
             else
               # Redirect stdout from echo command to stderr.
               echo "Script encountered error." >&2
-              echo "Failure in $query" |  mail -s 'Failure: cron_db_diff.sh' agkim@lbl.gov
+#               echo "Failure in $query" |  mail -s 'Failure: cron_db_diff.sh' agkim@lbl.gov
+              exit 1
             fi
         done
 

@@ -135,7 +135,7 @@ class SkyPortal:
         spectra = spectra_in.select(targets=[int(target_id)])
         if coadd_camera:
             spectra = coadd_cameras(spectra)
-        fibermap = spectra.fibermap
+        fibermap = spectra_in.fibermap
 
         objID = 'DESI{}'.format(target_id)
         for index, mjd in enumerate(fibermap.iterrows('MJD')):

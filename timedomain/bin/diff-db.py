@@ -13,6 +13,8 @@ def main(args):
     """ Main entry point of the app """
     print("Start ", args)
     logic = getattr(sys.modules[__name__], args.logic)
+    iterator_= getattr(sys.modules[__name__], args.iterator)
+
     
     ### Get the tile and array from the arguments
 
@@ -29,33 +31,34 @@ def main(args):
             date.append(obsdate)
             tile.append(tile_number)
 
-    iterator = TileDate_SpectraPairs_Iterator(tile, date, subdir=args.subdir,trunk=args.trunk, verbose=True)
-
+#     iterator = TileDate_SpectraPairs_Iterator(tile, date, subdir=args.subdir,trunk=args.trunk, verbose=True)
+#     iterator = TileDate_TargetPairs_Iterator(tile, date, subdir=args.subdir,trunk=args.trunk, verbose=True)
+    iterator = iterator_(tile, date, subdir=args.subdir,trunk=args.trunk, verbose=True)
 
     # make this none for results to appear in the notebook
 
-
-    for pspectra0,pspectra1 in iterator:
-#         spdf = ["diff",logic.__name__,args.subdir,args.trunk,date]
-        pass
-#         # which of these are real targets
-#         triggered, diff = logic.filter(pspectra0,pspectra1, norm=True,ston_cut=5)
-
+    for (pspectra, meta) in iterator:
+        pspectra0,pspectra1 = pspectra
+        tile,date = meta
+        spdf = ["diff",logic.__name__,args.subdir,args.trunk,date]
+#         pass
+        # which of these are real targets
+        triggered, diff = logic.filter(pspectra0,pspectra1, norm=True,ston_cut=5)
 #         # plot triggered objects
-#         if triggered.sum() > 0:
+        if triggered.sum() > 0:
 
-#             wheretriggered = np.where(triggered)[0]
+            wheretriggered = np.where(triggered)[0]
 
-#             for sig in wheretriggered.flat:
-#                 SkyPortal.postCandidate(sig, diff.fibermap, "DESIDIFF_CV_daily")
-#                 targetid = diff.fibermap['TARGETID'].data[sig].astype('str')
-#                 data_override = {
-#                   "origin": "DESIDIFF",
-#                 }
-#                 SkyPortal.postSpectra(targetid, diff, data_override=data_override,coadd_camera=True)
-#                 SkyPortal.postSpectra(targetid, pspectra0,coadd_camera=True)
-#                 SkyPortal.postSpectra(targetid, pspectra1,coadd_camera=True)
-#                 logic.plotter(sig,pspectra0, pspectra1, diff, savepdf=spdf)
+            for sig in wheretriggered.flat:
+                SkyPortal.postCandidate(sig, diff.fibermap, "DESIDIFF_CV_daily")
+                targetid = diff.fibermap['TARGETID'].data[sig].astype('str')
+                data_override = {
+                  "origin": "DESIDIFF {} {}".format(args.iterator, args.logic),
+                }
+                SkyPortal.postSpectra(targetid, diff, data_override=data_override,coadd_camera=True)
+                SkyPortal.postSpectra(targetid, pspectra0,coadd_camera=True)
+                SkyPortal.postSpectra(targetid, pspectra1,coadd_camera=True)
+                logic.plotter(sig,pspectra0, pspectra1, diff, savepdf=spdf)
 
     print("End")
                 
@@ -71,9 +74,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     # Required positional argument
+    parser.add_argument("iterator", help="Required positional argument")
     parser.add_argument("logic", help="Required positional argument")    
     parser.add_argument("subdir", help="Required positional argument")
     parser.add_argument("trunk", help="Required positional argument")
+
     
     #If there are more than 1 obsdate, provide a 2D array
     parser.add_argument('-o', '--obsdates_tilenumbers', nargs='+', type=str,default=None,
