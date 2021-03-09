@@ -578,6 +578,7 @@ class TileDate_TargetPairs_Iterator:
                     self.spectra = read_spectra(filename)
                     self.it2 = Spectra_Subspectra_Iterator(self.spectra, verbose=False)
                     self.it3 = Spectra_Pairs_Iterator(self.it2.__next__(), verbose=False)
+                    filename = None
 #                     print(" Made new iterators ")
 
 
