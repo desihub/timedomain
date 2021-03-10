@@ -531,16 +531,17 @@ class TileDate_TargetPairs_Iterator:
                 try:
                     self.panel = self.it1.__next__()
                     filename = fs_utils.fitsfile(self.tile, self.date, self.panel, subdir=self.subdir,trunk=self.trunk)
-                    self.spectra = read_spectra(filename)
-                    if self.verbose:
-                        print('first', filename)
+
                 except StopIteration:
                     (self.tile,self.date)= self.it0.__next__()
                     if self.verbose:
                         print(self.tile,self.date)
                     self.it1 = fs_utils.panels.flat
                     
-            
+            self.spectra = read_spectra(filename)
+            if self.verbose:
+                print('first', filename)
+            filename = None
             self.it2 = Spectra_Subspectra_Iterator(self.spectra, verbose=False)
             self.it3 = Spectra_Pairs_Iterator(self.it2.__next__(), verbose=False)
         
@@ -556,9 +557,7 @@ class TileDate_TargetPairs_Iterator:
                         try:
                             self.panel = self.it1.__next__()
                             filename = fs_utils.fitsfile(self.tile, self.date, self.panel, subdir=self.subdir,trunk=self.trunk)
-                            self.spectra = read_spectra(filename)
-                            if self.verbose:
-                                print('ater', filename) 
+ 
                         except StopIteration:
                             (self.tile,self.date)= self.it0.__next__()
                             if self.verbose:
@@ -567,10 +566,12 @@ class TileDate_TargetPairs_Iterator:
                     
 #                     print(" In Stop iteration and got filename")
        
-                    
+                    self.spectra = read_spectra(filename)
+                    if self.verbose:
+                        print('ater', filename)
+                    filename=None
                     self.it2 = Spectra_Subspectra_Iterator(self.spectra, verbose=False)
                     self.it3 = Spectra_Pairs_Iterator(self.it2.__next__(), verbose=False)
-                    filename = None
 #                     print(" Made new iterators ")
 
 
