@@ -183,6 +183,7 @@ class Spectra_Subspectra_Iterator:
             ans = self.spectrum.select(targets=np.array(self.titerator.__next__()))
             if self.verbose:
                 print("TARGETID {}".format(ans.fibermap["TARGETID"][0]))
+
             return ans
         except StopIteration:
             raise StopIteration
@@ -213,7 +214,7 @@ class Spectra_Pairs_Iterator:
     def __next__(self):
 
         while self.i< self.spectra.num_spectra():
-        
+            
             if self.spectrai is None:
                 self.spectrai = self.spectra[self.i]
                 
@@ -465,7 +466,7 @@ class TileDate_SpectraPairs_Iterator:
                     self.panel=self.it2.__next__()
 
             filename = fs_utils.fitsfile(self.tile, self.date, self.panel, subdir=self.subdir,trunk=self.trunk)
-            filename2 = fs_utils.fitsfile(self.tile, self.pdate, self.panel, subdir='recent',trunk=self.trunk)
+#             filename2 = fs_utils.fitsfile(self.tile, self.pdate, self.panel, subdir='recent',trunk=self.trunk)
             filename2 = fs_utils.fitsfile(self.tile, self.pdate, self.panel, subdir=self.subdir,trunk=self.trunk)            
         if self.verbose:
             print("Iterator: Tile {}, Panel {}, Date {}, Date 2 {}".format(self.tile, self.panel,self.date,self.pdate))
@@ -568,7 +569,7 @@ class TileDate_TargetPairs_Iterator:
        
                     self.spectra = read_spectra(filename)
                     if self.verbose:
-                        print('ater', filename)
+                        print('after', filename)
                     filename=None
                     self.it2 = Spectra_Subspectra_Iterator(self.spectra, verbose=False)
                     self.it3 = Spectra_Pairs_Iterator(self.it2.__next__(), verbose=False)

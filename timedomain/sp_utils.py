@@ -133,14 +133,27 @@ class SkyPortal:
     @staticmethod            
     def postSpectra(target_id, spectra_in, data_override=None,coadd_camera=False):
         spectra = spectra_in.select(targets=[int(target_id)])
+        
+        # At this point there should only be one Spectrum
+        # This should be the case of everything derived from "coadd" or from
+        # SpectraPairsIterator
+        
+        if spectra.num_spectra() >1:
+            raise IndexError
+                
+        # combines the arms into one spectrum
         if coadd_camera:
             spectra = coadd_cameras(spectra)
+            
+        # coadd_cameras does not have an MJD.  Rely on getting this from the original.
         fibermap = spectra_in.fibermap
 
         objID = 'DESI{}'.format(target_id)
+        
+        # this for statement should be superfluous as there is only one index
         for index, mjd in enumerate(fibermap.iterrows('MJD')):
             t = Time(mjd[0], format='mjd')
-            for band in spectra.bands:            
+            for band in spectra.bands:
                 data = {
                   "obj_id": objID,
                   "origin": "DESI",
@@ -163,7 +176,8 @@ class SkyPortal:
                 response = SkyPortal.api('POST', '{}/api/spectrum'.format(SkyPortal.url),data=data)
                 print(f'HTTP code: {response.status_code}, {response.reason}')
                 if response.status_code in (200, 400):
-                    print(f'JSON response: {response.json()}')            
+                    print(f'JSON response: {response.json()}')
+ 
  
             
     @staticmethod
