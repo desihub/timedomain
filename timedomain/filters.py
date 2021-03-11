@@ -30,7 +30,9 @@ def difference(s0, s1):
     diff = dict()
     ivar = dict()
     mask = dict()
-    for dindex in s1.bands:
+    wave = dict()
+    common = list(set(s1.bands).intersection(s0.bands))
+    for dindex in common:
 
         diff[dindex] = ma.array(data=s1.flux[dindex],mask=s1.mask[dindex])
         diff[dindex] = diff[dindex] - ma.array(data=s0.flux[dindex],mask=s0.mask[dindex])
@@ -40,14 +42,18 @@ def difference(s0, s1):
         ivar[dindex] = 1/(1/ivar0 + 1/ivar1)
         mask[dindex] = diff[dindex].mask.astype('int')
         
-    return Spectra(bands=s1.bands.copy(), wave=dict(s1.wave), flux=diff,ivar=ivar,mask=mask,fibermap = s0.fibermap, resolution_data=s0.resolution_data)
+        wave[dindex] = s1.wave[dindex]
+        
+    ans = Spectra(bands=common, wave=wave, flux=diff,ivar=ivar,mask=mask,fibermap = s0.fibermap, resolution_data=s0.resolution_data)
+    return ans
 
 # renormalize two spectra
 # for now the two spectra are assumed to be single night coadd of matching tile
 
 def renorm(s0, s1):
 
-    for dindex in s1.bands:
+    common = list(set(s1.bands).intersection(s0.bands))
+    for dindex in common:
         norm = ma.array(data=s1.flux[dindex],mask=s1.mask[dindex])/ ma.array(data=s0.flux[dindex],mask=s0.mask[dindex])
         norm.filled(np.nan)
         norm = np.nanpercentile(norm,(50),axis=1)
@@ -65,7 +71,8 @@ class HasSignal:
     
     @staticmethod
     def filter(s0,s1):    
-        for i, dindex in enumerate(s0.bands):
+        common = list(set(s1.bands).intersection(s0.bands))
+        for i, dindex in enumerate(common):
             s1flux = ma.array(data=s1.flux[dindex],mask=s1.mask[dindex])
             s0flux = ma.array(data=s0.flux[dindex],mask=s0.mask[dindex])
             
@@ -101,11 +108,10 @@ class CVLogic:
     #     print(fibermap['TARGETID'].data[0], np.where(fibermap['TARGETID'].data== 35191288252861933)[0])
     #     pspectra0 = read_spectra(datafile0)
     #     pspectra1 = read_spectra(datafile1)
+    
         hasSignal = HasSignal.filter(pspectra0,pspectra1)
-
         if norm:
             pspectra0, pspectra1 = renorm(pspectra0,pspectra1)
-
         diff = difference(pspectra0,pspectra1)
         
         skymask = maskskylines(diff)
