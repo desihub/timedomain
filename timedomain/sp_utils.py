@@ -23,6 +23,8 @@ class SkyPortal:
     inst_id = None
     tel_id = None
     filt_id = {}
+    grp_id={}
+    strm_id = {}
 
     @staticmethod
     def instrument_id():
@@ -66,7 +68,33 @@ class SkyPortal:
                 raise NameError('Filter Not Defined')
             return SkyPortal.filt_id[filter_name]
             
-            
+    @staticmethod
+    def group_id(group_name):
+        if group_name in SkyPortal.grp_id:
+            return SkyPortal.grp_id[group_name]
+        else:
+            response = SkyPortal.api('GET', '{}/api/groups'.format(SkyPortal.url))
+            data = response.json()['data']['all_groups']
+            theOne = list(filter(lambda datum: datum['name']==group_name,data))
+            if len(theOne) !=0:
+                SkyPortal.grp_id[group_name] = theOne[0]['id']
+            else:
+                raise NameError('Group Not Defined')
+            return SkyPortal.grp_id[group_name]           
+        
+    @staticmethod
+    def stream_id(name):
+        if name in SkyPortal.strm_id:
+            return SkyPortal.strm_id[name]
+        else:
+            response = SkyPortal.api('GET', '{}/api/streams'.format(SkyPortal.url))
+            data = response.json()['data']
+            theOne = list(filter(lambda datum: datum['name']==name,data))
+            if len(theOne) !=0:
+                SkyPortal.strm_id[name] = theOne[0]['id']
+            else:
+                raise NameError('Stream Not Defined')
+            return SkyPortal.strm_id[name]   
         
     @staticmethod
     def api(method, endpoint, data=None):
