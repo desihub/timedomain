@@ -62,6 +62,7 @@ class SkyPortal:
             response = SkyPortal.api('GET', '{}/api/filters'.format(SkyPortal.url))
             data = response.json()['data']
             theOne = list(filter(lambda datum: datum['name']==filter_name,data))
+
             if len(theOne) !=0:
                 SkyPortal.filt_id[filter_name] = theOne[0]['id']
             else:
@@ -105,76 +106,90 @@ class SkyPortal:
     @staticmethod
     def postCandidate(index,fibermap,filt, data_override=None):
         
-        filterid = SkyPortal.filter_id(filt)
+        # Does the candidate exist?
+        response = SkyPortal.api('GET', '{}/api/candidates/DESI{}'.format(SkyPortal.url,fibermap['TARGETID'].data[index]))
         
-        # information we want to save from fibermap
-        fibermap_keys=['FIBER','TILEID','EXPID','PETAL_LOC','MJD']
-        fiber_dict = dict()
-        for key in fibermap_keys:
-            if key in fibermap.keys():
-                fiber_dict[key] = fibermap[key].data[index].astype('str')
-            else:
-                print('missing ',key)
-              
-        altdata = {'fibermap': fiber_dict}
-
-        data = {
-          "ra": fibermap['TARGET_RA'].data[index],
-          "dec": fibermap['TARGET_DEC'].data[index],
-          "id": "DESI{}".format(fibermap['TARGETID'].data[index].astype('str')),
-          "origin": "DESI",
-          "filter_ids": [
-            filterid
-          ],
-          "passing_alert_id": filterid,
-          "passed_at": time.strftime("20%y-%m-%d",time.gmtime()),
-          "altdata": altdata
-        }
+        # if it doesn't exist save
+        if response.status_code != 200:
         
-        if data_override is not None:
-            for k,v in data_override.items():
-                if isinstance(v,dict) and k in data:
-                    data[k].update(v)
-                    data_override[k]=data[k]
-                    
-            data.update(data_override)
+            filterid = SkyPortal.filter_id(filt)
 
-        response = SkyPortal.api('POST', '{}/api/candidates'.format(SkyPortal.url),data=data)
+            # information we want to save from fibermap
+            fibermap_keys=['FIBER','TILEID','EXPID','PETAL_LOC','MJD']
+            fiber_dict = dict()
+            for key in fibermap_keys:
+                if key in fibermap.keys():
+                    fiber_dict[key] = fibermap[key].data[index].astype('str')
+                else:
+                    print('missing ',key)
 
-        print(f'HTTP code: {response.status_code}, {response.reason}')
-        if response.status_code in (200, 400):
-            print(f'JSON response: {response.json()}')
-            
-        data = {
-          "obj_id": "DESI{}".format(fibermap['TARGETID'].data[index].astype('str')),
-          "origin": 'postCandidate',
-          "data": altdata
-        }            
-        response = SkyPortal.api('POST', '{}/api/annotation'.format(SkyPortal.url),data=data)
+            altdata = {'fibermap': fiber_dict}
 
-        print(f'HTTP code: {response.status_code}, {response.reason}')
-        if response.status_code in (200, 400):
-            print(f'JSON response: {response.json()}')        
-    
+            data = {
+                "ra": fibermap['TARGET_RA'].data[index],
+                "dec": fibermap['TARGET_DEC'].data[index],
+                "id": "DESI{}".format(fibermap['TARGETID'].data[index].astype('str')),
+                "origin": "DESI",
+                "filter_ids": [
+                filterid
+                ],
+                "passing_alert_id": filterid,
+                "passed_at": time.strftime("20%y-%m-%d",time.gmtime()),
+                "altdata": altdata
+                }
+
+            if data_override is not None:
+                for k,v in data_override.items():
+                    if isinstance(v,dict) and k in data:
+                        data[k].update(v)
+                        data_override[k]=data[k]
+
+                data.update(data_override)
+
+            response = SkyPortal.api('POST', '{}/api/candidates'.format(SkyPortal.url),data=data)
+
+            print(f'HTTP code: {response.status_code}, {response.reason}')
+            if response.status_code == 400:
+                print(f'JSON response: {response.json()}')
+
+            data = {
+                "obj_id": "DESI{}".format(fibermap['TARGETID'].data[index].astype('str')),
+                "origin": 'postCandidate',
+                "data": altdata
+                }            
+            response = SkyPortal.api('POST', '{}/api/annotation'.format(SkyPortal.url),data=data)
+
+            print(f'HTTP code: {response.status_code}, {response.reason}')
+            if response.status_code == 400:
+                print(f'JSON response: {response.json()}')        
+
+        else:
+            # clear out the spectra for now
+            response = SkyPortal.api('GET', '{}/api/sources/DESI{}/spectra'.format(SkyPortal.url,fibermap['TARGETID'].data[index]))
+            for s in response.json()['data']['spectra']:
+                response = SkyPortal.api('DELETE','{}/api/spectrum/{}'.format(SkyPortal.url,s['id']))
+                print(f'HTTP code: {response.status_code}, {response.reason}')
+                if response.status_code == 400:
+                    print(f'JSON response: {response.json()}')    
     
 
     @staticmethod            
     def postSpectra(target_id, spectra_in, data_override=None,coadd_camera=False):
         spectra = spectra_in.select(targets=[int(target_id)])
+
+        # coadd_cameras does not have an MJD.  Rely on getting this from the original.
+        fibermap = spectra.fibermap
         
         # At this point there should only be one Spectrum
         # This should be the case of everything derived from "coadd" or from
         # SpectraPairsIterator
-        
+
         if spectra.num_spectra() >1:
             raise IndexError
                 
         # combines the arms into one spectrum
         if coadd_camera:
             spectra = coadd_cameras(spectra)
-            
-        # coadd_cameras does not have an MJD.  Rely on getting this from the original.
-        fibermap = spectra_in.fibermap
 
         objID = 'DESI{}'.format(target_id)
         
@@ -191,7 +206,7 @@ class SkyPortal:
                   "wavelengths": spectra.wave[band].tolist(),
                   "observed_at": t.isot,
                   "instrument_id": SkyPortal.instrument_id()
-                }
+                }                    
 
                 if data_override is not None:
                     for k,v in data_override.items():
@@ -203,7 +218,7 @@ class SkyPortal:
 
                 response = SkyPortal.api('POST', '{}/api/spectrum'.format(SkyPortal.url),data=data)
                 print(f'HTTP code: {response.status_code}, {response.reason}')
-                if response.status_code in (200, 400):
+                if response.status_code == 400:
                     print(f'JSON response: {response.json()}')
  
  
