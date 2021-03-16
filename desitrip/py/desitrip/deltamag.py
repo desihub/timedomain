@@ -22,9 +22,9 @@ def delta_mag(cspectra, fibermap, select):
         Updated fibermap table containing delta mag per filter
     """
     # Calculate fiber magnitudes from imaging data
-    flux_g = fibermap[select]['FLUX_G']
-    flux_r = fibermap[select]['FLUX_R']
-    flux_z = fibermap[select]['FLUX_Z']
+    flux_g = fibermap[select]['FIBERFLUX_G']
+    flux_r = fibermap[select]['FIBERFLUX_R']
+    flux_z = fibermap[select]['FIBERFLUX_Z']
     fiber_gmag = 22.5 - 2.5*np.log10(flux_g)
     fiber_rmag = 22.5 - 2.5*np.log10(flux_r)
     fiber_zmag = 22.5 - 2.5*np.log10(flux_z)
