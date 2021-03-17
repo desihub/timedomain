@@ -4,8 +4,9 @@ Calculate the difference between spectral and fiber magnitudes
 
 import numpy as np
 import speclite.filters
+from functools import reduce
 
-def delta_mag(cspectra, fibermap, select):
+def delta_mag(cspectra, fibermap, select, nsigma):
     """
     Parameters:
     -----------
@@ -15,11 +16,14 @@ def delta_mag(cspectra, fibermap, select):
         Fibermap table to access imaging flux information
     select : ndarray
         Boolean array to isolate valid targets and fibers
+    nsigma : int
+        n sigma deviation from mean deltamag to evaluate transient candidates
 
     Returns:
     --------
     fibermap : astropy table
         Updated fibermap table containing delta mag per filter
+        and boolean array of potential transient candidates
     """
     # Calculate fiber magnitudes from imaging data
     flux_g = fibermap[select]['FIBERFLUX_G']
@@ -60,6 +64,28 @@ def delta_mag(cspectra, fibermap, select):
     fibermap['DELTAMAG_G'][select] = delta_gmag
     fibermap['DELTAMAG_R'][select] = delta_rmag
     fibermap['DELTAMAG_Z'][select] = delta_zmag
+
+    # Define deltamag cutoff for transient candidates
+    nsigma = nsigma
+    gmean = np.median(delta_gmag)
+    rmean = np.median(delta_rmag)
+    zmean = np.median(delta_zmag)
+    gstd = nsigma * np.std(delta_gmag)
+    rstd = nsigma * np.std(delta_rmag)
+    zstd = nsigma * np.std(delta_zmag)
+    dg_min = gmean - gstd
+    dr_min = rmean - rstd
+    dz_min = zmean - zstd
+
+    # Find target ID of transient candients
+    g_outliers = np.where(delta_gmag <= dg_min)
+    r_outliers = np.where(delta_rmag <= dr_min)
+    z_outliers = np.where(delta_zmag <= dz_min)
+    outliers = reduce(np.union1d, (g_outliers,r_outliers,z_outliers))
+
+    # Add transient candidates to fibermap
+    fibermap['CANDIDATE'] = np.zeros(len(fibermap), dtype='bool')
+    fibermap['CANDIDATE'][outliers] = True
 
     return fibermap
 

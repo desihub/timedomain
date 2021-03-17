@@ -282,7 +282,7 @@ if __name__ == '__main__':
                         select = isTGT & isGAL & isBGS & isGoodFiber & isGoodZbest
 
                         # Calculate difference between spectral and fiber magnitudes
-                        fibermap = delta_mag(cspectra, fibermap, select)
+                        fibermap = delta_mag(cspectra, fibermap, select, nsigma=3)
 
                         print('     + selected: {}'.format(np.sum(select)))
 
