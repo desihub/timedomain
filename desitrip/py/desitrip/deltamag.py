@@ -29,7 +29,7 @@ def delta_mag(cspectra, fibermap, select, nsigma):
     for i in 'GRZ':
         fibermap['DELTAMAG_{}'.format(i)] = np.empty(len(fibermap))
         fibermap['DELTAMAG_{}'.format(i)][:] = np.NaN
-    fibermap['CANDIDATE'] = np.zeros(len(fibermap), dtype='bool')
+    fibermap['DELTAMAG_CANDIDATE'] = np.zeros(len(fibermap), dtype='bool')
 
     outliers = []
     arm_avail = [key for key in cspectra.wave.keys()][0]
@@ -62,7 +62,7 @@ def delta_mag(cspectra, fibermap, select, nsigma):
 
     # Add transient candidates to fibermap
     outliers = reduce(np.union1d, (outliers))
-    fibermap['CANDIDATE'][outliers] = True
+    fibermap['DELTAMAG_CANDIDATE'][outliers] = True
 
     return fibermap
 
