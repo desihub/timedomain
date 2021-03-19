@@ -471,7 +471,7 @@ class TileDate_SpectraPairs_Iterator:
         if self.verbose:
             print("Iterator: Tile {}, Panel {}, Date {}, Date 2 {}".format(self.tile, self.panel,self.date,self.pdate))
 
-        return((read_spectra(filename) , read_spectra(filename2)), (self.tile,self.date))
+        return((read_spectra(filename) , read_spectra(filename2)), (self.tile, self.date, self.pdate))
 
     # staticmethod
     def test():

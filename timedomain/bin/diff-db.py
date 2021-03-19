@@ -39,8 +39,7 @@ def main(args):
 
     for (pspectra, meta) in iterator:
         pspectra0,pspectra1 = pspectra
-        tile,date = meta
-        spdf = ["diff",logic.__name__,args.subdir,args.trunk,date]
+        spdf = ["diff",logic.__name__,args.subdir,args.trunk,meta[1]]
 #         pass
         # which of these are real targets
         triggered, diff = logic.filter(pspectra0,pspectra1, norm=True,ston_cut=5)
@@ -50,15 +49,24 @@ def main(args):
             wheretriggered = np.where(triggered)[0]
 
             for sig in wheretriggered.flat:
-                SkyPortal.postCandidate(sig, diff.fibermap, "DESIDIFF_CV_daily")
+                targetid = diff.fibermap['TARGETID'].data[sig].astype('str')
+                SkyPortal.nukeCandidate(targetid, "DESIDIFF CV")
+                data_override = {
+                  "origin": "DESIDIFF {}-{}".format(args.iterator, args.logic),
+                }
+                SkyPortal.postCandidate(sig, diff.fibermap, "DESIDIFF CV",data_override=data_override)
                 targetid = diff.fibermap['TARGETID'].data[sig].astype('str')
                 data_override = {
-                  "origin": "DESIDIFF {} {}".format(args.iterator, args.logic),
+                  "origin": "{}-{}".format(meta[2],meta[1]),
                 }
                 SkyPortal.postSpectra(targetid, diff, data_override=data_override,coadd_camera=True)
                 SkyPortal.postSpectra(targetid, pspectra0,coadd_camera=True)
+                SkyPortal.postPhotometry(targetid, pspectra0,coadd_camera=True)
                 SkyPortal.postSpectra(targetid, pspectra1,coadd_camera=True)
+                SkyPortal.postPhotometry(targetid, pspectra1,coadd_camera=True)
                 logic.plotter(sig,pspectra0, pspectra1, diff, savepdf=spdf)
+                
+                erg
 
     print("End")
                 
