@@ -65,8 +65,6 @@ def main(args):
                 SkyPortal.postSpectra(targetid, pspectra1,coadd_camera=True)
                 SkyPortal.postPhotometry(targetid, pspectra1,coadd_camera=True)
                 logic.plotter(sig,pspectra0, pspectra1, diff, savepdf=spdf)
-                
-                erg
 
     print("End")
                 
