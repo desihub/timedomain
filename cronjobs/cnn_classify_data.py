@@ -374,7 +374,7 @@ if __name__ == '__main__':
                             altdata_dict['classifier']={'CNNLABEL' : fmap['CNNLABEL'].data[i]}
                             data['altdata'] = altdata_dict
                             
-                            SkyPortal.postCandidate(i, fmap, 'DESITRIP_daily', data_override=data)
+                            SkyPortal.postCandidate(i, fmap, 'DESITRIP', data_override=data)
                             SkyPortal.postSpectra(fmap['TARGETID'][i].astype('str'), cand_spectra)
 
                         # Make a plot of up to 16 transients
