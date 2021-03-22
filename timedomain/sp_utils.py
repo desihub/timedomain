@@ -112,24 +112,23 @@ class SkyPortal:
         response = SkyPortal.api('GET', '{}/api/sources/DESI{}/annotations'.format(SkyPortal.url,targetid))
         for an in response.json()['data']:
             r2 = SkyPortal.api('DELETE', '{}/api/annotation/{}'.format(SkyPortal.url,an['id']))
-            print(f'JSON response: {r2.json()}')
+            print(f'Deleting Annotation JSON response: {r2.json()}')
 
         # Remove photometry related to this object
         response = SkyPortal.api('GET', '{}/api/sources/DESI{}/photometry'.format(SkyPortal.url,targetid))
         for an in response.json()['data']:
             r2 = SkyPortal.api('DELETE', '{}/api/photometry/{}'.format(SkyPortal.url,an['id']))
-            print(f'JSON response: {r2.json()}')
+            print(f'Deleting Photometry JSON response: {r2.json()}')
 
-        # Remove photometry related to this object
-        response = SkyPortal.api('GET', '{}/api/sources/DESI{}/spectroscopy'.format(SkyPortal.url,targetid))
-        for an in response.json()['data']:
+        # Remove spectra related to this object
+        response = SkyPortal.api('GET', '{}/api/sources/DESI{}/spectra'.format(SkyPortal.url,targetid))
+        for an in response.json()['data']['spectra']:
             r2 = SkyPortal.api('DELETE', '{}/api/spectroscopy/{}'.format(SkyPortal.url,an['id']))
-            print(f'JSON response: {r2.json()}')
-                        
-            
+            print(f'Deleting Spectra JSON response: {r2.json()}')
+                             
         filterid = SkyPortal.filter_id(filt)        
         response = SkyPortal.api('DELETE', '{}/api/candidates/DESI{}/{}'.format(SkyPortal.url,targetid,filterid))
-        print(f'JSON response: {response.json()}')
+        print(f'Deleting Candidat JSON response: {response.json()}')
         
     
     @staticmethod
@@ -188,18 +187,31 @@ class SkyPortal:
 
     @staticmethod            
     def postSpectra(target_id, spectra_in, data_override=None,coadd_camera=False):
-        spectra = spectra_in.select(targets=[int(target_id)])
 
-        # coadd_cameras does not have an MJD.  Rely on getting this from the original.
-        fibermap = spectra.fibermap
-        
+        # fix to an upstream bug in spectra
+        keep = numpy.equal(spectra_in.fibermap['TARGETID'].data, int(target_id))
+        spectra = spectra_in[keep]
+
         # At this point there should only be one Spectrum
         # This should be the case of everything derived from "coadd" or from
         # SpectraPairsIterator
 
         if spectra.num_spectra() >1:
             raise IndexError
-                
+        
+#         spectra = spectra_in.select(targets=[int(target_id)])
+
+        # coadd_cameras does not have an MJD.  Rely on getting this from the original.
+        fibermap = spectra.fibermap
+        
+        if 'MJD' in fibermap.keys():
+            mjd = fibermap['MJD'][0]
+        elif 'LAST_MJD' in fibermap.keys():
+            mjd = fibermap['LAST_MJD'][0]
+        else:
+            print('we are screwed')
+        t = Time(mjd, format='mjd')
+            
         # combines the arms into one spectrum
         if coadd_camera:
             spectra = coadd_cameras(spectra)
@@ -207,31 +219,32 @@ class SkyPortal:
         objID = 'DESI{}'.format(target_id)
         
         # this for statement should be superfluous as there is only one index
-        for index, mjd in enumerate(fibermap.iterrows('MJD')):
-            t = Time(mjd[0], format='mjd')
-            for band in spectra.bands:
-                data = {
-                  "obj_id": objID,
-                  "group_ids": [SkyPortal.group_id('DESI')],
-                  "fluxes": spectra.flux[band][index,:].tolist(),
-    #                   "errors": (1./np.sqrt(spectra.ivar[band][index,:])).tolist(),  
-                  "wavelengths": spectra.wave[band].tolist(),
-                  "observed_at": t.isot,
-                  "instrument_id": SkyPortal.instrument_id()
-                }                    
+#         for index, mjd in enumerate(fibermap.iterrows('MJD')):
+        index=0
 
-                if data_override is not None:
-                    for k,v in data_override.items():
-                        if isinstance(v,dict) and k in data:
-                            data[k].update(v)
-                            data_override[k]=data[k]
+        for band in spectra.bands:
+            data = {
+              "obj_id": objID,
+              "group_ids": [SkyPortal.group_id('DESI')],
+              "fluxes": spectra.flux[band][index,:].tolist(),
+#                   "errors": (1./np.sqrt(spectra.ivar[band][index,:])).tolist(),  
+              "wavelengths": spectra.wave[band].tolist(),
+              "observed_at": t.isot,
+              "instrument_id": SkyPortal.instrument_id()
+            }                    
 
-                    data.update(data_override)
+            if data_override is not None:
+                for k,v in data_override.items():
+                    if isinstance(v,dict) and k in data:
+                        data[k].update(v)
+                        data_override[k]=data[k]
 
-                response = SkyPortal.api('POST', '{}/api/spectrum'.format(SkyPortal.url),data=data)
-                print(f'HTTP code: {response.status_code}, {response.reason}')
-                if response.status_code == 400:
-                    print(f'JSON response: {response.json()}')
+                data.update(data_override)
+
+            response = SkyPortal.api('POST', '{}/api/spectrum'.format(SkyPortal.url),data=data)
+            print(f'HTTP code: {response.status_code}, {response.reason}')
+            if response.status_code == 400:
+                print(f'JSON response: {response.json()}')
  
     @staticmethod            
     def postPhotometry(target_id, spectra_in, data_override=None,coadd_camera=False):
@@ -287,7 +300,6 @@ class SkyPortal:
 
                 data.update(data_override)
 
-            print(data)
             response = SkyPortal.api('POST', '{}/api/photometry'.format(SkyPortal.url),data=data)
             print(f'HTTP code: {response.status_code}, {response.reason}')
             if response.status_code == 400:
