@@ -43,6 +43,7 @@ def main(args):
 #         pass
         # which of these are real targets
         triggered, diff = logic.filter(pspectra0,pspectra1, norm=True,ston_cut=5)
+
 #         # plot triggered objects
         if triggered.sum() > 0:
 
@@ -57,13 +58,17 @@ def main(args):
                 SkyPortal.postCandidate(sig, diff.fibermap, "DESIDIFF CV",data_override=data_override)
                 targetid = diff.fibermap['TARGETID'].data[sig].astype('str')
                 data_override = {
-                  "origin": "{}-{}".format(meta[2],meta[1]),
+                    "origin": "{}-{}".format(meta[2],meta[1]),
+                    "group_ids": [SkyPortal.group_id('DESI'), SkyPortal.group_id('Wayne State')],
                 }
                 SkyPortal.postSpectra(targetid, diff, data_override=data_override,coadd_camera=True)
                 SkyPortal.postSpectra(targetid, pspectra0,coadd_camera=True)
                 SkyPortal.postPhotometry(targetid, pspectra0,coadd_camera=True)
                 SkyPortal.postSpectra(targetid, pspectra1,coadd_camera=True)
-                SkyPortal.postPhotometry(targetid, pspectra1,coadd_camera=True)
+                data_override = {
+                    "group_ids": [SkyPortal.group_id('DESI'), SkyPortal.group_id('Wayne State')],
+                }
+                SkyPortal.postPhotometry(targetid, pspectra1,coadd_camera=True, data_override=data_override)
                 logic.plotter(sig,pspectra0, pspectra1, diff, savepdf=spdf)
 
     print("End")
