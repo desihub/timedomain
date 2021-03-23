@@ -31,9 +31,22 @@ def diffplot_CV(sig,pspectra0, pspectra1, diff,savepdf=False):
     fig.show()
     
     if savepdf:
+        if 'EXPID' in pspectra0.fibermap.keys():
+            expid0 = pspectra0.fibermap['EXPID'][sig]
+        elif 'LAST_EXPID' in pspectra0.fibermap.keys():
+            expid0 = pspectra0.fibermap['LAST_EXPID'][sig]
+        else:
+            print('we are screwed')
+        if 'EXPID' in pspectra1.fibermap.keys():
+            expid1 = pspectra1.fibermap['EXPID'][sig]
+        elif 'LAST_EXPID' in pspectra1.fibermap.keys():
+            expid1 = pspectra1.fibermap['LAST_EXPID'][sig]
+        else:
+            print('we are screwed')
+            
         tile = pspectra0.fibermap["TILEID"].data[sig]
-        expid0 = pspectra0.fibermap["EXPID"].data[sig]
-        expid1 = pspectra1.fibermap["EXPID"].data[sig]
+#         expid0 = pspectra0.fibermap["EXPID"].data[sig]
+#         expid1 = pspectra1.fibermap["EXPID"].data[sig]
         outdir = os.path.join(savedir,*savepdf)
         Path(outdir).mkdir(parents=True, exist_ok=True)        
 

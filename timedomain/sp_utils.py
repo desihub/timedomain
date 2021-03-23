@@ -112,23 +112,24 @@ class SkyPortal:
         response = SkyPortal.api('GET', '{}/api/sources/DESI{}/annotations'.format(SkyPortal.url,targetid))
         for an in response.json()['data']:
             r2 = SkyPortal.api('DELETE', '{}/api/annotation/{}'.format(SkyPortal.url,an['id']))
-            print(f'Deleting Annotation JSON response: {r2.json()}')
+#             print(f'Deleting Annotation JSON response: {r2.json()}')
 
         # Remove photometry related to this object
         response = SkyPortal.api('GET', '{}/api/sources/DESI{}/photometry'.format(SkyPortal.url,targetid))
         for an in response.json()['data']:
             r2 = SkyPortal.api('DELETE', '{}/api/photometry/{}'.format(SkyPortal.url,an['id']))
-            print(f'Deleting Photometry JSON response: {r2.json()}')
+#             print(f'Deleting Photometry JSON response: {r2.json()}')
 
         # Remove spectra related to this object
         response = SkyPortal.api('GET', '{}/api/sources/DESI{}/spectra'.format(SkyPortal.url,targetid))
-        for an in response.json()['data']['spectra']:
-            r2 = SkyPortal.api('DELETE', '{}/api/spectroscopy/{}'.format(SkyPortal.url,an['id']))
-            print(f'Deleting Spectra JSON response: {r2.json()}')
+        if response.status_code == 200:
+            for an in response.json()['data']['spectra']:
+                r2 = SkyPortal.api('DELETE', '{}/api/spectrum/{}'.format(SkyPortal.url,an['id']))
+#                 print(f'Deleting Spectra JSON response: {r2.json()}')
                              
         filterid = SkyPortal.filter_id(filt)        
         response = SkyPortal.api('DELETE', '{}/api/candidates/DESI{}/{}'.format(SkyPortal.url,targetid,filterid))
-        print(f'Deleting Candidat JSON response: {response.json()}')
+#         print(f'Deleting Candidat JSON response: {response.json()}')
         
     
     @staticmethod
@@ -196,7 +197,7 @@ class SkyPortal:
         # This should be the case of everything derived from "coadd" or from
         # SpectraPairsIterator
 
-        if spectra.num_spectra() >1:
+        if spectra.num_spectra() !=1:
             raise IndexError
         
 #         spectra = spectra_in.select(targets=[int(target_id)])
@@ -262,6 +263,14 @@ class SkyPortal:
             
         # coadd_cameras does not have an MJD.  Rely on getting this from the original.
         fibermap = spectra.fibermap
+        
+        if 'MJD' in fibermap.keys():
+            mjd = fibermap['MJD'][0]
+        elif 'LAST_MJD' in fibermap.keys():
+            mjd = fibermap['LAST_MJD'][0]
+        else:
+            print('we are screwed')
+            
                 
         # combines the arms into one spectrum
         if coadd_camera:
@@ -273,37 +282,38 @@ class SkyPortal:
         objID = 'DESI{}'.format(target_id)
         
         # this for statement should be superfluous as there is only one index
-        for index, mjd in enumerate(fibermap.iterrows('MJD')):
-            fluxes = []
-            for b in bands:
-                padspec = b.pad_spectrum(spectra.flux[spectra.bands[0]][index,:],spectra.wave[spectra.bands[0]])
-                fluxes.append(b.get_ab_maggies(padspec[0],padspec[1])*1e-17)
-                    
-            data = {
-                "mjd": mjd[0],
-                "obj_id": objID,
-                "instrument_id": SkyPortal.instrument_id(),
-                "origin": "DESI",
-                "magsys": 'ab',
-                "filter": ['sdssg','sdssr','sdssz'],
-                "group_ids": [SkyPortal.group_id('DESI') ],
-                "flux":     fluxes,
-                "fluxerr": (numpy.array(fluxes)/100).tolist(),
-                "zp": 0
-                }
-            
-            if data_override is not None:
-                for k,v in data_override.items():
-                    if isinstance(v,dict) and k in data:
-                        data[k].update(v)
-                        data_override[k]=data[k]
+#         for index, mjd in enumerate(fibermap.iterrows('MJD')):
+        index=0
+        fluxes = []
+        for b in bands:
+            padspec = b.pad_spectrum(spectra.flux[spectra.bands[0]][index,:],spectra.wave[spectra.bands[0]])
+            fluxes.append(b.get_ab_maggies(padspec[0],padspec[1])*1e-17)
 
-                data.update(data_override)
+        data = {
+            "mjd": str(mjd),
+            "obj_id": objID,
+            "instrument_id": SkyPortal.instrument_id(),
+            "origin": "DESI",
+            "magsys": 'ab',
+            "filter": ['sdssg','sdssr','sdssz'],
+            "group_ids": [SkyPortal.group_id('DESI') ],
+            "flux":     fluxes,
+            "fluxerr": (numpy.array(fluxes)/100).tolist(),
+            "zp": 0
+            }
 
-            response = SkyPortal.api('POST', '{}/api/photometry'.format(SkyPortal.url),data=data)
-            print(f'HTTP code: {response.status_code}, {response.reason}')
-            if response.status_code == 400:
-                print(f'JSON response: {response.json()}')
+        if data_override is not None:
+            for k,v in data_override.items():
+                if isinstance(v,dict) and k in data:
+                    data[k].update(v)
+                    data_override[k]=data[k]
+
+            data.update(data_override)
+
+        response = SkyPortal.api('POST', '{}/api/photometry'.format(SkyPortal.url),data=data)
+        print(f'HTTP code: {response.status_code}, {response.reason}')
+        if response.status_code == 400:
+            print(f'JSON response: {response.json()}')
             
     @staticmethod
     def test():
