@@ -65,37 +65,63 @@ def main(args):
                 # save the candidate
                 data_override = {
                   "origin": "DESIDIFF {}-{}".format(args.iterator, args.logic),
-                  "altdata": {'fibermap': {'Z':str(zbest['Z'][zin]), 'ZERR':str(zbest['ZERR'][zin]), 'SPECTYPE':zbest['SPECTYPE'][zin]}}
+                  "altdata": {'logic':args.logic, 'iterator':args.iterator, 'subdir':args.subdir, 'trunk':args.trunk,
+                              'tile':meta[0]['tile'], 'date0':meta[0]['date'],'date1':meta[1]['date'], 'panel':meta[0]['panel'],
+                              'fibermap': {'Z':str(zbest['Z'][zin]), 'ZERR':str(zbest['ZERR'][zin]), 'SPECTYPE':zbest['SPECTYPE'][zin]}}
                 }
+
                 SkyPortal.postCandidate(sig, diff.fibermap, "DESIDIFF CV",data_override=data_override)
-            
+   
                 # Annotate
                 data_override = {
                     "group_ids": [SkyPortal.group_id('DESI'), SkyPortal.group_id('Wayne State')],
                     "data": {'Z':str(zbest['Z'][zin]), 'ZERR':str(zbest['ZERR'][zin]), 'SPECTYPE':zbest['SPECTYPE'][zin]}
                 }
+
                 SkyPortal.postAnnotation(sig, diff.fibermap,data_override=data_override)
-                
+
                 data = {
                     "redshift": str(zbest['Z'][zin])
                 }
                 SkyPortal.api('PATCH', '{}/api/sources/DESI{}'.format(SkyPortal.url,targetid),data=data)
             
-                # save Spectra and Photometry
+                # save Spectra
                 targetid = diff.fibermap['TARGETID'].data[sig].astype('str')
                 data_override = {
                     "origin": "{}-{}".format(meta[1]['date'],meta[0]['date']),
                     "group_ids": [SkyPortal.group_id('DESI'), SkyPortal.group_id('Wayne State')],
-                }
+                    "altdata": {'logic':args.logic, 'iterator':args.iterator, 'subdir':args.subdir, 'trunk':args.trunk,
+                    'tile':meta[0]['tile'], 'date0':meta[0]['date'],'date1':meta[1]['date'], 'panel':meta[0]['panel']}
+                }              
                 SkyPortal.postSpectra(targetid, diff, data_override=data_override,coadd_camera=True)
-                SkyPortal.postSpectra(targetid, pspectra0,coadd_camera=True)
-                SkyPortal.postPhotometry(targetid, pspectra0,coadd_camera=True)
-                SkyPortal.postSpectra(targetid, pspectra1,coadd_camera=True)
+                    
                 data_override = {
-                    "group_ids": [SkyPortal.group_id('DESI'), SkyPortal.group_id('Wayne State')],
-                }
-                SkyPortal.postPhotometry(targetid, pspectra1,coadd_camera=True, data_override=data_override)
-                wefwe
+                    "altdata": {'subdir':args.subdir, 'trunk':args.trunk,
+                              'tile':meta[0]['tile'], 'date':meta[0]['date'], 'panel':meta[0]['panel']}
+                }                   
+                SkyPortal.postSpectra(targetid, pspectra0, data_override=data_override,coadd_camera=True)
+
+                data_override = {
+                    "altdata": {'subdir':args.subdir, 'trunk':args.trunk,
+                              'tile':meta[1]['tile'], 'date':meta[1]['date'], 'panel':meta[1]['panel']}
+                } 
+                SkyPortal.postSpectra(targetid, pspectra1, data_override=data_override,coadd_camera=True)
+                                    
+                # get all photometry associated with this guy
+                # this can be made more efficient.
+                alldates = tileToDates(meta[0]['tile'], subdir=args.subdir)
+                for d in alldates:
+                    ffile = fs_utils.fitsfile(meta[0]['tile'], d, meta[0]['panel'], subdir=args.subdir,trunk=args.trunk)
+                    sp = read_spectra(ffile)[sig]
+                    if sp.fibermap['FIBERSTATUS'][0] ==0:
+                        data_override = {
+                            "group_ids": [SkyPortal.group_id('DESI'), SkyPortal.group_id('Wayne State')],
+                            "altdata": {'subdir':args.subdir, 'trunk':args.trunk,
+                                'tile':meta[0]['tile'], 'date':d, 'panel':meta[0]['panel']}
+                        }
+
+                        # Modify this so that it gets all phases, not just the pair
+                        SkyPortal.postPhotometry(targetid, sp,coadd_camera=True, data_override=data_override)
                 logic.plotter(sig,pspectra0, pspectra1, diff, savepdf=spdf)
 
     print("End")
