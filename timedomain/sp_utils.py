@@ -138,7 +138,7 @@ class SkyPortal:
         filterid = SkyPortal.filter_id(filt)
 
         # information we want to save from fibermap
-        fibermap_keys=['FIBER','TILEID','EXPID','PETAL_LOC','MJD']
+        fibermap_keys=['FIBER','TILEID','EXPID','PETAL_LOC','MJD','LAST_MJD']
         fiber_dict = dict()
         for key in fibermap_keys:
             if key in fibermap.keys():
@@ -177,7 +177,7 @@ class SkyPortal:
     def postAnnotation(index,fibermap, data_override=None):
 
         # information we want to save from fibermap
-        fibermap_keys=['FIBER','TILEID','EXPID','PETAL_LOC','MJD']
+        fibermap_keys=['FIBER','TILEID','EXPID','PETAL_LOC','MJD','LAST_MJD']
         fiber_dict = dict()
         for key in fibermap_keys:
             if key in fibermap.keys():
@@ -284,7 +284,6 @@ class SkyPortal:
         # The bands of interest
         bands = speclite.filters.load_filters('BASS-g', 'BASS-r', 'MzLS-z')
     
-            
         # coadd_cameras does not have an MJD.  Rely on getting this from the original.
         fibermap = spectra.fibermap
         
@@ -313,32 +312,46 @@ class SkyPortal:
             padspec = b.pad_spectrum(spectra.flux[spectra.bands[0]][index,:],spectra.wave[spectra.bands[0]])
             fluxes.append(b.get_ab_maggies(padspec[0],padspec[1])*1e-17)
 
+        filters = ['sdssg','sdssr','sdssz']
+
         data = {
             "mjd": str(mjd),
             "obj_id": objID,
             "instrument_id": SkyPortal.instrument_id(),
             "origin": "DESI",
             "magsys": 'ab',
-            "filter": ['sdssg','sdssr','sdssz'],
+            "filter": filters,
             "group_ids": [SkyPortal.group_id('DESI') ],
             "flux":     fluxes,
             "fluxerr": (numpy.array(fluxes)/100).tolist(),
             "zp": 0
             }
 
-        if data_override is not None:
-            for k,v in data_override.items():
-                if isinstance(v,dict) and k in data:
-                    data[k].update(v)
-                    data_override[k]=data[k]
-
-            data.update(data_override)
+        
+        # The following ugliness is because there is a problem with json when it comes
+        # to arrays and dictionaries.  As a hack, I save the data and then patch the
+        # data_override
+        
+        
+#         if data_override is not None:
+#             for k,v in data_override.items():
+#                 if isinstance(v,dict) and k in data:
+#                     data[k].update(v)
+#                     data_override[k]=data[k]
+#             data.update(data_override)
 
         response = SkyPortal.api('POST', '{}/api/photometry'.format(SkyPortal.url),data=data)
         print(f'HTTP code: {response.status_code}, {response.reason}')
         if response.status_code == 400:
             print(f'JSON response: {response.json()}')
-            
+       
+        if data_override is not None and response.status_code == 200:
+            for id_ in response.json()['data']['ids']:
+                dum = SkyPortal.api('PATCH', '{}/api/photometry/{}'.format(SkyPortal.url,id_),data=data_override)
+                print(f'PATCHING HTTP code: {response.status_code}, {response.reason}')
+                if response.status_code == 400:
+                    print(f'JSON response: {response.json()}')
+                    
     @staticmethod
     def test():
 
