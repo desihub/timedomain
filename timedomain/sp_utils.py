@@ -5,6 +5,9 @@ import json
 from desispec.coaddition import coadd_cameras
 import speclite
 import numpy
+import json
+from desiutil.log import get_logger
+log = get_logger()
 
 class SkyPortal:
 
@@ -106,35 +109,33 @@ class SkyPortal:
 
     @staticmethod
     def nukeCandidate(targetid, filt):
-        
-        print(targetid)
         # Remove annotations related to this object
         response = SkyPortal.api('GET', '{}/api/sources/DESI{}/annotations'.format(SkyPortal.url,targetid))
         for an in response.json()['data']:
             r2 = SkyPortal.api('DELETE', '{}/api/annotation/{}'.format(SkyPortal.url,an['id']))
-#             print(f'Deleting Annotation JSON response: {r2.json()}')
+            log.info(f'Deleting Annotation JSON response: {r2.json()}')
 
         # Remove photometry related to this object
         response = SkyPortal.api('GET', '{}/api/sources/DESI{}/photometry'.format(SkyPortal.url,targetid))
         for an in response.json()['data']:
             r2 = SkyPortal.api('DELETE', '{}/api/photometry/{}'.format(SkyPortal.url,an['id']))
-#             print(f'Deleting Photometry JSON response: {r2.json()}')
+            log.info(f'Deleting Photometry JSON response: {r2.json()}')
 
         # Remove spectra related to this object
         response = SkyPortal.api('GET', '{}/api/sources/DESI{}/spectra'.format(SkyPortal.url,targetid))
         if response.status_code == 200:
             for an in response.json()['data']['spectra']:
                 r2 = SkyPortal.api('DELETE', '{}/api/spectrum/{}'.format(SkyPortal.url,an['id']))
-#                 print(f'Deleting Spectra JSON response: {r2.json()}')
+                log.info(f'Deleting Spectra JSON response: {r2.json()}')
                              
         filterid = SkyPortal.filter_id(filt)        
         response = SkyPortal.api('DELETE', '{}/api/candidates/DESI{}/{}'.format(SkyPortal.url,targetid,filterid))
-#         print(f'Deleting Candidat JSON response: {response.json()}')
+        log.info(f'Deleting Candidat JSON response: {response.json()}')
         
     
     @staticmethod
     def postCandidate(index,fibermap,filt, data_override=None):
-                
+
         filterid = SkyPortal.filter_id(filt)
 
         # information we want to save from fibermap
@@ -143,8 +144,6 @@ class SkyPortal:
         for key in fibermap_keys:
             if key in fibermap.keys():
                 fiber_dict[key] = fibermap[key].data[index].astype('str')
-            else:
-                print('missing ',key)
 
         altdata = {'fibermap': fiber_dict}
 
@@ -170,9 +169,9 @@ class SkyPortal:
 
         response = SkyPortal.api('POST', '{}/api/candidates'.format(SkyPortal.url),data=data)
 
-        print(f'HTTP code: {response.status_code}, {response.reason}')
+        log.info(f'HTTP code: {response.status_code}, {response.reason}')
         if response.status_code == 400:
-            print(f'JSON response: {response.json()}')
+            log.warning(f'JSON response: {response.json()}')
 
     def postAnnotation(index,fibermap, data_override=None):
 
@@ -182,8 +181,6 @@ class SkyPortal:
         for key in fibermap_keys:
             if key in fibermap.keys():
                 fiber_dict[key] = fibermap[key].data[index].astype('str')
-            else:
-                print('missing ',key)
 
         altdata = {'fibermap': fiber_dict}
         
@@ -202,9 +199,9 @@ class SkyPortal:
             data.update(data_override)
             
         response = SkyPortal.api('POST', '{}/api/annotation'.format(SkyPortal.url),data=data)
-        print(f'HTTP code: {response.status_code}, {response.reason}')
+        log.info(f'HTTP code: {response.status_code}, {response.reason}')
         if response.status_code == 400:
-            print(f'JSON response: {response.json()}')
+            log.warning(f'JSON response: {response.json()}')
 
     
 
@@ -220,8 +217,8 @@ class SkyPortal:
         # SpectraPairsIterator
 
         if spectra.num_spectra() !=1:
-            print(target_id, int(target_id) in spectra_in.fibermap['TARGETID'].data)
-            print(spectra.num_spectra())
+            log.error(target_id, int(target_id) in spectra_in.fibermap['TARGETID'].data)
+            log.error(spectra.num_spectra())
             raise IndexError
         
 #         spectra = spectra_in.select(targets=[int(target_id)])
@@ -234,7 +231,7 @@ class SkyPortal:
         elif 'LAST_MJD' in fibermap.keys():
             mjd = fibermap['LAST_MJD'][0]
         else:
-            print('we are screwed')
+            log.error('we are screwed')
         t = Time(mjd, format='mjd')
             
         # combines the arms into one spectrum
@@ -267,9 +264,9 @@ class SkyPortal:
                 data.update(data_override)
 
             response = SkyPortal.api('POST', '{}/api/spectrum'.format(SkyPortal.url),data=data)
-            print(f'HTTP code: {response.status_code}, {response.reason}')
+            log.info(f'HTTP code: {response.status_code}, {response.reason}')
             if response.status_code == 400:
-                print(f'JSON response: {response.json()}')
+                log.error(f'JSON response: {response.json()}')
  
     @staticmethod            
     def postPhotometry(target_id, spectra_in, data_override=None,coadd_camera=False):
@@ -292,14 +289,14 @@ class SkyPortal:
         elif 'LAST_MJD' in fibermap.keys():
             mjd = fibermap['LAST_MJD'][0]
         else:
-            print('we are screwed')
+            log.error('we are screwed')
             
                 
         # combines the arms into one spectrum
         if coadd_camera:
             spectra = coadd_cameras(spectra)
             if 'brz' not in spectra.bands:
-                print('postPhotometry failed because brz not available but carrying on')
+                log.warning('postPhotometry failed because brz not available but carrying on')
                 return
             
         objID = 'DESI{}'.format(target_id)
@@ -327,31 +324,20 @@ class SkyPortal:
             "zp": 0
             }
 
-        
-        # The following ugliness is because there is a problem with json when it comes
-        # to arrays and dictionaries.  As a hack, I save the data and then patch the
-        # data_override
-        
-        
-#         if data_override is not None:
-#             for k,v in data_override.items():
-#                 if isinstance(v,dict) and k in data:
-#                     data[k].update(v)
-#                     data_override[k]=data[k]
-#             data.update(data_override)
+        if data_override is not None:
+            for k,v in data_override.items():
+                if isinstance(v,dict) and k in data:
+                    data[k].update(v)
+                    data_override[k]=data[k]
+            data.update(data_override)
 
         response = SkyPortal.api('POST', '{}/api/photometry'.format(SkyPortal.url),data=data)
-        print(f'HTTP code: {response.status_code}, {response.reason}')
+        log.info(f'HTTP code: {response.status_code}, {response.reason}')
+        response = SkyPortal.api('GET', '{}/api/photometry/{}'.format(SkyPortal.url,response.json()['data']['ids'][0]))
+                                                                                              
         if response.status_code == 400:
-            print(f'JSON response: {response.json()}')
-       
-        if data_override is not None and response.status_code == 200:
-            for id_ in response.json()['data']['ids']:
-                dum = SkyPortal.api('PATCH', '{}/api/photometry/{}'.format(SkyPortal.url,id_),data=data_override)
-                print(f'PATCHING HTTP code: {response.status_code}, {response.reason}')
-                if response.status_code == 400:
-                    print(f'JSON response: {response.json()}')
-                    
+            log.warning(f'JSON response: {response.json()}')
+
     @staticmethod
     def test():
 

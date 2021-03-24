@@ -100,10 +100,13 @@ class CVLogic:
     plotter = plot_utils.diffplot_CV
     
     @staticmethod
-    def filter(pspectra0, pspectra1, norm=False, ston_cut=7.):
-        
+    def filter(pspectra0, pspectra1, zbest0, zbest1, norm=False, ston_cut=5.):
+
         fibermap = pspectra0.fibermap #Table.read(datafile0, 'FIBERMAP')
         isTGT = fibermap['OBJTYPE'] == 'TGT'
+        okFibers = np.logical_and(pspectra0.fibermap['FIBERSTATUS'] == 0, pspectra1.fibermap['FIBERSTATUS'] == 0)
+        isStar = np.logical_or(zbest0['SPECTYPE']=='STAR', zbest1['SPECTYPE']=='STAR')
+        
         # the interesting guy is wedge 6 index 331
     #     print(fibermap['TARGETID'].data[0], np.where(fibermap['TARGETID'].data== 35191288252861933)[0])
     #     pspectra0 = read_spectra(datafile0)
@@ -141,7 +144,7 @@ class CVLogic:
                 var[sindex] += (1/diff.ivar[dindex][sindex,nmask]).sum()
 
         significant = (np.abs(signal)/ma.sqrt(var) >= ston_cut)
-        triggered = np.logical_and.reduce((significant, isTGT, hasSignal))
+        triggered = np.logical_and.reduce((significant, isTGT, hasSignal, okFibers, isStar))
         return triggered, diff
     
 # single element logic
