@@ -174,11 +174,33 @@ class SkyPortal:
         if response.status_code == 400:
             print(f'JSON response: {response.json()}')
 
+    def postAnnotation(index,fibermap, data_override=None):
+
+        # information we want to save from fibermap
+        fibermap_keys=['FIBER','TILEID','EXPID','PETAL_LOC','MJD']
+        fiber_dict = dict()
+        for key in fibermap_keys:
+            if key in fibermap.keys():
+                fiber_dict[key] = fibermap[key].data[index].astype('str')
+            else:
+                print('missing ',key)
+
+        altdata = {'fibermap': fiber_dict}
+        
         data = {
             "obj_id": "DESI{}".format(fibermap['TARGETID'].data[index].astype('str')),
             "origin": 'postCandidate',
             "data": altdata['fibermap']
             }
+        
+        if data_override is not None:
+            for k,v in data_override.items():
+                if isinstance(v,dict) and k in data:
+                    data[k].update(v)
+                    data_override[k]=data[k]
+
+            data.update(data_override)
+            
         response = SkyPortal.api('POST', '{}/api/annotation'.format(SkyPortal.url),data=data)
         print(f'HTTP code: {response.status_code}, {response.reason}')
         if response.status_code == 400:
@@ -198,6 +220,8 @@ class SkyPortal:
         # SpectraPairsIterator
 
         if spectra.num_spectra() !=1:
+            print(target_id, int(target_id) in spectra_in.fibermap['TARGETID'].data)
+            print(spectra.num_spectra())
             raise IndexError
         
 #         spectra = spectra_in.select(targets=[int(target_id)])
