@@ -7,6 +7,9 @@ redux='/global/project/projectdirs/desi/spectro/redux/'
 filts = ['b','r','z']
 panels = np.arange(10).astype('str')
 
+# this set of images officially dead to DESI
+bad = [["20210228","80726"],["20210228","80726"],["20210228","80740"],["20210228","80741"]]
+
 def recentRelease(redux,tile, date, panel, trunk):
     ans = None
     for testdir in config.releases:
@@ -21,6 +24,9 @@ def recentRelease(redux,tile, date, panel, trunk):
         
 
 def fitsfile(tile, date, panel, subdir='recent',trunk='coadd'):
+    
+    if [date,tile] in bad:
+        return None
     
     if subdir == 'recent':
         subdir = recentRelease(redux,tile,date, panel, trunk)
