@@ -4,8 +4,10 @@ import argparse
 from timedomain.filters import *
 from timedomain.iterators import *
 from timedomain.sp_utils import *
+from timedomain.fs_utils import *
 import timedomain.config as config
 import sys
+from astropy.table import Table
 
 __version__=0.1
 
@@ -39,7 +41,7 @@ def main(args):
 
     for (pspectra, meta) in iterator:
         pspectra0,pspectra1 = pspectra
-        spdf = ["diff",logic.__name__,args.subdir,args.trunk,meta[1]]
+        spdf = ["diff",logic.__name__,args.subdir,args.trunk,meta[0]['date']]
 #         pass
         # which of these are real targets
         triggered, diff = logic.filter(pspectra0,pspectra1, norm=True,ston_cut=5)
@@ -50,15 +52,39 @@ def main(args):
             wheretriggered = np.where(triggered)[0]
 
             for sig in wheretriggered.flat:
+
                 targetid = diff.fibermap['TARGETID'].data[sig].astype('str')
                 SkyPortal.nukeCandidate(targetid, "DESIDIFF CV")
+                
+                # save the DESI-inferred redshift
+                zf = fitsfile(meta[0]['tile'],meta[0]['date'],meta[0]['panel'],subdir='daily',trunk='zbest')
+                zbest = Table.read(zf, 'ZBEST')
+                zin = numpy.where(zbest['TARGETID'] == diff.fibermap['TARGETID'].data[sig])[0]
+                zin=zin[0]
+ 
+                # save the candidate
                 data_override = {
                   "origin": "DESIDIFF {}-{}".format(args.iterator, args.logic),
+                  "altdata": {'fibermap': {'Z':str(zbest['Z'][zin]), 'ZERR':str(zbest['ZERR'][zin]), 'SPECTYPE':zbest['SPECTYPE'][zin]}}
                 }
                 SkyPortal.postCandidate(sig, diff.fibermap, "DESIDIFF CV",data_override=data_override)
+            
+                # Annotate
+                data_override = {
+                    "group_ids": [SkyPortal.group_id('DESI'), SkyPortal.group_id('Wayne State')],
+                    "data": {'Z':str(zbest['Z'][zin]), 'ZERR':str(zbest['ZERR'][zin]), 'SPECTYPE':zbest['SPECTYPE'][zin]}
+                }
+                SkyPortal.postAnnotation(sig, diff.fibermap,data_override=data_override)
+                
+                data = {
+                    "redshift": str(zbest['Z'][zin])
+                }
+                SkyPortal.api('PATCH', '{}/api/sources/DESI{}'.format(SkyPortal.url,targetid),data=data)
+            
+                # save Spectra and Photometry
                 targetid = diff.fibermap['TARGETID'].data[sig].astype('str')
                 data_override = {
-                    "origin": "{}-{}".format(meta[2],meta[1]),
+                    "origin": "{}-{}".format(meta[1]['date'],meta[0]['date']),
                     "group_ids": [SkyPortal.group_id('DESI'), SkyPortal.group_id('Wayne State')],
                 }
                 SkyPortal.postSpectra(targetid, diff, data_override=data_override,coadd_camera=True)
@@ -69,6 +95,7 @@ def main(args):
                     "group_ids": [SkyPortal.group_id('DESI'), SkyPortal.group_id('Wayne State')],
                 }
                 SkyPortal.postPhotometry(targetid, pspectra1,coadd_camera=True, data_override=data_override)
+                wefwe
                 logic.plotter(sig,pspectra0, pspectra1, diff, savepdf=spdf)
 
     print("End")
