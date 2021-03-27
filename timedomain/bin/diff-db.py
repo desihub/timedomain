@@ -18,7 +18,7 @@ def main(args):
     logic = getattr(sys.modules[__name__], args.logic)
     iterator_= getattr(sys.modules[__name__], args.iterator)
 
-
+    prunelogic = args.logic[0:args.logic.find("Logic")]
 
     ### Get the tile and array from the arguments
 
@@ -45,13 +45,24 @@ def main(args):
         pspectra0,pspectra1 = pspectra
         spdf = ["diff",logic.__name__,args.subdir,args.trunk,meta[0]['date']]
 
-        zf = fitsfile(meta[0]['tile'],meta[0]['date'],meta[0]['panel'],subdir='daily',trunk='zbest')
+        # This should work in the far future
+#         zf = os.path.join(fs_utils.redux,args.subdir,'tiles/cumulative',meta[0]['tile'])
+#         zdirs=glob(zf+'/*/')
+#         zdirs.sort()
+#         zf = glob(zdirs[-1]+'/zbest-{}-{}-*.fits'.format(meta[0]['panel'],meta[0]['tile']))[0]
+
+        zf = fitsfile(meta[0]['tile'],meta[0]['date'],meta[0]['panel'],subdir=args.subdir,trunk='zbest')
+#         zf1 = fitsfile(meta[1]['tile'],meta[1]['date'],meta[1]['panel'],subdir='daily',trunk='zbest')
+
+#         # For now consider missing zbest files as catastrophic errors
+        if (zf is None):
+            log.warning("Missing zbest")
+            sys.exit(1)
+            
         zbest = Table.read(zf, 'ZBEST')
-        zf = fitsfile(meta[1]['tile'],meta[1]['date'],meta[1]['panel'],subdir='daily',trunk='zbest')
-        zbest1 = Table.read(zf, 'ZBEST')
         
         # which of these are real targets
-        triggered, diff = logic.filter(pspectra0,pspectra1, zbest, zbest1, norm=True,ston_cut=5)
+        triggered, diff = logic.filter(pspectra0,pspectra1, zbest, norm=True,ston_cut=5)
 
 #         # plot triggered objects
         if triggered.sum() > 0:
@@ -62,7 +73,7 @@ def main(args):
 
                 targetid = diff.fibermap['TARGETID'].data[sig].astype('str')
                 log.info("TARGETID {}".format(targetid))
-                SkyPortal.nukeCandidate(targetid, "DESIDIFF CV")
+#                 SkyPortal.nukeCandidate(targetid, "DESIDIFF {}".format(prunelogic))
                 
                 # save the DESI-inferred redshift
 #                 zf = fitsfile(meta[0]['tile'],meta[0]['date'],meta[0]['panel'],subdir='daily',trunk='zbest')
@@ -78,7 +89,7 @@ def main(args):
                               'fibermap': {'Z':str(zbest['Z'][zin]), 'ZERR':str(zbest['ZERR'][zin]), 'SPECTYPE':zbest['SPECTYPE'][zin]}}
                 }
 
-                SkyPortal.postCandidate(sig, diff.fibermap, "DESIDIFF CV",data_override=data_override)
+                SkyPortal.postCandidate(sig, diff.fibermap, "DESIDIFF {}".format(prunelogic),data_override=data_override)
    
                 # Annotate
                 data_override = {
@@ -96,7 +107,7 @@ def main(args):
                 # save Spectra
                 targetid = diff.fibermap['TARGETID'].data[sig].astype('str')
                 data_override = {
-                    "origin": "{}-{}".format(meta[1]['date'],meta[0]['date']),
+                    "origin": "{}-{}".format(meta[0]['date'],meta[1]['date']),
                     "group_ids": [SkyPortal.group_id('DESI'), SkyPortal.group_id('Wayne State')],
                     "altdata": {'logic':args.logic, 'iterator':args.iterator, 'subdir':args.subdir, 'trunk':args.trunk,
                     'tile':meta[0]['tile'], 'date0':meta[0]['date'],'date1':meta[1]['date'], 'panel':meta[0]['panel']}
@@ -128,16 +139,16 @@ def main(args):
                         if sp.fibermap['FIBERSTATUS'][0] ==0:
                             data_override = {
                                 "group_ids": [SkyPortal.group_id('DESI'), SkyPortal.group_id('Wayne State')],
-                                "altdata": {'subdir':[args.subdir,args.subdir,args.subdir], 'trunk':[args.trunk,args.trunk,args.trunk],
-                                    'tile':[meta[0]['tile'],meta[0]['tile'],meta[0]['tile']], 'date':[d,d,d],
-                                    'panel':[meta[0]['panel'],meta[0]['panel'],meta[0]['panel']]}
+                                "altdata": {'subdir':args.subdir, 'trunk':args.trunk,
+                                    'tile':meta[0]['tile'], 'date':d,'panel': meta[0]['panel']}
                             }
 
                             # Modify this so that it gets all phases, not just the pair
                             SkyPortal.postPhotometry(targetid, sp,coadd_camera=True, data_override=data_override)
                 logic.plotter(sig,pspectra0, pspectra1, diff, savepdf=spdf)
                 
-                wef
+                wefw
+
     print("End")
                 
 if __name__ == "__main__":
