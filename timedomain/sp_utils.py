@@ -332,9 +332,7 @@ class SkyPortal:
             data.update(data_override)
 
         response = SkyPortal.api('POST', '{}/api/photometry'.format(SkyPortal.url),data=data)
-        log.info(f'HTTP code: {response.status_code}, {response.reason}')
-        response = SkyPortal.api('GET', '{}/api/photometry/{}'.format(SkyPortal.url,response.json()['data']['ids'][0]))
-                                                                                              
+        log.info(f'HTTP code: {response.status_code}, {response.reason}')                                                                         
         if response.status_code == 400:
             log.warning(f'JSON response: {response.json()}')
 
