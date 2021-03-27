@@ -85,7 +85,7 @@ class TileDate_PreDate_Iterator:
         if self.it0 is None:
             predates = fs_utils.tileToDates(self.tile, subdir=self.subdir)
             predates = np.array(predates,dtype='str')
-            w = np.logical_and(predates < self.date, predates > config.mindate)
+            w = np.logical_and(predates < self.date, predates >= config.mindate)
             predates = predates[w]
             if len(predates)==0:
                 raise StopIteration
