@@ -147,6 +147,45 @@ class CVLogic:
         triggered = np.logical_and.reduce((significant, isTGT, hasSignal, okFibers, isStar))
         return triggered, diff
     
+# TDE
+
+class TDELogic:
+    plotter = plot_utils.diffplot_CV
+    
+    @staticmethod
+    def filter(pspectra0, pspectra1, zbest, norm=False, ston_cut=5., frac_inc_cut= .20):
+
+        fibermap = pspectra0.fibermap #Table.read(datafile0, 'FIBERMAP')
+        isTGT = fibermap['OBJTYPE'] == 'TGT'
+        okFibers = np.logical_and(pspectra0.fibermap['FIBERSTATUS'] == 0, pspectra1.fibermap['FIBERSTATUS'] == 0)
+        isGalaxy = zbest['SPECTYPE']=='GALAXY'
+        
+        hasSignal = HasSignal.filter(pspectra0,pspectra1)
+        if norm:
+            pspectra0, pspectra1 = renorm(pspectra0,pspectra1)
+        diff = difference(pspectra0,pspectra1)
+        
+        skymask = maskskylines(diff)
+        
+        nspec = diff.flux[diff.bands[0]].shape[0]
+        
+        signal=np.zeros(nspec)
+        var=np.zeros(nspec)
+        ref_signal=np.zeros(nspec)
+        
+        
+        if 'b' in diff.bands:           
+            for sindex in range(nspec):
+                signal[sindex] = diff.flux['b'][sindex,:].sum()
+                var[sindex] = (1/diff.ivar['b'][sindex,:]).sum()
+                ref_signal[sindex] = pspectra1.flux['b'][sindex,:].sum()
+        
+        # nan's should fail here
+        brighter = np.logical_or(np.abs(signal/ref_signal) >= frac_inc_cut, ref_signal <=0)
+        significant = (np.abs(signal)/ma.sqrt(var) >= ston_cut)
+        triggered = np.logical_and.reduce((significant, isTGT, hasSignal, okFibers, isGalaxy, brighter))
+        return triggered, diff
+    
 # single element logic
 class SingleElementLogic:
     ston_cut=7.
