@@ -208,6 +208,16 @@ class SkyPortal:
     @staticmethod            
     def postSpectra(target_id, spectra_in, data_override=None,coadd_camera=False):
 
+        if data_override is not None:
+            if 'altdata' in data_override.keys():
+                response=SkyPortal.api('GET',  '{}/api/sources/DESI{}/spectra'.format(SkyPortal.url,target_id))
+                if response.status_code == 200:
+                    spec = response.json()['data']['spectra']
+                    for s in spec:
+                        if (data_override['altdata'] == s['altdata']):
+                            log.warning("Spectrum exists not overwriting")
+                            return
+            
         # fix to an upstream bug in spectra
         keep = numpy.equal(spectra_in.fibermap['TARGETID'].data, int(target_id))
         spectra = spectra_in[keep]
