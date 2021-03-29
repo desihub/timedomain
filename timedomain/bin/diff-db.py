@@ -56,13 +56,13 @@ def main(args):
 
 #         # For now consider missing zbest files as catastrophic errors
         if (zf is None):
-            log.warning("Missing zbest")
+            log.warning("Missing zbest {} {} {} {}".format(meta[0]['tile'],meta[0]['date'],meta[0]['panel'],args.subdir))
             sys.exit(1)
             
         zbest = Table.read(zf, 'ZBEST')
         
         # which of these are real targets
-        triggered, diff = logic.filter(pspectra0,pspectra1, zbest, norm=True,ston_cut=5)
+        triggered, diff = logic.filter(pspectra0,pspectra1, zbest, norm=False ,ston_cut=5)
 
 #         # plot triggered objects
         if triggered.sum() > 0:
@@ -78,15 +78,15 @@ def main(args):
                 # save the DESI-inferred redshift
 #                 zf = fitsfile(meta[0]['tile'],meta[0]['date'],meta[0]['panel'],subdir='daily',trunk='zbest')
 #                 zbest = Table.read(zf, 'ZBEST')
-                zin = numpy.where(zbest['TARGETID'] == diff.fibermap['TARGETID'].data[sig])[0]
-                zin=zin[0]
- 
+#                 zin = numpy.where(zbest['TARGETID'] == diff.fibermap['TARGETID'].data[sig])[0]
+#                 zin=zin[0]
+                    
                 # save the candidate
                 data_override = {
                   "origin": "DESIDIFF {}-{}".format(args.iterator, args.logic),
                   "altdata": {'logic':args.logic, 'iterator':args.iterator, 'subdir':args.subdir, 'trunk':args.trunk,
                               'tile':meta[0]['tile'], 'date0':meta[0]['date'],'date1':meta[1]['date'], 'panel':meta[0]['panel'],
-                              'fibermap': {'Z':str(zbest['Z'][zin]), 'ZERR':str(zbest['ZERR'][zin]), 'SPECTYPE':zbest['SPECTYPE'][zin]}}
+                              'fibermap': {'Z':str(zbest['Z'][sig]), 'ZERR':str(zbest['ZERR'][sig]), 'SPECTYPE':zbest['SPECTYPE'][sig]}}
                 }
 
                 SkyPortal.postCandidate(sig, diff.fibermap, "DESIDIFF {}".format(prunelogic),data_override=data_override)
@@ -94,18 +94,18 @@ def main(args):
                 # Annotate
                 data_override = {
                     "group_ids": [SkyPortal.group_id('DESI'), SkyPortal.group_id('Wayne State')],
-                    "data": {'Z':str(zbest['Z'][zin]), 'ZERR':str(zbest['ZERR'][zin]), 'SPECTYPE':zbest['SPECTYPE'][zin]}
+                    "data": {'Z':str(zbest['Z'][sig]), 'ZERR':str(zbest['ZERR'][sig]), 'SPECTYPE':zbest['SPECTYPE'][sig]}
                 }
 
                 SkyPortal.postAnnotation(sig, diff.fibermap,data_override=data_override)
 
                 data = {
-                    "redshift": str(zbest['Z'][zin])
+                    "redshift": str(zbest['Z'][sig])
                 }
                 SkyPortal.api('PATCH', '{}/api/sources/DESI{}'.format(SkyPortal.url,targetid),data=data)
             
                 # save Spectra
-                targetid = diff.fibermap['TARGETID'].data[sig].astype('str')
+                
                 data_override = {
                     "origin": "{}-{}".format(meta[0]['date'],meta[1]['date']),
                     "group_ids": [SkyPortal.group_id('DESI'), SkyPortal.group_id('Wayne State')],
@@ -146,8 +146,6 @@ def main(args):
                             # Modify this so that it gets all phases, not just the pair
                             SkyPortal.postPhotometry(targetid, sp,coadd_camera=True, data_override=data_override)
                 logic.plotter(sig,pspectra0, pspectra1, diff, savepdf=spdf)
-                
-                wefw
 
     print("End")
                 
