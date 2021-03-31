@@ -366,7 +366,15 @@ if __name__ == '__main__':
 
                         #DESITRIP_daily - Send the selected fluxes to SkyPortal - Divij Sharma
                         for i in range(len(fmap['TARGETID'])):
-                            SkyPortal.postCandidate(i, fmap, "DESITRIP_daily")
+                            # Collect the extra data specific to DESITRIP to be saved
+                            data = dict()
+                            data['redshift'] = fmap['Z'].data[i]
+                            data['redshift_history'] = 'Redrock'
+                            altdata_dict = dict()
+                            altdata_dict['classifier']={'CNNLABEL' : fmap['CNNLABEL'].data[i]}
+                            data['altdata'] = altdata_dict
+                            
+                            SkyPortal.postCandidate(i, fmap, 'DESITRIP', data_override=data)
                             SkyPortal.postSpectra(fmap['TARGETID'][i].astype('str'), cand_spectra)
 
                         # Make a plot of up to 16 transients
