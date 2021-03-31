@@ -35,13 +35,9 @@ def main(args):
             date.append(obsdate)
             tile.append(tile_number)
 
-
-    iterator = TileDate_TargetPairs_Iterator(tile, date, subdir=args.subdir,trunk=args.trunk, verbose=True)
-
 #     iterator = TileDate_SpectraPairs_Iterator(tile, date, subdir=args.subdir,trunk=args.trunk, verbose=True)
 #     iterator = TileDate_TargetPairs_Iterator(tile, date, subdir=args.subdir,trunk=args.trunk, verbose=True)
     iterator = iterator_(tile, date, subdir=args.subdir,trunk=args.trunk, verbose=True)
-
 
     # make this none for results to appear in the notebook
 
