@@ -103,8 +103,9 @@ else
                 done
             else
               # Redirect stdout from echo command to stderr.
-              echo "Script encountered error." >&2
+                echo "Script encountered error." >&2
 #               echo "Failure in $query" |  mail -s 'Failure: cron_db_diff.sh' agkim@lbl.gov
+                exit 1
             fi
         done
 
