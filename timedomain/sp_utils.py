@@ -171,7 +171,7 @@ class SkyPortal:
 
         log.info(f'HTTP code: {response.status_code}, {response.reason}')
         if response.status_code == 400:
-            log.warning(f'JSON response: {response.json()}')
+            log.warning(print(f'JSON response: {response.json()}'))
 
     def postAnnotation(index,fibermap, data_override=None):
 
@@ -201,7 +201,7 @@ class SkyPortal:
         response = SkyPortal.api('POST', '{}/api/annotation'.format(SkyPortal.url),data=data)
         log.info(f'HTTP code: {response.status_code}, {response.reason}')
         if response.status_code == 400:
-            log.warning(f'JSON response: {response.json()}')
+            log.warning(print(f'JSON response: {response.json()}'))
 
     
 
@@ -321,30 +321,34 @@ class SkyPortal:
 
         filters = ['sdssg','sdssr','sdssz']
 
-        data = {
-            "mjd": str(mjd),
-            "obj_id": objID,
-            "instrument_id": SkyPortal.instrument_id(),
-            "origin": "DESI",
-            "magsys": 'ab',
-            "filter": filters,
-            "group_ids": [SkyPortal.group_id('DESI') ],
-            "flux":     fluxes,
-            "fluxerr": (numpy.array(fluxes)/100).tolist(),
-            "zp": 0
-            }
+        w=numpy.where(numpy.isfinite(fluxes))[0]
+        
+        if len(w)!=0:
 
-        if data_override is not None:
-            for k,v in data_override.items():
-                if isinstance(v,dict) and k in data:
-                    data[k].update(v)
-                    data_override[k]=data[k]
-            data.update(data_override)
+            data = {
+                "mjd": str(mjd),
+                "obj_id": objID,
+                "instrument_id": SkyPortal.instrument_id(),
+                "origin": "DESI",
+                "magsys": 'ab',
+                "filter": filters[w[0]],
+                "group_ids": [SkyPortal.group_id('DESI') ],
+                "flux":     fluxes[w[0]],
+                "fluxerr": (numpy.array(fluxes[w[0]])/100).tolist(),
+                "zp": 0
+                }
 
-        response = SkyPortal.api('POST', '{}/api/photometry'.format(SkyPortal.url),data=data)
-        log.info(f'HTTP code: {response.status_code}, {response.reason}')                                                                         
-        if response.status_code == 400:
-            log.warning(f'JSON response: {response.json()}')
+            if data_override is not None:
+                for k,v in data_override.items():
+                    if isinstance(v,dict) and k in data:
+                        data[k].update(v)
+                        data_override[k]=data[k]
+                data.update(data_override)
+
+            response = SkyPortal.api('POST', '{}/api/photometry'.format(SkyPortal.url),data=data)
+            log.info(f'HTTP code: {response.status_code}, {response.reason}')                                                                         
+            if response.status_code == 400:
+                log.warning(f'JSON response: {response.json()}')
 
     @staticmethod
     def test():
