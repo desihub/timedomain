@@ -1,6 +1,10 @@
 from desispec.io import read_spectra, write_spectra
 from desispec.spectra import Spectra
 
+from desiutil.log import get_logger, DEBUG
+log = get_logger(DEBUG)
+
+
 import numpy as np
 import copy
 
@@ -470,7 +474,7 @@ class TileDate_SpectraPairs_Iterator:
             filename2 = fs_utils.fitsfile(self.tile, self.pdate, self.panel, subdir=self.subdir,trunk=self.trunk)            
         if self.verbose:
             print("Iterator: Tile {}, Panel {}, Date {}, Date 2 {}".format(self.tile, self.panel,self.date,self.pdate))
-
+        log.debug("{} {}".format(filename,filename2))
         return((read_spectra(filename) , read_spectra(filename2)), ({'tile': self.tile, 'date': self.date, 'panel': self.panel},{'tile': self.tile, 'date': self.pdate, 'panel': self.panel}))
 
     # staticmethod
