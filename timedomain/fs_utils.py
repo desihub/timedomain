@@ -21,6 +21,14 @@ def recentRelease(redux,tile, date, panel, trunk):
 #         if os.path.exists(name):
         ans = 'daily'
     return ans
+
+def useSubdir(subdir,date="99999999"):
+    if subdir == 'recent':
+        if date <= config.last_release_date:
+            return  config.last_release
+        else:
+            return "daily"   
+    return subdir
         
 
 def fitsfile(tile, date, panel, subdir='recent',trunk='coadd'):
@@ -28,18 +36,21 @@ def fitsfile(tile, date, panel, subdir='recent',trunk='coadd'):
     if [date,tile] in bad:
         return None
     
-    if subdir == 'recent':
-        subdir = recentRelease(redux,tile,date, panel, trunk)
-    name  = os.path.join(redux,subdir,'tiles',tile, date, '{}-{}-{}-{}.fits'.format(trunk,panel,tile,date))
+    usesubdir=useSubdir(subdir,date)
+
+    name  = os.path.join(redux,usesubdir,'tiles',tile, date, '{}-{}-{}-{}.fits'.format(trunk,panel,tile,date))
     exists = os.path.exists(name)
     if exists:
-        return os.path.join(redux,subdir,'tiles',tile, date, '{}-{}-{}-{}.fits'.format(trunk,panel,tile,date))
+        return os.path.join(redux,usesubdir,'tiles',tile, date, '{}-{}-{}-{}.fits'.format(trunk,panel,tile,date))
     else:
         return None
 
 def tiledateToExposures(tile, date, subdir='andes'):
+    
+    usesubdir=useSubdir(subdir,date)
 
-    dirname = os.path.join(redux,subdir,'tiles',tile,date)
+
+    dirname = os.path.join(redux,usesubdir,'tiles',tile,date)
     if not os.path.isdir(dirname):
         print('{} does not exist.'.format(dirname))    
     cafiles =  glob(os.path.join(dirname,'cframe-??-*.fits'))
@@ -58,8 +69,9 @@ def tiledateToExposures(tile, date, subdir='andes'):
 # tn=tiledateToExposures(tile,date)
 
 def dateToTiles(date, subdir='andes'):
+    usesubdir=useSubdir(subdir,date)
 
-    dirname = os.path.join(redux,subdir,'tiles')
+    dirname = os.path.join(redux,usesubdir,'tiles')
     if not os.path.isdir(dirname):
         print('{} does not exist.'.format(dirname))
     cafiles =  glob(dirname+'/*/'+date)
@@ -77,7 +89,9 @@ def dateToTiles(date, subdir='andes'):
 
 def tileToDates(tile, subdir='andes'):
 
-    dirname = os.path.join(redux,subdir,'tiles',tile)
+    usesubdir=useSubdir(subdir)
+
+    dirname = os.path.join(redux,usesubdir,'tiles',tile)
     if not os.path.isdir(dirname):
         print('{} does not exist.'.format(dirname))
 
