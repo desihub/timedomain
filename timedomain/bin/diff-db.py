@@ -56,22 +56,22 @@ def main(args):
 
 #         # For now consider missing zbest files as catastrophic errors
         if (zf is None):
+
             log.warning("Missing zbest {} {} {} {}".format(meta[0]['tile'],meta[0]['date'],meta[0]['panel'],args.subdir))
             sys.exit(1)
             
         zbest = Table.read(zf, 'ZBEST')
         
         # which of these are real targets
-        triggered, diff = logic.filter(pspectra0,pspectra1, zbest, norm=False ,ston_cut=5)
+        triggered, diff = logic.filter(pspectra0,pspectra1, zbest, ston_cut=5)
 
 #         # plot triggered objects
         if triggered.sum() > 0:
 
             wheretriggered = np.where(triggered)[0]
-
             for sig in wheretriggered.flat:
 
-                targetid = diff.fibermap['TARGETID'].data[sig].astype('str')
+                targetid = pspectra0.fibermap['TARGETID'].data[sig].astype('str')
                 log.info("TARGETID {}".format(targetid))
 #                 SkyPortal.nukeCandidate(targetid, "DESIDIFF {}".format(prunelogic))
                 
@@ -89,7 +89,7 @@ def main(args):
                               'fibermap': {'Z':str(zbest['Z'][sig]), 'ZERR':str(zbest['ZERR'][sig]), 'SPECTYPE':zbest['SPECTYPE'][sig]}}
                 }
 
-                SkyPortal.postCandidate(sig, diff.fibermap, "DESIDIFF {}".format(prunelogic),data_override=data_override)
+                SkyPortal.postCandidate(sig, pspectra0.fibermap, "DESIDIFF {}".format(prunelogic),data_override=data_override)
    
                 # Annotate
                 data_override = {
@@ -97,7 +97,7 @@ def main(args):
                     "data": {'Z':str(zbest['Z'][sig]), 'ZERR':str(zbest['ZERR'][sig]), 'SPECTYPE':zbest['SPECTYPE'][sig]}
                 }
 
-                SkyPortal.postAnnotation(sig, diff.fibermap,data_override=data_override)
+                SkyPortal.postAnnotation(sig, pspectra0.fibermap,data_override=data_override)
 
                 data = {
                     "redshift": str(zbest['Z'][sig])
@@ -105,14 +105,14 @@ def main(args):
                 SkyPortal.api('PATCH', '{}/api/sources/DESI{}'.format(SkyPortal.url,targetid),data=data)
             
                 # save Spectra
-                
-                data_override = {
-                    "origin": "{}-{}".format(meta[0]['date'],meta[1]['date']),
-                    "group_ids": [SkyPortal.group_id('DESI'), SkyPortal.group_id('Wayne State')],
-                    "altdata": {'logic':args.logic, 'iterator':args.iterator, 'subdir':args.subdir, 'trunk':args.trunk,
-                    'tile':meta[0]['tile'], 'date0':meta[0]['date'],'date1':meta[1]['date'], 'panel':meta[0]['panel']}
-                }              
-                SkyPortal.postSpectra(targetid, diff, data_override=data_override,coadd_camera=True)
+                if diff is not None:
+                    data_override = {
+                        "origin": "{}-{}".format(meta[0]['date'],meta[1]['date']),
+                        "group_ids": [SkyPortal.group_id('DESI'), SkyPortal.group_id('Wayne State')],
+                        "altdata": {'logic':args.logic, 'iterator':args.iterator, 'subdir':args.subdir, 'trunk':args.trunk,
+                        'tile':meta[0]['tile'], 'date0':meta[0]['date'],'date1':meta[1]['date'], 'panel':meta[0]['panel']}
+                    }              
+                    SkyPortal.postSpectra(targetid, diff, data_override=data_override,coadd_camera=True)
                     
                 data_override = {
                     "group_ids": [SkyPortal.group_id('DESI'), SkyPortal.group_id('Wayne State')],
@@ -145,9 +145,9 @@ def main(args):
 
                             # Modify this so that it gets all phases, not just the pair
                             SkyPortal.postPhotometry(targetid, sp,coadd_camera=True, data_override=data_override)
-                logic.plotter(sig,pspectra0, pspectra1, diff, savepdf=spdf)
 
-    print("End")
+#                 logic.plotter(sig,pspectra0, pspectra1, diff, savepdf=spdf)
+
                 
 if __name__ == "__main__":
     
