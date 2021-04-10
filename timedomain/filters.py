@@ -202,10 +202,13 @@ class TDELogic:
 class HydrogenLogic:
     target_wave = np.array((6562.79, 4861.35, 4340.472, 4101.734, 3970.075))
     R=200.
+#     RH=1000     # cutting a notch out right at the line
     plotter = plot_utils.diffplot_CV
+    maxwave = 7400.
+    zmin=0.001
     
     @staticmethod
-    def filter(pspectra0, pspectra1, zbest, norm=True, ston_cut=5., frac_inc_cut= .20):
+    def filter(pspectra0, pspectra1, zbest, norm=True, ston_cut=7., frac_inc_cut= .25):
 
         fibermap = pspectra0.fibermap #Table.read(datafile0, 'FIBERMAP')
         isTGT = fibermap['OBJTYPE'] == 'TGT'
@@ -224,34 +227,74 @@ class HydrogenLogic:
         signal=np.zeros(nspec)
         signal[:]=np.zeros(nspec)
         var=np.zeros(nspec)
-        ref_signal=np.zeros(nspec)
-
+#         ref_signal=np.zeros(nspec)
+#         w=np.where(diff.fibermap['TARGETID']==39627700813438689)[0]
         for dindex in diff.bands:
+            wavecut = diff.wave[dindex]<HydrogenLogic.maxwave
             for sindex in range(nspec):
-                
                 z = zbest['Z'][sindex]
-                z_target_wave = (1+z)*HydrogenLogic.target_wave
-                
-                #mask containing lines of interest
-                lmask = np.zeros(len(diff.wave[dindex]))
+                if z>=zmin:
+                    z_target_wave = (1+z)*HydrogenLogic.target_wave
 
-                for wa in z_target_wave:
-                    wmin = wa * np.exp(-1/CVLogic.R/2.)
-                    wmax = wa * np.exp(1/CVLogic.R/2.)
-                    lmask = np.logical_or(lmask, np.logical_and.reduce((diff.wave[dindex] >= wmin, diff.wave[dindex] < wmax)))                
+                    #mask containing lines of interest
+                    lmask = np.zeros(len(diff.wave[dindex]))
+                    bmask = np.zeros(len(diff.wave[dindex]))
+                    for wa in z_target_wave:
+    #                     wmin = wa * np.exp(-1/HydrogenLogic.R/2.)
+    #                     wmax = wa * np.exp(-1/HydrogenLogic.RH/2.)
+    # #                     if sindex == w:
+    # #                         print( wmin,wmax)
+    #                     lmask = np.logical_or(lmask, np.logical_and.reduce((diff.wave[dindex] >= wmin, diff.wave[dindex] < wmax)))
+    #                     wmin = wa * np.exp(1/HydrogenLogic.RH/2.)
+    #                     wmax = wa * np.exp(1/HydrogenLogic.R/2.)
+    # #                     if sindex == w:
+    # #                         print( wmin,wmax)
+    #                     lmask = np.logical_or(lmask, np.logical_and.reduce((diff.wave[dindex] >= wmin, diff.wave[dindex] < wmax)))
+                        wmin = wa * np.exp(-1/HydrogenLogic.R/2.)
+    #                     wmax = wa * np.exp(-1/HydrogenLogic.R/5.)
+    #                     lmask = np.logical_or(lmask, np.logical_and.reduce((diff.wave[dindex] >= wmin, diff.wave[dindex] < wmax)))
+    #                     wmin = wa * np.exp(1/HydrogenLogic.R/5.)
+                        wmax = wa * np.exp(1/HydrogenLogic.R/2.)
+                        lmask = np.logical_or(lmask, np.logical_and.reduce((diff.wave[dindex] >= wmin, diff.wave[dindex] < wmax)))
 
-                #remove lines that are by the sky lines
-                lmask = np.logical_and(lmask, skymask[dindex] ==0)
-            
-                # only include unmasked
-                nmask = np.logical_and(lmask, diff.mask[dindex][sindex,:]==0)
-                signal[sindex] += diff.flux[dindex][sindex,nmask].sum()
-                var[sindex] += (1/diff.ivar[dindex][sindex,nmask]).sum()
-                ref_signal[sindex] += pspectra1.flux[dindex][sindex,nmask].sum()
+                        wmin = wa * np.exp(-3/HydrogenLogic.R)
+                        wmax = wa * np.exp(-1/HydrogenLogic.R)
+    #                     if sindex == w:
+    #                         print( wmin,wmax)
+                        bmask = np.logical_or(bmask, np.logical_and.reduce((diff.wave[dindex] >= wmin, diff.wave[dindex] < wmax)))
+                        wmin = wa * np.exp(1/HydrogenLogic.R)
+                        wmax = wa * np.exp(3/HydrogenLogic.R)
+    #                     if sindex == w:
+    #                         print( wmin,wmax)
+                        bmask = np.logical_or(bmask, np.logical_and.reduce((diff.wave[dindex] >= wmin, diff.wave[dindex] < wmax)))
 
-        brighter = np.logical_or(np.abs(signal/ref_signal) >= frac_inc_cut, ref_signal <=0)
+                    #remove lines that are by the sky lines
+                    lmask = np.logical_and.reduce((lmask, skymask[dindex] ==0,diff.mask[dindex][sindex,:]==0,wavecut))
+                    bmask = np.logical_and.reduce((bmask, skymask[dindex] ==0,diff.mask[dindex][sindex,:]==0,wavecut))   
+
+                    if (lmask.sum()>0 and bmask.sum()>0):
+                        background = np.nanpercentile(diff.flux[dindex][sindex,bmask],50)
+                        # only include unmasked
+        #                 if sindex == w:
+        #                     print(nmask.sum())
+        #                     print( diff.flux[dindex][sindex,nmask])
+    #                     print(background,lmask.sum(),diff.flux[dindex][sindex,lmask].sum())
+                        signal[sindex] += diff.flux[dindex][sindex,lmask].sum() - lmask.sum()*background
+                        var[sindex] += (1/diff.ivar[dindex][sindex,lmask]).sum()
+        #                 ref_signal[sindex] += pspectra1.flux[dindex][sindex,nmask].sum()
+    #             print(signal[sindex],var[sindex])
+                else:
+                    signal[sindex]=float('NaN')  # give a low redshift a bad signal
+        ok = np.logical_and.reduce((isTGT, okFibers, isGalaxy))
+        signal = signal - np.nanpercentile(signal[ok],50)
+        onesig = np.nanpercentile(signal[ok],(15.865,84.135))
+
+#         print(signal[w],signal[w]/np.sqrt(var[w]),5*onesig)
+        large = np.logical_or(signal > 7*onesig[1], signal < 7* onesig[0])
         significant = (np.abs(signal)/ma.sqrt(var) >= ston_cut)
-        triggered = np.logical_and.reduce((significant, isTGT, hasSignal, okFibers, isGalaxy, brighter))
+        triggered = np.logical_and.reduce((significant, isTGT, hasSignal, okFibers, isGalaxy, large))
+        log.info("Number with signal {}; Number significant {}; Number large {}".format(hasSignal.sum(), significant.sum(), large.sum()))
+        log.info("Number triggered {}".format(triggered.sum()))
         return triggered, diff
 
     # Color
