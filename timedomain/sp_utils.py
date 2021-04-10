@@ -315,9 +315,12 @@ class SkyPortal:
 #         for index, mjd in enumerate(fibermap.iterrows('MJD')):
         index=0
         fluxes = []
+        fluxerrs = []
         for b in bands:
             padspec = b.pad_spectrum(spectra.flux[spectra.bands[0]][index,:],spectra.wave[spectra.bands[0]])
             fluxes.append(b.get_ab_maggies(padspec[0],padspec[1])*1e-17)
+            padspec = b.pad_spectrum(spectra.ivar[spectra.bands[0]][index,:],spectra.wave[spectra.bands[0]])
+            fluxerrs.append(numpy.sqrt(b.get_ab_maggies(1/padspec[0],padspec[1]))*1e-17)
 
         filters = ['sdssg','sdssr','sdssz']
 
@@ -334,7 +337,7 @@ class SkyPortal:
                 "filter": filters[w[0]],
                 "group_ids": [SkyPortal.group_id('DESI') ],
                 "flux":     fluxes[w[0]],
-                "fluxerr": (numpy.array(fluxes[w[0]])/100).tolist(),
+                "fluxerr": fluxerrs[w[0]],
                 "zp": 0
                 }
 
