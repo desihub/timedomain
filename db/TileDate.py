@@ -16,11 +16,10 @@ from astropy.io import ascii
 class TileDate:
 
     filename = "/global/cfs/cdirs/desi/science/td/db/secondary.db"
-    
     # init method or constructor   
     def __init__(self):
         self.con = sqlite3.connect(TileDate.filename)
-        self.cur = self.con.cursor()
+#         self.cur = self.con.cursor()
         
     @staticmethod
     def type_py2sql(name):
@@ -35,7 +34,7 @@ class TileDate:
         
         if createTable:
             # draw one random file to pull information about the format and create the table
-            command = f"CREATE TABLE {table_name} (LUNATAION TEXT, PROGRAM TEXT, TARGETID INTEGER, RA REAL, DEC REAL, UNIQUE(TARGETID))"
+            command = f"CREATE TABLE {table_name} (LUNATAION TEXT, PROGRAM TEXT, TARGETID INTEGER, RA REAL, DEC REAL, UNIQUE(TARGETID));"
             self.cur.execute(command)
 
         # Fill in the table
@@ -87,27 +86,33 @@ class TileDate:
 
         table_name = "tiles"
         if createTable:
-            command = f"CREATE TABLE {table_name} (TARGETID, TILEID, UNIQUE (TARGETID, TILEID))"
-            self.cur.execute(command)      
+            command = f"CREATE TABLE tiles (TARGETID INTEGER, TILEID INTEGER, UNIQUE (TARGETID, TILEID));"
+            self.con.execute(command)      
             
 #         # SV 1
-#         filename = "/global/cfs/cdirs/desi/spectro/redux/daily/tiles.csv"
-#         fbase = "/global/cfs/cdirs/desi/target/fiberassign/tiles/trunk"
-#         data = ascii.read(filename, include_names=["TILEID","SURVEY"])  
-#         for d in data:
-#             if d[1]=='sv1':
-#                 ptile = d[0].astype('str')
-#                 ptile = ptile.zfill(6)
-#                 ffile = os.path.join(fbase,ptile[:3],f'fiberassign-{ptile}.fits.gz')
-#                 fits = fitsio.FITS(ffile)
-#                 col = fits['FIBERASSIGN']['TARGETID']
-#                 for c in col.read():
-#                     command = "INSERT INTO {} VALUES ('{}', '{}');".format(table_name,c,d[0])
-#                     try:
-#                         self.cur.execute(command)
-#                     except sqlite3.IntegrityError:
-#                         pass
-                    
+        filename = "/global/cfs/cdirs/desi/spectro/redux/daily/tiles.csv"
+        fbase = "/global/cfs/cdirs/desi/target/fiberassign/tiles/trunk"
+        data = ascii.read(filename, include_names=["TILEID","SURVEY"])  
+        for d in data:
+            if d[1]=='sv1': # and d[0] == 80617:
+                ptile = d[0].astype('str')
+                ptile = ptile.zfill(6)
+                ffile = os.path.join(fbase,ptile[:3],f'fiberassign-{ptile}.fits.gz')
+                fits = fitsio.FITS(ffile)
+                col = fits['FIBERASSIGN']['TARGETID']
+#                 dbinput = np.zeros((col.read().shape[0],2),dtype='int')
+#                 dbinput[:, 1]=d[0]
+#                 dbinput[:, 0]=col.read()
+                cur = self.con.cursor()
+                for datum in col.read():
+                    try:
+                        cur.execute(f"insert into tiles values ({datum}, {d[0]})")
+                    except sqlite3.IntegrityError:
+                        pass    
+                cur.close()
+                self.con.commit()
+
+    
         # SV2 onward
         dir_root = "/global/cfs/cdirs/desi/survey/ops/surveyops/trunk/mtl/"
         subdirs = ['sv2','sv3','sv3/secondary']
@@ -120,16 +125,28 @@ class TileDate:
                     for file in files:
                         if file.endswith('.ecsv'):
                             filename = os.path.join(root,file)
-                            print(filename)
+#                             print(filename)
                             data = ascii.read(filename, include_names=["TARGETID","ZTILEID"])
-
-                            for t,z in data:
-                                command = "INSERT INTO {} VALUES ('{}', '{}');".format(table_name,t,z)
+#                             dbinput = np.zeros((col.read().shape[0],2),dtype='int')
+#                             dbinput[:, 1]=d[0]
+#                             dbinput[:, 0]=col.read()
+                            cur = self.con.cursor()
+                            for datum in data:
                                 try:
-                                    self.cur.execute(command)
+                                    cur.execute(f"insert into tiles values ({datum[0]}, {datum[1]})")
                                 except sqlite3.IntegrityError:
                                     pass
-        self.con.commit()
+                            cur.close()
+                            self.con.commit()
+    
+#                             for t,z in data:
+#                                 command = "INSERT INTO {} VALUES ('{}', '{}');".format(table_name,t,z)
+#                                 try:
+#                                     with self.con:
+#                                         self.con.execute(command)
+#                                 except sqlite3.IntegrityError:
+#                                     pass
+#         self.con.commit()
 
     def load_daily(self,createTable=False):
         dir_root = "/global/project/projectdirs/desi/spectro/redux/daily/tiles/"
@@ -137,25 +154,27 @@ class TileDate:
         table_name = "daily"
         
         if createTable:
-            command = f"CREATE TABLE {table_name} (TILEID, YYYYMMDD, UNIQUE (TILEID, YYYYMMDD))"
-            self.cur.execute(command)   
+            command = f"CREATE TABLE {table_name} (TILEID INTEGER, YYYYMMDD INTEGER, UNIQUE (TILEID, YYYYMMDD));"
+            self.con.execute(command)   
         
         #find the last date
-        ans=self.cur.execute("SELECT MAX(YYYYMMDD) FROM daily")
+        with self.con:
+            ans=self.con.execute("SELECT MAX(YYYYMMDD) FROM daily")
         maxdate = ans.fetchone()[0]
-        if maxdate is None: maxdate = ""
+        if maxdate is None: maxdate = 0
         print(maxdate)
         
         for path in glob.glob(f'{dir_root}/*/*'):
             split = path.split('/')
             tileid=split[-2]; date=split[-1]
-            if date >= maxdate and tileid.isnumeric():
-                command = "INSERT INTO {} VALUES ('{}', '{}');".format(table_name,tileid,date)
+            if date.isnumeric() and int(date) >= maxdate and tileid.isnumeric():
+                command = "INSERT INTO {} VALUES ({}, {});".format(table_name,tileid,date)
                 try:
-                    self.cur.execute(command)
+                    with self.con:
+                        self.con.execute(command)
                 except sqlite3.IntegrityError:
                     print("couldn't add daily twice")
-        self.con.commit()
+
         
     @staticmethod
     def byTARGETID(targetid):
@@ -167,7 +186,7 @@ class TileDate:
             ON daily.TILEID = tiles.TILEID
         INNER JOIN targets 
             ON tiles.TARGETID = targets.TARGETID
-        WHERE tiles.TARGETID = "{targetid}";
+        WHERE tiles.TARGETID = {targetid};
         '''
         return db.cur.execute(command).fetchall()
 
