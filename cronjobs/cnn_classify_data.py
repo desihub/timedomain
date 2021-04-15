@@ -28,7 +28,9 @@ sys.path.append('/global/homes/p/palmese/desi/timedomain/timedomain/')
 from desispec.io import read_spectra, write_spectra
 from desispec.spectra import Spectra
 from desispec.coaddition import coadd_cameras
-from desitarget.sv1.sv1_targetmask import bgs_mask
+from desitarget.sv1.sv1_targetmask import bgs_mask as bgs_mask_sv1
+from desitarget.sv2.sv2_targetmask import bgs_mask as bgs_mask_sv2
+from desitarget.sv3.sv3_targetmask import bgs_mask as bgs_mask_sv3
 
 from desitrip.preproc import rebin_flux, rescale_flux
 from desitrip.deltamag import delta_mag
@@ -53,7 +55,7 @@ from argparse import ArgumentParser
 #DESITRIP_daily
 from timedomain.sp_utils import *
 from timedomain.filters import *
-from timedomain.iterators import *
+#from timedomain.iterators import *
 
 import sqlite3
 
@@ -105,8 +107,9 @@ if __name__ == '__main__':
     plot_path=td_path+'plots/'
     out_path=td_path+'out/'
     # Set up BGS target bit selection.
-    sv1_bgs_bits = '|'.join([_ for _ in bgs_mask.names() if 'BGS' in _])
-
+    sv1_bgs_bits = '|'.join([_ for _ in bgs_mask_sv1.names() if 'BGS' in _])
+    sv2_bgs_bits = '|'.join([_ for _ in bgs_mask_sv2.names() if 'BGS' in _])
+    sv3_bgs_bits = '|'.join([_ for _ in bgs_mask_sv3.names() if 'BGS' in _])
 
     # ## Load the Keras Model
     # 
@@ -259,6 +262,17 @@ if __name__ == '__main__':
                 allres  = None
 
                 print('Tile: {} - {}'.format(tile_number, obsdate))
+                
+                #Check which survey it is - sv1 sv2 etc
+                if (cframe_fibermap['FA_SURV']=='sv1'): 
+                    bgs_mask=bgs_mask_sv1
+                    bgs_bits=sv1_bgs_bits
+                if (cframe_fibermap['FA_SURV']=='sv2'): 
+                    bgs_mask=bgs_mask_sv2
+                    bgs_bits=sv2_bgs_bits
+                if (cframe_fibermap['FA_SURV']=='sv3'): 
+                    bgs_mask=bgs_mask_sv3
+                    bgs_bits=sv3_bgs_bits
 
                 for cafile, zbfile in match_files(cafiles, zbfiles):
                     print('  - Petal {}'.format(get_petal_id(cafile)))
@@ -272,7 +286,9 @@ if __name__ == '__main__':
                     # Apply standard event selection.
                     isTGT = fibermap['OBJTYPE'] == 'TGT'
                     isGAL = zbest['SPECTYPE'] == 'GALAXY'
-                    isBGS = fibermap['SV1_BGS_TARGET'] & bgs_mask.mask(sv1_bgs_bits) != 0
+                    #isBGS = fibermap['SV1_BGS_TARGET'] & bgs_mask.mask(sv1_bgs_bits) != 0
+                    
+                    isBGS = fibermap['BGS_TARGET'] & bgs_mask.mask(bgs_bits) != 0
                     isGoodFiber = fibermap['FIBERSTATUS'] == 0
                     isGoodZbest = (zbest['DELTACHI2'] > 25.) & (zbest['ZWARN'] == 0)
                     select = isTGT & isGAL & isBGS & isGoodFiber & isGoodZbest
@@ -326,7 +342,6 @@ if __name__ == '__main__':
                     print(ntr,' transients found')
 
                     # Save data to file - we need to add ra dec, and some id
-
                     if ntr > 0:
                     #    if tr_z is None:
                     #        tr_z = allzbest[idx]['Z']

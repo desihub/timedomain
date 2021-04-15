@@ -33,9 +33,10 @@ echo "Looking for new exposures"
 
 python ${run_path}exposure_db.py daily
 
+#AP added last obsdate constraint to make up for loss of desitrip_exposures db in March 2021
 query="select distinct obsdate,tileid from exposures
 where (tileid,obsdate) not in (select tileid,obsdate from desitrip_exposures)
-and program LIKE '%bgs%';"
+and program LIKE '%bgs%' and obsdate>20210228;" 
 
 mapfile -t -d $'\n' obsdates_tileids < <( sqlite3 ${td_path}transients_search.db "$query" )
 
@@ -62,7 +63,7 @@ if [ $Nobsdates_tileids -eq 0 ]; then
     echo "No new observations found today"
 else
     echo "$Nobsdates_tileids new observations found"
-    echo "Sendingjobs for: "
+    echo "Sending jobs for: "
     echo "python ${run_path}cnn_classify_data.py --obsdates_tilenumbers ${obsdates_tileids[@]}"
     echo "srun python ${run_path}cnn_classify_data.py --obsdates_tilenumbers ${obsdates_tileids[@]}">>${run_path}sbatch_file.sh        
 

@@ -182,10 +182,16 @@ if __name__ == '__main__':
         # Extract tileid from the folder name.
         tileid = tile.split('/')[-1]
 
+        #Switching from 5 digit tiled id in SV3
+        # Now we check it can be translated into int
+        
         # Check that tile ID is a 5-digit integer.
-        if not re.match(r'\d{5}', tileid):
-            continue
-        tileid = int(tileid)
+        #if not re.match(r'\d{5}', tileid):
+        #    continue
+        try:
+            tileid = int(tileid)
+        except:
+            print("Tileid probably not a number")
         print(tileid)
 
         # Loop through observation date subfolders.
@@ -208,11 +214,12 @@ if __name__ == '__main__':
             # Now check if this expid is already in db
             # If it is don't bother with opening files
             expids_arr = np.setdiff1d(expids_all,expids_done)
+            print(expids_all)
             
             expids = set(expids_arr)
             
             if (expids_arr.shape[0]>0):
-
+                print('Found new unique expids',expids_arr)
                 spectfiles = sorted(glob('{}/spectra*.fits'.format(date)))
                 coaddfiles = sorted(glob('{}/coadd*.fits'.format(date)))
 
