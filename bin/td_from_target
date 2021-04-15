@@ -6,6 +6,4 @@ sqlite3 $FILENAME "SELECT daily.TILEID,  daily.YYYYMMDD
         FROM daily
         INNER JOIN tiles
             ON daily.TILEID = tiles.TILEID
-        INNER JOIN targets 
-            ON tiles.TARGETID = targets.TARGETID
-        WHERE tiles.TARGETID = '$1';"
+        WHERE tiles.TARGETID = $1;"
