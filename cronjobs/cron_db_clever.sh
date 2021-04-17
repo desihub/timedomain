@@ -36,7 +36,7 @@ python ${run_path}exposure_db.py daily
 #AP added last obsdate constraint to make up for loss of desitrip_exposures db in March 2021
 query="select distinct obsdate,tileid from exposures
 where (tileid,obsdate) not in (select tileid,obsdate from desitrip_exposures)
-and program LIKE '%bgs%' and obsdate>20210228;" 
+and ((program LIKE '%bgs%') or (program LIKE '%bright%') or (faflavor LIKE '%bgs%')) and obsdate>20210228;" 
 
 mapfile -t -d $'\n' obsdates_tileids < <( sqlite3 ${td_path}transients_search.db "$query" )
 

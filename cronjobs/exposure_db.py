@@ -54,6 +54,7 @@ class ReduxDB:
                         moonalt float NOT NULL,
                         moonsep float NOT NULL,
                         moonfrac float NOT NULL,
+                        faflavor float NOT NULL,
                         FOREIGN KEY (tileid) REFERENCES tiles (tileid)
                     ); """
         self.create_table(sql)
@@ -76,7 +77,7 @@ class ReduxDB:
                       VALUES(?,?,?,?) """
         self.insert_row(sql, (tileid, tilera, tiledec, faflavor))
 
-    def add_exposure(self, expid, tileid, program, obsdate, obstime, obsmjd, exptime, airmass, moonalt, moonsep, moonfrac):
+    def add_exposure(self, expid, tileid, program, obsdate, obstime, obsmjd, exptime, airmass, moonalt, moonsep, moonfrac,flav):
         """Add an exposure to the exposures table.
 
         Parameters
@@ -104,9 +105,9 @@ class ReduxDB:
         moonfrac : float
             Moon illumination fraction (phase) in [0,1].
         """
-        sql = """ INSERT OR IGNORE INTO exposures(expid,tileid,program,obsdate,obstime,obsmjd,exptime,airmass,moonalt,moonsep,moonfrac)
-                      VALUES(?,?,?,?,?,?,?,?,?,?,?) """
-        self.insert_row(sql, (expid, tileid, program, obsdate, obstime, obsmjd, exptime, airmass, moonalt, moonsep, moonfrac))
+        sql = """ INSERT OR IGNORE INTO exposures(expid,tileid,program,obsdate,obstime,obsmjd,exptime,airmass,moonalt,moonsep,moonfrac,faflavor)
+                      VALUES(?,?,?,?,?,?,?,?,?,?,?,?) """
+        self.insert_row(sql, (expid, tileid, program, obsdate, obstime, obsmjd, exptime, airmass, moonalt, moonsep, moonfrac,flav))
 
         
     
@@ -222,35 +223,36 @@ if __name__ == '__main__':
 
             # Access fiberassign file and DESI exposure file for each exposure.
             for expid in expids:
+
                 cframe = os.environ['DESI_SPECTRO_REDUX'] + '/{}/exposures/{:08d}/{:08d}/cframe-b0-{:08d}.fits'.format(redux,obsdate,expid, expid)
-                #desiexp = os.environ['DESI_SPECTRO_DATA'] + '/{}/{:08d}/desi-{:08d}.fits.fz'.format(expid, expid)
-                print('trying to open ',cframe)
+                #prefix_in = os.environ['DESI_SPECTRO_REDUX'] + '/{}/exposures/{:08d}/{:08d}'.format(redux,obsdate,expid)
+                #cframe = sorted(glob('{}/cframe*.fits'.format(prefix_in)))[0]
 
                 if os.path.exists(cframe):
                     # Add tile info.
-                    h=fits.open(cframe)
-                    fhdr = h[1].header
-                    fa_details = h[5].header
-
-                    _id, _ra, _dec = [fa_details[_] for _ in ['TILEID', 'TILERA', 'TILEDEC']]
-                    if 'FAFLAVOR' in fa_details:
-                        _flav = fa_details['FAFLAVOR']
-                    elif 'FA_SURV' in fa_details:
-                        _flav = fa_details['FA_SURV']
+                    #h=fits.open(cframe)
+                    #cframe_fibermap = h[5].header
+                    cframe_fibermap = fitsio.read_header(cframe,'FIBERMAP')
+                    
+                    _id, _ra, _dec = [cframe_fibermap[_] for _ in ['TILEID', 'TILERA', 'TILEDEC']]
+                    if 'FAFLAVOR' in cframe_fibermap:
+                        _flav = cframe_fibermap['FAFLAVOR']
+                    elif 'FA_SURV' in cframe_fibermap:
+                        _flav = cframe_fibermap['FA_SURV']
                     else:
                         _flav = 'None'
 
                     db.add_tile(_id, _ra, _dec, _flav)
 
-                    mra, mdec = fa_details['MOONRA'], fa_details['MOONDEC']
-                    if 'MOONSEP' in fa_details:
-                        msep = fa_details['MOONSEP']
+                    mra, mdec = cframe_fibermap['MOONRA'], cframe_fibermap['MOONDEC']
+                    if 'MOONSEP' in cframe_fibermap:
+                        msep = cframe_fibermap['MOONSEP']
                     else:
                         cosA = np.sin(_dec)*np.sin(mdec) + np.cos(_dec)*np.cos(mdec)*np.cos(_ra - mra) 
                         msep = np.degrees(np.arccos(cosA))
 
-                    mjd, date, time = fa_details['MJD-OBS'], fa_details['NIGHT'], fa_details['DATE-OBS']
-                    lat, lon, elev = fa_details['OBS-LAT'], fa_details['OBS-LONG'], fa_details['OBS-ELEV']
+                    mjd, date, time = cframe_fibermap['MJD-OBS'], cframe_fibermap['NIGHT'], cframe_fibermap['DATE-OBS']
+                    lat, lon, elev = cframe_fibermap['OBS-LAT'], cframe_fibermap['OBS-LONG'], cframe_fibermap['OBS-ELEV']
 
                     if mayall is None:
                         mayall = ephem.Observer()
@@ -263,10 +265,10 @@ if __name__ == '__main__':
                     malt = moon.alt * 180/np.pi
                     
                     
-                    prog = fa_details['PROGRAM']
-                    et = fa_details['EXPTIME']
-                    am = fa_details['EXPTIME']
+                    prog = cframe_fibermap['PROGRAM']
+                    et = cframe_fibermap['EXPTIME']
+                    am = cframe_fibermap['AIRMASS']
 
                     print('Adding   - {}'.format((expid, _id, prog, date, time, mjd, et, am, malt, msep, mfrac)))
-                    db.add_exposure(expid.item(), _id, prog, date, time, mjd, et, am, malt, msep, mfrac)
+                    db.add_exposure(expid.item(), _id, prog, date, time, mjd, et, am, malt, msep, mfrac,_flav)
 
