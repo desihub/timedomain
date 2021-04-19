@@ -65,9 +65,12 @@ class SkyPortal:
             return SkyPortal.filt_id[filter_name]
         else:
             response = SkyPortal.api('GET', '{}/api/filters'.format(SkyPortal.url))
+#             if response.status_code in (200, 400):
+#                 print(f'JSON response: {response.json()}')
+            if response.status_code ==400:
+                raise Exception('Something wrong')
             data = response.json()['data']
             theOne = list(filter(lambda datum: datum['name']==filter_name,data))
-
             if len(theOne) !=0:
                 SkyPortal.filt_id[filter_name] = theOne[0]['id']
             else:
@@ -209,14 +212,17 @@ class SkyPortal:
     def postSpectra(target_id, spectra_in, data_override=None,coadd_camera=False):
 
         if data_override is not None:
+            
+            #erase old spectrum if exists.  New release spectra assumed better
             if 'altdata' in data_override.keys():
                 response=SkyPortal.api('GET',  '{}/api/sources/DESI{}/spectra'.format(SkyPortal.url,target_id))
                 if response.status_code == 200:
                     spec = response.json()['data']['spectra']
                     for s in spec:
                         if (data_override['altdata'] == s['altdata']):
-                            log.warning("Spectrum exists not overwriting")
-                            return
+                            response=SkyPortal.api('DELETE',  '{}/api/spectrum/{}'.format(SkyPortal.url,s['id']))
+#                             log.warning("Spectrum exists not overwriting")
+#                             return
             
         # fix to an upstream bug in spectra
         keep = numpy.equal(spectra_in.fibermap['TARGETID'].data, int(target_id))
@@ -317,11 +323,12 @@ class SkyPortal:
         fluxes = []
         fluxerrs = []
         for b in bands:
-            padspec = b.pad_spectrum(spectra.flux[spectra.bands[0]][index,:],spectra.wave[spectra.bands[0]])
+            ok = spectra.mask['brz'][index,:] ==0
+            padspec = b.pad_spectrum(spectra.flux[spectra.bands[0]][index,ok],spectra.wave[spectra.bands[0]][ok])
             fluxes.append(b.get_ab_maggies(padspec[0],padspec[1])*1e-17)
-            padspec = b.pad_spectrum(spectra.ivar[spectra.bands[0]][index,:],spectra.wave[spectra.bands[0]])
+            padspec = b.pad_spectrum(spectra.ivar[spectra.bands[0]][index,ok],spectra.wave[spectra.bands[0]][ok])
             fluxerrs.append(numpy.sqrt(b.get_ab_maggies(1/padspec[0],padspec[1]))*1e-17)
-
+            
         filters = ['sdssg','sdssr','sdssz']
 
         w=numpy.where(numpy.isfinite(fluxes))[0]
