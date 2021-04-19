@@ -5,7 +5,6 @@
 ## /global/cfs/cdirs/desi/science/td/daily-search/transients_search.db
 ## Blame Antonella Palmese version Jan 2021 for the ugliness of this code
 
-### set -e
 echo `date` Running daily time domain pipeline on `hostname`
 #- Configure desi environment if needed
 if [ -z "$DESI_ROOT" ]; then
@@ -33,11 +32,10 @@ echo "Looking for new exposures"
 
 python ${run_path}exposure_db.py daily
 
+# query="select distinct obsdate,tileid from exposures
+# where (tileid,obsdate) not in (select tileid,obsdate from desidiff_cv_spectra_exposures);"
 query="select distinct obsdate,tileid from exposures
-where (tileid,obsdate) not in (select tileid,obsdate from desidiff_cvspectra_exposures);"
-
-query="select distinct obsdate,tileid from exposures
-where (tileid,obsdate) not in (select tileid,obsdate from desidiff_cv_spectra_exposures) limit 90;"
+where (tileid,obsdate) not in (select tileid,obsdate from desidiff_cv_coadd_exposures);"
 
 mapfile -t -d $'\n' obsdates_tileids < <( sqlite3 ${td_path}transients_search.db "$query" )
 
@@ -59,6 +57,7 @@ echo "#!/bin/bash
 #SBATCH --output=$logfile
 #SBATCH --constraint=haswell
 ">${run_path}sbatch_file.sh
+
 
 Nobsdates_tileids=${#obsdates_tileids[@]}
 if [ $Nobsdates_tileids -eq 0 ]; then
@@ -89,23 +88,24 @@ else
     #     srun -o ${logfile} ${run_path_diff}/diff.py $lastnite CVLogic
     #     Date_SpectraPairs_Iterator daily coadd
     
-#             python ${run_path_diff}diff-db.py TileDate_SpectraPairs_Iterator CVLogic daily coadd --obsdates_tilenumbers ${subarr[@]}
-            python ${run_path_diff}diff-db.py TileDate_TargetPairs_Iterator CVLogic daily spectra --obsdates_tilenumbers ${subarr[@]}
+#             python ${run_path_diff}diff-db.py TileDate_TargetPairs_Iterator CVLogic daily spectra --obsdates_tilenumbers ${subarr[@]}
+            python ${run_path_diff}diff-db.py TileDate_SpectraPairs_Iterator CVLogic daily coadd --obsdates_tilenumbers ${subarr[@]}
             if [ $? -eq 0 ]
             then
                 echo "Successfully executed script"
                 #Now add this tile info to the sqlite db
                 for t in ${subarr[@]}; do
                     arrt=(${t//|/ })
-                    query="INSERT OR IGNORE INTO desidiff_cv_spectra_exposures(obsdate, tileid) VALUES(${arrt[0]},${arrt[1]});"
+#                     query="INSERT OR IGNORE INTO desidiff_cv_spectra_exposures(obsdate, tileid) VALUES(${arrt[0]},${arrt[1]});"
+                    query="INSERT OR IGNORE INTO desidiff_cv_coadd_exposures(obsdate, tileid) VALUES(${arrt[0]},${arrt[1]});"
                     echo $query
                     sqlite3 ${td_path}transients_search.db "$query"
                 done
             else
               # Redirect stdout from echo command to stderr.
-              echo "Script encountered error." >&2
+                echo "Script encountered error." >&2
 #               echo "Failure in $query" |  mail -s 'Failure: cron_db_diff.sh' agkim@lbl.gov
-              exit 1
+                exit 1
             fi
         done
 
