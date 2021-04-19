@@ -303,7 +303,7 @@ if __name__ == '__main__':
                 isGoodFiber = fibermap['FIBERSTATUS'] == 0
                 isGoodZbest = (zbest['DELTACHI2'] > 25.) & (zbest['ZWARN'] == 0)
                 select = isTGT & isGAL & isBGS & isGoodFiber & isGoodZbest
-                fibermap = delta_mag(cspectra, fibermap, select)
+                fibermap = delta_mag(cspectra, fibermap, select, nsigma=3)
 
                 print('     + selected: {}'.format(np.sum(select)))
 
