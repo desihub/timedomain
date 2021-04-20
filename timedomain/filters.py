@@ -208,7 +208,7 @@ class HydrogenLogic:
     zmin=0.001
     
     @staticmethod
-    def filter(pspectra0, pspectra1, zbest, norm=True, ston_cut=7., frac_inc_cut= .25):
+    def filter(pspectra0, pspectra1, zbest, norm=False, ston_cut=7., frac_inc_cut= .25):
 
         fibermap = pspectra0.fibermap #Table.read(datafile0, 'FIBERMAP')
         isTGT = fibermap['OBJTYPE'] == 'TGT'
@@ -225,7 +225,7 @@ class HydrogenLogic:
         nspec = diff.flux[diff.bands[0]].shape[0]
         
         signal=np.zeros(nspec)
-        signal[:]=np.zeros(nspec)
+#         signal[:]=np.zeros(nspec)
         var=np.zeros(nspec)
 #         ref_signal=np.zeros(nspec)
 #         w=np.where(diff.fibermap['TARGETID']==39627700813438689)[0]
@@ -233,7 +233,7 @@ class HydrogenLogic:
             wavecut = diff.wave[dindex]<HydrogenLogic.maxwave
             for sindex in range(nspec):
                 z = zbest['Z'][sindex]
-                if z>=zmin:
+                if z>=HydrogenLogic.zmin:
                     z_target_wave = (1+z)*HydrogenLogic.target_wave
 
                     #mask containing lines of interest
@@ -251,9 +251,9 @@ class HydrogenLogic:
     # #                         print( wmin,wmax)
     #                     lmask = np.logical_or(lmask, np.logical_and.reduce((diff.wave[dindex] >= wmin, diff.wave[dindex] < wmax)))
                         wmin = wa * np.exp(-1/HydrogenLogic.R/2.)
-    #                     wmax = wa * np.exp(-1/HydrogenLogic.R/5.)
-    #                     lmask = np.logical_or(lmask, np.logical_and.reduce((diff.wave[dindex] >= wmin, diff.wave[dindex] < wmax)))
-    #                     wmin = wa * np.exp(1/HydrogenLogic.R/5.)
+                        wmax = wa * np.exp(-1/HydrogenLogic.R/5.)
+                        lmask = np.logical_or(lmask, np.logical_and.reduce((diff.wave[dindex] >= wmin, diff.wave[dindex] < wmax)))
+                        wmin = wa * np.exp(1/HydrogenLogic.R/5.)
                         wmax = wa * np.exp(1/HydrogenLogic.R/2.)
                         lmask = np.logical_or(lmask, np.logical_and.reduce((diff.wave[dindex] >= wmin, diff.wave[dindex] < wmax)))
 
@@ -288,9 +288,11 @@ class HydrogenLogic:
         ok = np.logical_and.reduce((isTGT, okFibers, isGalaxy))
         signal = signal - np.nanpercentile(signal[ok],50)
         onesig = np.nanpercentile(signal[ok],(15.865,84.135))
-
+        if type(onesig) is not np.ndarray:
+            large = np.zeros(nspec)
+        else:
 #         print(signal[w],signal[w]/np.sqrt(var[w]),5*onesig)
-        large = np.logical_or(signal > 7*onesig[1], signal < 7* onesig[0])
+            large = np.logical_or(signal > 7*onesig[1], signal < 7* onesig[0])
         significant = (np.abs(signal)/ma.sqrt(var) >= ston_cut)
         triggered = np.logical_and.reduce((significant, isTGT, hasSignal, okFibers, isGalaxy, large))
         log.info("Number with signal {}; Number significant {}; Number large {}".format(hasSignal.sum(), significant.sum(), large.sum()))
