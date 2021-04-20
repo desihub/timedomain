@@ -308,22 +308,23 @@ if __name__ == '__main__':
                 print('     + selected: {}'.format(np.sum(select)))
 
                 # Accumulate spectrum data.
+                arm_avail = [key for key in cspectra.wave.keys()][0]
                 if (np.sum(select) > 0):
                     if allzbest is None:
                         allzbest = zbest[select]
                         allfmap = fibermap[select]
-                        allwave = cspectra.wave['brz']
-                        allflux = cspectra.flux['brz'][select]
-                        allivar = cspectra.ivar['brz'][select]
-                        allmask = cspectra.mask['brz'][select]
-                        allres  = cspectra.resolution_data['brz'][select]
+                        allwave = cspectra.wave[arm_avail]
+                        allflux = cspectra.flux[arm_avail][select]
+                        allivar = cspectra.ivar[arm_avail][select]
+                        allmask = cspectra.mask[arm_avail][select]
+                        allres  = cspectra.resolution_data[arm_avail][select]
                     else:
                         allzbest = vstack([allzbest, zbest[select]])
                         allfmap = vstack([allfmap, fibermap[select]])
-                        allflux = np.vstack([allflux, cspectra.flux['brz'][select]])
-                        allivar = np.vstack([allivar, cspectra.ivar['brz'][select]])
-                        allmask = np.vstack([allmask, cspectra.mask['brz'][select]])
-                        allres  = np.vstack([allres, cspectra.resolution_data['brz'][select]])
+                        allflux = np.vstack([allflux, cspectra.flux[arm_avail][select]])
+                        allivar = np.vstack([allivar, cspectra.ivar[arm_avail][select]])
+                        allmask = np.vstack([allmask, cspectra.mask[arm_avail][select]])
+                        allres  = np.vstack([allres, cspectra.resolution_data[arm_avail][select]])
 
         #                 # Break loop over petals - for now this is the easy way of checking if an exposure is 
         #                 break
@@ -378,11 +379,11 @@ if __name__ == '__main__':
                     fmap = join(fmap, classification, keys='TARGETID')
 
                     # Pack data into Spectra and write to FITS.
-                    cand_spectra = Spectra(bands=['brz'],
-                                           wave={'brz' : allwave},
-                                           flux={'brz' : allflux[idx]},
-                                           ivar={'brz' : allivar[idx]},
-                                           resolution_data={'brz' : allres[idx]},
+                    cand_spectra = Spectra(bands=[arm_avail],
+                                           wave={arm_avail : allwave},
+                                           flux={arm_avail : allflux[idx]},
+                                           ivar={arm_avail : allivar[idx]},
+                                           resolution_data={arm_avail : allres[idx]},
                                            fibermap=fmap
                                        )
 
@@ -416,9 +417,15 @@ if __name__ == '__main__':
 
                     for j, ax in zip(selection, axes.flatten()):
 
-                        delta_fibermag_g=allfmap['DELTAMAG_G'][j]
-                        delta_fibermag_r=allfmap['DELTAMAG_R'][j]
-                        delta_fibermag_z=allfmap['DELTAMAG_Z'][j]
+                        delta_fibermag_g=None
+                        delta_fibermag_r=None
+                        delta_fibermag_z=None
+                        if 'b' in arm_avail:
+                            delta_fibermag_g=allfmap['DELTAMAG_G'][j]
+                        if 'r' in arm_avail:
+                            delta_fibermag_r=allfmap['DELTAMAG_R'][j]
+                        if 'z' in arm_avail:
+                            delta_fibermag_z=allfmap['DELTAMAG_Z'][j]
 
                         if gradcam:
                             this_flux=rsflux[j,:].reshape((1,150)) 
