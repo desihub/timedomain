@@ -27,6 +27,12 @@ class TileDate:
         if name.kind =='f': return 'REAL'
         raise Exception("Boy are we screwed")
         
+    @staticmethod
+    def update():
+        db = TileDate()
+        db.load_daily(createTable=False)
+        db.load_tiles(createTable=False, latestOnly=True)
+        
     def load_targets(self, createTable=False):
 
         table_name = "targets"        
@@ -34,8 +40,7 @@ class TileDate:
             # draw one random file to pull information about the format and create the table
             command = f"CREATE TABLE {table_name} (LUNATAION TEXT, PROGRAM TEXT, TARGETID INTEGER, RA REAL, DEC REAL, UNIQUE(TARGETID));"
             self.cur.execute(command)
-
-            
+           
         # ToOs handled differently
         dir_root = "/global/cfs/cdirs/desi/survey/ops/surveyops/trunk/mtl/"
         subdirs = ['sv3/ToO']  
@@ -76,32 +81,6 @@ class TileDate:
                                 self.cur.execute(command)
                             except sqlite3.IntegrityError:
                                 pass
-                                
-#         if createTable:
-#             # draw one random file to pull information about the format and create the table
-#             command = f"CREATE TABLE {table_name} (LUNATAION TEXT, PROGRAM TEXT"
-#             filename = glob.glob(os.path.join(dir_root,lunations[0]+'/*.fits'))[0]
-#             fits = fitsio.FITS(filename)
-#             for col in fits['TARGETS'].get_colnames():
-#                 command += ", {} {}".format(col,DB.type_py2sql(fits['TARGETS'].get_rec_dtype()[0][col])) 
-#             command +=" UNIQUE (TARGETID))"
-#             self.cur.execute(command)
-
-#         # Fill in the table
-#         for lunation in lunations:
-#             for root, dirs, files in os.walk(os.path.join(dir_root,lunation)):
-#                 for file in files:
-#                     if file.endswith('.fits'):
-#                         filename = os.path.join(root,file)
-#                         program = file[:-5]
-#                         fits = fitsio.FITS(filename)
-#                         for t in fits['TARGETS']:
-#                             converted_t = ["'{}'".format(str(element)) for element in t]
-#                             command = "INSERT INTO {} VALUES ('{}', '{}', {});".format(table_name,lunation,program, ",".join(converted_t))
-#                             try:
-#                                 self.cur.execute(command)
-#                             except sqlite3.IntegrityError:
-#                                 print("couldn't add targetid twice")
         self.con.commit()
                             
     def load_tiles(self, createTable=False, latestOnly=False):
@@ -222,20 +201,6 @@ class TileDate:
                             cur.close()
                             self.con.commit()
         
-#         for path in glob.glob(f'{dir_root}/*/*'):
-#             split = path.split('/')
-#             tileid=split[-2]; date=split[-1]
-#             if date.isnumeric() and int(date) >= maxdate and tileid.isnumeric():
-#                 command = "INSERT INTO {} VALUES ({}, {});".format(table_name,tileid,date)
-#                 try:
-#                     with self.con:
-#                         self.con.execute(command)
-#                 except sqlite3.IntegrityError:
-#                     print("couldn't add daily twice")
-                    
-                    
-
-        
     @staticmethod
     def byTARGETID(targetid):
         db=TileDate()
@@ -269,6 +234,5 @@ class TileDate:
         return db.cur.execute(command).fetchall()
     
 if __name__ == "__main__":
-    # running as a cron job on desi16
-    db = TileDate()
-    db.load_daily()
+    # running as a cron job on cori10
+    TileDate.update()
