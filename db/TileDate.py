@@ -28,16 +28,38 @@ class TileDate:
         raise Exception("Boy are we screwed")
         
     def load_targets(self, createTable=False):
-        dir_root = "/global/cfs/cdirs/desi/target/secondary/sv3/outdata/0.57.0/"
-        lunations = ["bright", "dark"]
-        table_name = "targets"
-        
+
+        table_name = "targets"        
         if createTable:
             # draw one random file to pull information about the format and create the table
             command = f"CREATE TABLE {table_name} (LUNATAION TEXT, PROGRAM TEXT, TARGETID INTEGER, RA REAL, DEC REAL, UNIQUE(TARGETID));"
             self.cur.execute(command)
 
+            
+        # ToOs handled differently
+        dir_root = "/global/cfs/cdirs/desi/survey/ops/surveyops/trunk/mtl/"
+        subdirs = ['sv3/ToO']  
         # Fill in the table
+        for sd in subdirs:
+            for root, dirs, files in os.walk(os.path.join(dir_root,sd)):
+                for file in files:
+                    if file.endswith('.ecsv'):
+                        filename = os.path.join(root,file)
+                        data = ascii.read(filename, include_names=["TARGETID","RA","DEC"])
+                        cur = self.con.cursor()
+                        for datum in zip(data['TARGETID'],data['RA'],data['DEC']):
+                            converted_t = ["'{}'".format(str(element)) for element in datum]
+                            command = "INSERT INTO {} VALUES (NULL, 'ToO', {});".format(table_name,",".join(converted_t))
+                            try:
+                                cur.execute(command)
+                            except sqlite3.IntegrityError:
+                                pass
+                        cur.close()
+                        self.con.commit()      
+            
+        # Fill in the table
+        dir_root = "/global/cfs/cdirs/desi/target/secondary/sv3/outdata/0.57.0/"
+        lunations = ["bright", "dark"]
         for lunation in lunations:
             for root, dirs, files in os.walk(os.path.join(dir_root,lunation)):
                 for file in files:
@@ -82,54 +104,26 @@ class TileDate:
 #                                 print("couldn't add targetid twice")
         self.con.commit()
                             
-    def load_tiles(self, createTable=False):
+    def load_tiles(self, createTable=False, latestOnly=False):
 
         table_name = "tiles"
         if createTable:
             command = f"CREATE TABLE tiles (TARGETID INTEGER, TILEID INTEGER, UNIQUE (TARGETID, TILEID));"
             self.con.execute(command)      
             
-#         # SV 1
-        filename = "/global/cfs/cdirs/desi/spectro/redux/daily/tiles.csv"
-        fbase = "/global/cfs/cdirs/desi/target/fiberassign/tiles/trunk"
-        data = ascii.read(filename, include_names=["TILEID","SURVEY"])  
-        for d in data:
-            if d[1]=='sv1': # and d[0] == 80617:
-                ptile = d[0].astype('str')
-                ptile = ptile.zfill(6)
-                ffile = os.path.join(fbase,ptile[:3],f'fiberassign-{ptile}.fits.gz')
-                fits = fitsio.FITS(ffile)
-                col = fits['FIBERASSIGN']['TARGETID']
-#                 dbinput = np.zeros((col.read().shape[0],2),dtype='int')
-#                 dbinput[:, 1]=d[0]
-#                 dbinput[:, 0]=col.read()
-                cur = self.con.cursor()
-                for datum in col.read():
-                    try:
-                        cur.execute(f"insert into tiles values ({datum}, {d[0]})")
-                    except sqlite3.IntegrityError:
-                        pass    
-                cur.close()
-                self.con.commit()
-
-    
-        # SV2 onward
+        # SV3 onward
         dir_root = "/global/cfs/cdirs/desi/survey/ops/surveyops/trunk/mtl/"
-        subdirs = ['sv2','sv3','sv3/secondary']
+        subdirs = ['sv3','sv3/secondary']
         lunations = ["bright", "dark"]    
 
-        # Fill in the table
+#         # Fill in the table
         for sd in subdirs:
             for lunation in lunations:
                 for root, dirs, files in os.walk(os.path.join(dir_root,sd,lunation)):
                     for file in files:
                         if file.endswith('.ecsv'):
                             filename = os.path.join(root,file)
-#                             print(filename)
                             data = ascii.read(filename, include_names=["TARGETID","ZTILEID"])
-#                             dbinput = np.zeros((col.read().shape[0],2),dtype='int')
-#                             dbinput[:, 1]=d[0]
-#                             dbinput[:, 0]=col.read()
                             cur = self.con.cursor()
                             for datum in data:
                                 try:
@@ -138,15 +132,50 @@ class TileDate:
                                     pass
                             cur.close()
                             self.con.commit()
-    
-#                             for t,z in data:
-#                                 command = "INSERT INTO {} VALUES ('{}', '{}');".format(table_name,t,z)
-#                                 try:
-#                                     with self.con:
-#                                         self.con.execute(command)
-#                                 except sqlite3.IntegrityError:
-#                                     pass
-#         self.con.commit()
+
+        if not latestOnly:
+#             # SV 1
+            filename = "/global/cfs/cdirs/desi/spectro/redux/daily/tiles.csv"
+            fbase = "/global/cfs/cdirs/desi/target/fiberassign/tiles/trunk"
+            data = ascii.read(filename, include_names=["TILEID","SURVEY"])  
+            for d in data:
+                if d[1]=='sv1': # and d[0] == 80617:
+                    ptile = d[0].astype('str')
+                    ptile = ptile.zfill(6)
+                    ffile = os.path.join(fbase,ptile[:3],f'fiberassign-{ptile}.fits.gz')
+                    fits = fitsio.FITS(ffile)
+                    col = fits['FIBERASSIGN']['TARGETID']
+                    cur = self.con.cursor()
+                    for datum in col.read():
+                        try:
+                            cur.execute(f"insert into tiles values ({datum}, {d[0]})")
+                        except sqlite3.IntegrityError:
+                            pass    
+                    cur.close()
+                    self.con.commit()
+                    
+#             # SV2 onward
+            dir_root = "/global/cfs/cdirs/desi/survey/ops/surveyops/trunk/mtl/"
+            subdirs = ['sv2']
+            lunations = ["bright", "dark"]    
+
+            # Fill in the table
+            for sd in subdirs:
+                for lunation in lunations:
+                    for root, dirs, files in os.walk(os.path.join(dir_root,sd,lunation)):
+                        for file in files:
+                            if file.endswith('.ecsv'):
+                                filename = os.path.join(root,file)
+                                data = ascii.read(filename, include_names=["TARGETID","ZTILEID"])
+                                cur = self.con.cursor()
+                                for datum in data:
+                                    try:
+                                        cur.execute(f"insert into tiles values ({datum[0]}, {datum[1]})")
+                                    except sqlite3.IntegrityError:
+                                        pass
+                                cur.close()
+                                self.con.commit()
+                            
 
     def load_daily(self,createTable=False):
         dir_root = "/global/project/projectdirs/desi/spectro/redux/daily/tiles/"
@@ -154,7 +183,7 @@ class TileDate:
         table_name = "daily"
         
         if createTable:
-            command = f"CREATE TABLE {table_name} (TILEID INTEGER, YYYYMMDD INTEGER, UNIQUE (TILEID, YYYYMMDD));"
+            command = f"CREATE TABLE daily (TILEID INTEGER, YYYYMMDD INTEGER, PANELID INTEGER, TARGETID INTEGER, UNIQUE (TILEID, YYYYMMDD, PANELID, TARGETID));"
             self.con.execute(command)   
         
         #find the last date
@@ -163,17 +192,48 @@ class TileDate:
         maxdate = ans.fetchone()[0]
         if maxdate is None: maxdate = 0
         print(maxdate)
-        
-        for path in glob.glob(f'{dir_root}/*/*'):
+
+        dates = []
+        for path in glob.glob(f'{dir_root}/*/202?????'):
             split = path.split('/')
-            tileid=split[-2]; date=split[-1]
-            if date.isnumeric() and int(date) >= maxdate and tileid.isnumeric():
-                command = "INSERT INTO {} VALUES ({}, {});".format(table_name,tileid,date)
-                try:
-                    with self.con:
-                        self.con.execute(command)
-                except sqlite3.IntegrityError:
-                    print("couldn't add daily twice")
+            dates.append(split[-1])
+        dates = numpy.unique(dates)
+
+        for date in dates:
+            if int(date) >= maxdate:
+                for path in glob.glob(f'{dir_root}/*/{date}'):
+                    split = path.split('/')
+                    tile = split[-2]
+                    if tile.isnumeric():
+                        for i in range(10):
+                            fn = f'{dir_root}/{tile}/{date}/zbest-{i}-{tile}-{date}.fits'
+                            try:
+                                tids=fitsio.read(fn, "FIBERMAP", columns="TARGETID")
+                            except:
+                                print(f"{fn} not found")
+                                break
+                                
+                            cur = self.con.cursor()
+                            for datum in tids:
+                                try:
+                                    cur.execute(f"insert into daily values ({tile}, {date}, {i}, {datum})")
+                                except sqlite3.IntegrityError:
+                                    pass 
+                            cur.close()
+                            self.con.commit()
+        
+#         for path in glob.glob(f'{dir_root}/*/*'):
+#             split = path.split('/')
+#             tileid=split[-2]; date=split[-1]
+#             if date.isnumeric() and int(date) >= maxdate and tileid.isnumeric():
+#                 command = "INSERT INTO {} VALUES ({}, {});".format(table_name,tileid,date)
+#                 try:
+#                     with self.con:
+#                         self.con.execute(command)
+#                 except sqlite3.IntegrityError:
+#                     print("couldn't add daily twice")
+                    
+                    
 
         
     @staticmethod

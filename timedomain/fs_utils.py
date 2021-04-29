@@ -10,17 +10,16 @@ panels = np.arange(10).astype('str')
 # this set of images officially dead to DESI
 bad = [["20210228","80726"],["20210228","80726"],["20210228","80740"],["20210228","80741"]]
 
-def recentRelease(redux,tile, date, panel, trunk):
-    ans = None
-    for testdir in config.releases:
-        name  = os.path.join(redux,testdir,'tiles',tile, date, '{}-{}-{}-{}.fits'.format(trunk,panel,tile,date))
-        if os.path.exists(name):
-            ans = testdir
-    if ans is None:
-#         name  = os.path.join(redux,'daily','tiles',tile, date, '{}-{}-{}-{}.fits'.format(trunk,panel,tile,date))
-#         if os.path.exists(name):
-        ans = 'daily'
-    return ans
+# def recentRelease(redux,tile, date, panel, trunk):
+#     ans = None
+#     name  = os.path.join(redux,config.releases[-1],'tiles',tile, date, '{}-{}-{}-{}.fits'.format(trunk,panel,tile,date))
+#     if os.path.exists(name):
+#         ans = releases[-1]
+#     if ans is None:
+# #         name  = os.path.join(redux,'daily','tiles',tile, date, '{}-{}-{}-{}.fits'.format(trunk,panel,tile,date))
+# #         if os.path.exists(name):
+#         ans = 'daily'
+#     return ans
 
 def useSubdir(subdir,date="99999999"):
     if subdir == 'recent':
@@ -29,19 +28,30 @@ def useSubdir(subdir,date="99999999"):
         else:
             return "daily"   
     return subdir
+
+# def datadir(release,coadd):
+    
+#     if release == "daily" or release in config.releases[0:3]:
+#         return os.path.join(redux,usesubdir,'tiles')
+#     elif coadd in ["cumulative","pernight","perexp"]
+#         return os.path.join(redux,usesubdir,'tiles',coadd)
+#     else:
+#         raise Exception("bad path")
         
-
 def fitsfile(tile, date, panel, subdir='recent',trunk='coadd'):
-    
-    if [date,tile] in bad:
-        return None
-    
+#     if [date,tile] in bad:
+#         return None
     usesubdir=useSubdir(subdir,date)
-
-    name  = os.path.join(redux,usesubdir,'tiles',tile, date, '{}-{}-{}-{}.fits'.format(trunk,panel,tile,date))
+    
+#     usesubdir=useSubdir(subdir,date)
+    
+    if usesubdir=='daily':
+        name  = os.path.join(redux,usesubdir,'tiles',tile, date, '{}-{}-{}-{}.fits'.format(trunk,panel,tile,date))
+    else:
+        name  = os.path.join(redux,usesubdir,'tiles/pernight',tile, date, '{}-{}-{}-{}.fits'.format(trunk,panel,tile,date))
     exists = os.path.exists(name)
     if exists:
-        return os.path.join(redux,usesubdir,'tiles',tile, date, '{}-{}-{}-{}.fits'.format(trunk,panel,tile,date))
+        return name
     else:
         return None
 
