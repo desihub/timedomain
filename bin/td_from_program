@@ -2,7 +2,7 @@
 
 FILENAME="/global/cfs/cdirs/desi/science/td/db/secondary.db"
 
-sqlite3 $FILENAME "SELECT targets.PROGRAM, targets.RA, targets.DEC, targets.TARGETID, daily.TILEID,  daily.YYYYMMDD, daily.PANELID
+sqlite3 $FILENAME "SELECT targets.PROGRAM, targets.RA, targets.DEC, targets.TARGETID, daily.TILEID,  daily.YYYYMMDD, daily.PETAL
         FROM daily
         INNER JOIN targets 
             ON daily.TARGETID = targets.TARGETID
