@@ -136,7 +136,6 @@ class DBManager:
         maxdate = ans.fetchone()[0]
         if maxdate is None: maxdate = 0
         print(maxdate)
-        wefwe
         dates = []
         for path in glob.glob(f'{dir_root}/*/202?????'):
             split = path.split('/')
@@ -209,6 +208,7 @@ class DBManager:
                             if (int(date) == maxdate):
                                 ans=con.execute(f"SELECT count(*) FROM spectra WHERE PRODUCTION = '{prod}' AND YYYYMMDD={date} AND TILE={tile} AND PETAL={i}")
                                 if ans.fetchone()[0] !=0:
+                                    print(f"skipping {date} {tile} {i}")
                                     break
                             
                             filename = f'{dir_root}/{tile}/{date}/spectra-{i}-{tile}-{date}.fits'
@@ -225,9 +225,9 @@ class DBManager:
                             df['PETAL']=numpy.full(df.shape[0],i)
                             df['YYYYMMDD']=numpy.full(df.shape[0],int(date))
                             dfs.append(df)
-                            
-        dfs = pandas.concat(dfs, ignore_index=True, sort=False)                    
-        dfs.to_sql('spectra',con,if_exists='append')  
+        if len(dfs != 0):
+            dfs = pandas.concat(dfs, ignore_index=True, sort=False)                    
+            dfs.to_sql('spectra',con,if_exists='append')  
         con.close    
 
     @staticmethod
@@ -237,11 +237,14 @@ class DBManager:
 
     @staticmethod
     def byProgram(program):
-        command = f'''SELECT DISTINCT secondary.PROGRAM, secondary.TARGETID, secondary.RA, secondary.DEC, zbest.TILE, zbest.PETAL, zbest.YYYYMMDD, zbest.PRODUCTION, zbest.Z, zbest.ZERR, zbest.SPECTYPE
+
+        command = f'''SELECT DISTINCT secondary.PROGRAM, secondary.TARGETID, secondary.RA, secondary.DEC, zbest.PRODUCTION, zbest.YYYYMMDD, zbest.Z, zbest.ZERR, zbest.SPECTYPE, redshifts_prod.PRODUCTION, redshifts_prod.Z, redshifts_prod.ZERR, redshifts_prod.SPECTYPE, redshifts_prod.DELTACHI2, redshifts_prod.ZWARN
         FROM zbest
         INNER JOIN secondary
             ON secondary.targetid = zbest.targetid
-        WHERE secondary.PROGRAM LIKE "PV%" and zbest.PETAL=5
+        INNER JOIN redshifts_prod
+            ON secondary.targetid = redshifts_prod.targetid
+        WHERE secondary.PROGRAM LIKE "PV%" and redshifts_prod.COADD="cumulative"
         ORDER BY
             secondary.PROGRAM,
             secondary.TARGETID
@@ -258,6 +261,16 @@ class DBManager:
             secondary.TARGETID
         LIMIT 10;
         '''
+        command = f'''SELECT DISTINCT secondary.TARGETID, secondary.RA, secondary.DEC, spectra.EXPID, spectra.FIBER_RA, spectra.FIBER_DEC
+        FROM secondary
+        INNER JOIN spectra
+            ON secondary.targetid = spectra.targetid
+        WHERE secondary.PROGRAM LIKE "PV%"
+        ORDER BY
+            secondary.PROGRAM,
+            secondary.TARGETID
+        LIMIT 10;
+        '''        
     
 if __name__ == "__main__":
     # running as a cron job on cori10
