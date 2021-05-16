@@ -61,7 +61,7 @@ spectra_prod:
 
 class DBManager:
     
-    filename = "/global/cfs/cdirs/desi/science/td/db/desi2.db"
+    filename = "/global/cfs/cdirs/desi/science/td/db/desi.db"
 
     #####
     #
@@ -370,7 +370,7 @@ class DBManager:
         
     @staticmethod
     def load_daily():
-        DBManager.load_zbest_daily(prod="daily")        
+        DBManager.load_zbest_daily()        
 #         DBManager.load_spectra(prod="daily")
 
     @staticmethod
