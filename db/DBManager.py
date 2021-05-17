@@ -39,6 +39,7 @@ zbest_prod:
 
     Table name: zbest_<prod>
     
+    (hdu=1 is zbest, don't save hdu=2 for fibermap)
     Table sources:
     /global/project/projectdirs/desi/spectro/redux/{prod}/tiles/cumulative/*/zbest*.fits 
     /global/project/projectdirs/desi/spectro/redux/{prod}/tiles/pernight/*/zbest*.fits
@@ -46,7 +47,7 @@ zbest_prod:
 zbest_daily:
 
     Table name: zbest_daily
-    
+    (hdu=1 is zbest, don't save hdu=2 for fibermap)
     Table sources:
     /global/project/projectdirs/desi/spectro/redux/daily/tiles/cumulative
     
@@ -170,7 +171,7 @@ class DBManager:
                         for i in range(10):                            
                             filename = f'{dir_root}/{tile}/{date}/zbest-{i}-{tile}-{substr}{date}.fits'
                             try:
-                                dat = Table.read(filename, format='fits')
+                                dat = Table.read(filename, format='fits',hdu=1)
                             except:
                                 print(f"{filename} not found")
                                 continue
@@ -196,8 +197,7 @@ class DBManager:
         ans=con.execute(f"SELECT MAX(YYYYMMDD) FROM zbest_daily")
         maxdate = ans.fetchone()[0]
         if maxdate is None: maxdate = 0
-        print(maxdate)
-        maxdate = 0
+        print('max data ',maxdate)
         dates = []
         for path in glob.glob(f'{dir_root}/*/202?????'):
             split = path.split('/')
@@ -210,6 +210,7 @@ class DBManager:
                     split = path.split('/')
                     tile = split[-2]
                     if tile.isnumeric():
+                        print(date,tile)
                         for i in range(10):                            
                             
                             # check to see if this file has been done already and if so break
@@ -220,11 +221,10 @@ class DBManager:
                             
                             filename = f'{dir_root}/{tile}/{date}/zbest-{i}-{tile}-thru{date}.fits'
                             try:
-                                dat = Table.read(filename, format='fits')
+                                dat = Table.read(filename, format='fits',hdu=1)
                             except:
                                 print(f"{filename} not found")
                                 continue
-                                
                             for icoeff in range(0,10):
                                 dat[f'COEFF_{icoeff}']= dat['COEFF'][0:len(dat),icoeff]
                             dat.remove_column('COEFF')
