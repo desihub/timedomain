@@ -395,7 +395,6 @@ if __name__ == '__main__':
                         # Collect the extra data specific to DESITRIP to be saved
                         data = dict()
                         data['redshift'] = fmap['Z'].data[i]
-                        data['redshift_history'] = 'Redrock'
                         altdata_dict = dict()
                         altdata_dict['classifier']={'CNNLABEL' : fmap['CNNLABEL'].data[i]}
                         data['altdata'] = altdata_dict
