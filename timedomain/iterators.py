@@ -87,14 +87,17 @@ class TileDate_PreDate_Iterator:
     def __next__(self):
         
         if self.it0 is None:
-            predates = fs_utils.tileToDates(self.tile, subdir=self.subdir)
-            predates = np.array(predates,dtype='str')
-            w = np.logical_and(predates < self.date, predates >= config.mindate)
-            predates = predates[w]
-            if len(predates)==0:
-                raise StopIteration
-            self.it0 = predates.flat
-            return self.it0.__next__()
+            try:
+                predates = fs_utils.tileToDates(self.tile, subdir=self.subdir)
+                predates = np.array(predates,dtype='str')
+                w = np.logical_and(predates < self.date, predates >= config.mindate)
+                predates = predates[w]
+                if len(predates)==0:
+                    raise StopIteration
+                self.it0 = predates.flat
+                return self.it0.__next__()
+            except FileNotFoundError:
+                raise StopIteration 
         
         try:
             return self.it0.__next__()

@@ -103,7 +103,7 @@ def tileToDates(tile, subdir='andes'):
 
     dirname = os.path.join(redux,usesubdir,'tiles',tile)
     if not os.path.isdir(dirname):
-        print('{} does not exist.'.format(dirname))
+        raise FileNotFoundError(dirname)
 
     dates = [f.path for f in os.scandir(dirname) if f.is_dir()]
 
