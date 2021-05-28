@@ -391,6 +391,7 @@ if __name__ == '__main__':
                     print('Output file saved in {}'.format(outfits))
 
                     #DESITRIP_daily - Send the selected fluxes to SkyPortal - Divij Sharma
+                    #Modified by AP in Apr 2021 to fix new error
                     for i in range(len(fmap['TARGETID'])):
                         # Collect the extra data specific to DESITRIP to be saved
                         data = dict()
