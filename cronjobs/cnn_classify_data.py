@@ -400,7 +400,7 @@ if __name__ == '__main__':
                         data['altdata'] = altdata_dict
 
                         SkyPortal.postCandidate(i, fmap, 'DESITRIP', data_override=data)
-                        SkyPortal.postSpectra(i, cand_spectra)
+                        SkyPortal.postSpectra(fmap['TARGETID'][i], cand_spectra)
 
                     # Make a plot of up to 16 transients
 
