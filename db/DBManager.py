@@ -181,6 +181,29 @@ class DBManager:
             df.to_sql('redshifts_prod',con,if_exists='fail')            
         con.close()
  
+
+    # not debugged somehow got lost so rewrote
+    @staticmethod
+    def load_proposals_pv():       
+        runs = ["main","sv3","sv1"]
+        lunations = ["BRIGHT","DARK"]
+        priorities = ["LOW", "MEDIUM", "HIGH"]
+        for run in runs:
+            for lunation in lunations:
+                for priority in priorities:
+                    filename = f"/global/cfs/cdirs/desi/target/proposals/proposals_{run}_year1_frozen/indata/PV_{lunation}_{priority}.fits"
+                    try:
+                        dat = Table.read(filename, format='fits')
+                    except:
+                        print(f"{filename} not found")
+                        continue                        
+                    
+                    df = dat.to_pandas()
+                    df['PRIORITY']=numpy.full(df.shape[0],priority)
+                    df['LUNATION']=numpy.full(df.shape[0],lunation)
+                    df.to_sql('proposals_pv',con,if_exists='fail')            
+            con.close()
+            
     @staticmethod
     def load_zbest_prod(prod="denali"):
 
@@ -286,7 +309,6 @@ class DBManager:
             split = path.split('/')
             dates.append(split[-1])
         dates = numpy.unique(dates)
-        dates = numpy.flip(dates)
         
         dfs=[]   # used only for schema
         for date in dates:
