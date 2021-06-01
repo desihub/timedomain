@@ -402,9 +402,17 @@ if __name__ == '__main__':
 
                         try:
                             SkyPortal.postCandidate(i, fmap, 'DESITRIP', data_override=data)
+                        except UniqueViolationError as err:
+                            log.info(err.response.json())
+                        except Exception as err:
+                            print(err)
+#                             sys.exit(1)
+
+                        try:
                             SkyPortal.postSpectra(fmap['TARGETID'][i], cand_spectra)
-                        except:
-                            print("Candidate ",fmap['TARGETID'][i]," not posted to SkyPortal")
+                        except Exception as err:
+                            print(err)
+#                             sys.exit(1)
 
                     # Make a plot of up to 16 transients
 
