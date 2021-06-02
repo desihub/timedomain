@@ -64,12 +64,45 @@ class DBManager:
     
     filename = "/global/cfs/cdirs/desi/science/td/db/desi.db"
 
-    #####
-    #
-    #  The files have column names with SV?_ so purge them
-    #
+    # ONLY DO ToO since not obvious others are needed.
     @staticmethod
+    def load_mtl():
 
+        root = "/global/cfs/cdirs/desi/survey/ops/surveyops/trunk/mtl/"
+        runs = ["main","sv3","sv2"]
+        programs = ["","ToO","secondary"]
+        lunations = ["bright","dark",""]
+
+        # The files have column names with SV?_ so purge them
+
+        dfs=[]
+        for run in runs:
+            dfall_2 = None
+            for program in programs:
+                for lunation in lunations:
+                    print(run, program, lunation)
+                    path = os.path.join(root,run,program,lunation)
+                    if os.path.isdir(path):
+                        for file in glob.glob(path+"/*.ecsv"):
+#                             print(file)
+                            if "input" in file:
+                                continue
+                            data = ascii.read(file)
+                            df = data.to_pandas()
+
+                            df['RUN']=numpy.full(df.shape[0],run)
+                            df['PROGRAM']=numpy.full(df.shape[0],program)
+                            df['LUNATION']=numpy.full(df.shape[0],lunation)
+                            
+                            dfs.append(df)
+                    else:
+                        print (path, 'not exists')
+
+        dfs = pandas.concat(dfs, ignore_index=True, sort=False)
+                    
+        con = sqlite3.connect(DBManager.filename)
+        dfs.to_sql('mtl',con,if_exists='append')  
+        con.close() 
 
     @staticmethod
     def load_secondary(runs=['sv3','main']): # createTable=False):
@@ -148,6 +181,29 @@ class DBManager:
             df.to_sql('redshifts_prod',con,if_exists='fail')            
         con.close()
  
+
+    # not debugged somehow got lost so rewrote
+    @staticmethod
+    def load_proposals_pv():       
+        runs = ["main","sv3","sv1"]
+        lunations = ["BRIGHT","DARK"]
+        priorities = ["LOW", "MEDIUM", "HIGH"]
+        for run in runs:
+            for lunation in lunations:
+                for priority in priorities:
+                    filename = f"/global/cfs/cdirs/desi/target/proposals/proposals_{run}_year1_frozen/indata/PV_{lunation}_{priority}.fits"
+                    try:
+                        dat = Table.read(filename, format='fits')
+                    except:
+                        print(f"{filename} not found")
+                        continue                        
+                    
+                    df = dat.to_pandas()
+                    df['PRIORITY']=numpy.full(df.shape[0],priority)
+                    df['LUNATION']=numpy.full(df.shape[0],lunation)
+                    df.to_sql('proposals_pv',con,if_exists='fail')            
+            con.close()
+            
     @staticmethod
     def load_zbest_prod(prod="denali"):
 
@@ -237,6 +293,76 @@ class DBManager:
                             df.to_sql(f'zbest_daily',con,if_exists='append')
         con.close
 
+    @staticmethod
+    def load_fibermap_daily(schema=False):
+        dir_root = "/global/project/projectdirs/desi/spectro/redux/daily/tiles/cumulative"
+        
+        con = sqlite3.connect(DBManager.filename)        
+        #find the last date
+        ans=con.execute(f"SELECT MAX(YYYYMMDD) FROM fibermap_daily")
+        maxdate = ans.fetchone()[0]
+        if maxdate is None: maxdate = 0
+
+        print('max data ',maxdate)
+        dates = []
+        for path in glob.glob(f'{dir_root}/*/202?????'):
+            split = path.split('/')
+            dates.append(split[-1])
+        dates = numpy.unique(dates)
+        
+        dfs=[]   # used only for schema
+        for date in dates:
+            if int(date) >= maxdate:
+                for path in glob.glob(f'{dir_root}/*/{date}'):
+                    split = path.split('/')
+                    tile = split[-2]
+                    if tile.isnumeric():
+                        print(date,tile)
+                        if schema:
+                            i=0
+                            filename = f'{dir_root}/{tile}/{date}/zbest-{i}-{tile}-thru{date}.fits'
+                            try:
+                                dat = Table.read(filename, format='fits',hdu=2)
+                            except:
+                                print(f"{filename} not found")
+                                continue
+                                
+                            df = dat.to_pandas()
+                            df['GROUPING'] = numpy.full(df.shape[0],'cumulative')
+                            df['PRODUCTION']=numpy.full(df.shape[0],'daily')
+                            df['TILE']=numpy.full(df.shape[0],int(tile))
+                            df['PETAL']=numpy.full(df.shape[0],i)
+                            df['YYYYMMDD']=numpy.full(df.shape[0],int(date))
+                            dfs.append(df[0:0])
+                        else:                                
+                            for i in range(10):      
+                                # check to see if this file has been done already and if so break
+                                if (int(date) == maxdate):
+                                    ans=con.execute(f"SELECT count(*) FROM fibermap_daily WHERE YYYYMMDD={date} AND TILE={tile} AND PETAL={i}")
+                                    if ans.fetchone()[0] !=0:
+                                        continue
+
+                                filename = f'{dir_root}/{tile}/{date}/zbest-{i}-{tile}-thru{date}.fits'
+                                try:
+                                    dat = Table.read(filename, format='fits',hdu=2)
+                                except:
+                                    print(f"{filename} not found")
+                                    continue
+                                df = dat.to_pandas()
+                                df['GROUPING'] = numpy.full(df.shape[0],'cumulative')
+                                df['PRODUCTION']=numpy.full(df.shape[0],'daily')
+                                df['TILE']=numpy.full(df.shape[0],int(tile))
+                                df['PETAL']=numpy.full(df.shape[0],i)
+                                df['YYYYMMDD']=numpy.full(df.shape[0],int(date))
+                                df.to_sql(f'fibermap_daily',con,if_exists='append')
+                            
+        if schema:
+            dfs = pandas.concat(dfs, ignore_index=True, sort=False)
+            dfs=dfs[0:0]
+            dfs.to_sql(f'fibermap_daily',con,if_exists='replace')
+            
+        con.close
+        
     @staticmethod
     def load_spectra_prod(prod="denali"):
         # from what I can tell all the information in daily is in cumulative
@@ -370,7 +496,8 @@ class DBManager:
         
     @staticmethod
     def load_daily():
-        DBManager.load_zbest_daily()        
+        DBManager.load_zbest_daily()
+        DBManager.load_fibermap_daily()
 #         DBManager.load_spectra(prod="daily")
 
     @staticmethod
@@ -386,7 +513,8 @@ class DBManager:
             secondary.TARGETID
         LIMIT 10;
         ''' 
-            
+
+        
 if __name__ == "__main__":
     # running as a cron job on cori10
     DBManager.load_daily()
