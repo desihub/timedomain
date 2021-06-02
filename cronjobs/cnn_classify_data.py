@@ -391,6 +391,7 @@ if __name__ == '__main__':
                     print('Output file saved in {}'.format(outfits))
 
                     #DESITRIP_daily - Send the selected fluxes to SkyPortal - Divij Sharma
+                    #Modified by AP in Apr 2021 to fix new error
                     for i in range(len(fmap['TARGETID'])):
                         # Collect the extra data specific to DESITRIP to be saved
                         data = dict()
@@ -399,8 +400,19 @@ if __name__ == '__main__':
                         altdata_dict['classifier']={'CNNLABEL' : fmap['CNNLABEL'].data[i]}
                         data['altdata'] = altdata_dict
 
-                        SkyPortal.postCandidate(i, fmap, 'DESITRIP', data_override=data)
-                        SkyPortal.postSpectra(i, cand_spectra)
+                        try:
+                            SkyPortal.postCandidate(i, fmap, 'DESITRIP', data_override=data)
+                        except UniqueViolationError as err:
+                            log.info(err.response.json())
+                        except Exception as err:
+                            print(err)
+#                             sys.exit(1)
+
+                        try:
+                            SkyPortal.postSpectra(fmap['TARGETID'][i], cand_spectra)
+                        except Exception as err:
+                            print(err)
+#                             sys.exit(1)
 
                     # Make a plot of up to 16 transients
 
@@ -435,7 +447,7 @@ if __name__ == '__main__':
                                 last_bin=int(i*rewave_nbin_inblock)
                                 if (i==1):
                                     ax.plot(rewave[first_bin:last_bin+1], this_flux[0,first_bin:last_bin+1],c=color,alpha=alpha,\
-                                            label=label_names[labels[j]]+'\nz={:.2f}'.format(allzbest[j]['Z'])\
+                                            label=str(allfmap['TARGETID'][i])+'\n'+label_names[labels[j]]+'\nz={:.2f}'.format(allzbest[j]['Z'])\
                                            +'\n dg={:.2f}'.format(delta_fibermag_g)\
                                             +'\n dr={:.2f}'.format(delta_fibermag_r)\
                                            +'\n dz={:.2f}'.format(delta_fibermag_z)\
