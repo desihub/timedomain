@@ -60,6 +60,15 @@ from timedomain.filters import *
 import sqlite3
 import exposure_db
 
+# Add redrock templates to look at residuals 
+
+import redrock.templates
+
+templates = dict()
+for filename in redrock.templates.find_templates():
+    t = redrock.templates.Template(filename)
+    templates[(t.template_type, t.sub_type)] = t
+
 
 #sqlite db path
 db_filename = '/global/cfs/cdirs/desi/science/td/daily-search/transients_search.db'
@@ -497,6 +506,32 @@ if __name__ == '__main__':
                     outplot = '{}/transient_candidates_{}_{}.png'.format(plot_path, obsdate, tile_number)
                     fig.savefig(outplot, dpi=200)
                     print('Figure saved in {}', outplot)
+                    
+                    #Here plot redrock residuals
+                    #Turning off residuals plots until it works
+                    plot_residuals=False
+                    
+                    if plot_residuals:
+                        fig, axes = plt.subplots(4,4, figsize=(15,10), sharex=True, sharey=True,
+                                        gridspec_kw={'wspace':0, 'hspace':0})
+
+                        for j, ax in zip(selection, axes.flatten()):
+
+                            spectype = allzbest['SPECTYPE'][j].strip()
+                            subtype = allzbest['SUBTYPE'][j].strip()
+                            fulltype = (spectype, subtype)
+                            ncoeff = templates[fulltype].flux.shape[0]
+                            coeff = allzbest['COEFF'][j][0:ncoeff]
+                            tflux = templates[fulltype].flux.T.dot(coeff)
+                            twave = templates[fulltype].wave * (1+allzbest[j]['Z'])
+
+                            plt.plot(allwave[j], allflux[j]-tflux, 'k-', alpha=0.5)
+                            #maxflux = max(maxflux, np.max(spectra.flux[band][ispec]))
+
+                        fig.tight_layout()
+                        outplot = '{}/residual_candidates_{}_{}.png'.format(plot_path, obsdate, tile_number)
+                        fig.savefig(outplot, dpi=200)
+                        print('Figure saved in {}', outplot)
 
                 #Now add this tile info to the sqlite db
                 #Maybe expid is important for spectraldiff? Here we coadd
