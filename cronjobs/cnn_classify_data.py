@@ -325,9 +325,7 @@ if __name__ == '__main__':
                 if int(obsdate)>20210503:
                     select_nite = pspectra.fibermap['NIGHT'] == int(obsdate)
                     pspectra = pspectra[select_nite]
-                    
-                    #This may break down if we have multiple observations in same nite
-                    #coadd them here
+
                     
                 cspectra = coadd_cameras(pspectra)
                 fibermap = cspectra.fibermap
@@ -449,6 +447,8 @@ if __name__ == '__main__':
 
                         try:
                             SkyPortal.postSpectra(fmap['TARGETID'][i], cand_spectra)
+                            #Also post the residuals and redrock to skyportal!
+                
                         except Exception as err:
                             print(err)
 
@@ -485,7 +485,7 @@ if __name__ == '__main__':
                                 last_bin=int(i*rewave_nbin_inblock)
                                 if (i==1):
                                     ax.plot(rewave[first_bin:last_bin+1], this_flux[0,first_bin:last_bin+1],c=color,alpha=alpha,\
-                                            label=str(allfmap['TARGETID'][i])+'\n'+label_names[labels[j]]+'\nz={:.2f}'.format(allzbest[j]['Z'])\
+                                            label=str(allfmap['TARGETID'][j])+'\n'+label_names[labels[j]]+'\nz={:.2f}'.format(allzbest[j]['Z'])\
                                            +'\n dg={:.2f}'.format(delta_fibermag_g)\
                                             +'\n dr={:.2f}'.format(delta_fibermag_r)\
                                            +'\n dz={:.2f}'.format(delta_fibermag_z)\
