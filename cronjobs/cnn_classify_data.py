@@ -58,6 +58,7 @@ from timedomain.filters import *
 #from timedomain.iterators import *
 
 import sqlite3
+import exposure_db
 
 
 #sqlite db path
@@ -236,14 +237,32 @@ if __name__ == '__main__':
 
     # Access redux folder.
     for obsdate,tile_number in obsdates_tilenumbers:
-        redux = '/'.join([os.environ['DESI_SPECTRO_REDUX'], args.redux, 'tiles'])
-        prefix_in = '/'.join([redux, tile_number, obsdate])
-
+        #20210503 is when the directory structure changed, no more daily reductions in the tiles directory
+        redux = '/'.join([os.environ['DESI_SPECTRO_REDUX'], args.redux])
+        if int(obsdate)<20210503:
+            prefix_in = '/'.join([redux, 'tiles', tile_number, obsdate])
+        else:
+            prefix_in = '/'.join([redux, 'tiles/cumulative', tile_number])
+            
+            #Keeping these lines for later - they are useful if we want to use the cframe files in the future
+            #We need to search in the db the expid for that night      
+            #db_filename = '/global/cfs/cdirs/desi/science/td/daily-search/transients_search.db'
+            #db = exposure_db.ReduxDB(db_filename)
+            #conn = sqlite3.connect(db_filename)
+            #c = conn.cursor()    
+            #check_expids_query="select expid from exposures where tileid="+tile_number+" and obsdate="+obsdate+";"
+            #cursor = c.execute(check_expids_query)
+            #expids_list = cursor.fetchall()
+            #Only pick first one if multiple expids
+            #this_expid  = '000'+str(expids_list[0][0])
+            #conn.close()          
+            #prefix_in = '/'.join([redux, 'exposures', obsdate,this_expid])
+            
         if not os.path.isdir(prefix_in):
             print('{} does not exist.'.format(prefix_in))
         else:
             #Since cframe files do not live there anymore, commenting this out
-            # We have al;ready checked in cron_db_clever that this is a bgs tile
+            # We have already checked in cron_db_clever that this is a bgs tile
             
             #cframefiles = sorted(glob('{}/cframe*.fits'.format(prefix_in)))
             #cframe_fibermap = fitsio.read_header(cframefiles[0],'FIBERMAP')
@@ -264,12 +283,16 @@ if __name__ == '__main__':
             else:
                 bgs_mask=bgs_mask_sv2
                 bgs_bits=sv2_bgs_bits
-                
-            #if ('BGS' in cframe_fibermap['PROGRAM']) or ('bgs' in cframe_fibermap['PROGRAM']):
+
             # Access the zbest and coadd files.
             # Files are organized by petal number.
-            zbfiles = sorted(glob('{}/zbest*.fits'.format(prefix_in)))
-            cafiles = sorted(glob('{}/coadd*.fits'.format(prefix_in)))
+            if int(obsdate)<20210503:
+                zbfiles = sorted(glob('{}/zbest*.fits'.format(prefix_in)))
+                cafiles = sorted(glob('{}/coadd*.fits'.format(prefix_in)))
+            else:
+                zbfiles = sorted(glob('{}/*/zbest*.fits'.format(prefix_in)))
+                cafiles = sorted(glob('{}/*/spectra*.fits'.format(prefix_in)))
+                #cafiles = sorted(glob('{}/cframe*.fits'.format(prefix_in)))
 
             # Loop through zbest and coadd files for each petal.
             # Extract the fibermaps, ZBEST tables, and spectra.
@@ -290,6 +313,13 @@ if __name__ == '__main__':
                 # Access data per petal.
                 zbest = Table.read(zbfile, 'ZBEST')
                 pspectra = read_spectra(cafile)
+                if int(obsdate)>20210503:
+                    select_nite = pspectra.fibermap['NIGHT'] == int(obsdate)
+                    pspectra = pspectra[select_nite]
+                    
+                    #This may break down if we have multiple observations in same nite
+                    #coadd them here
+                    
                 cspectra = coadd_cameras(pspectra)
                 fibermap = cspectra.fibermap
 
@@ -399,12 +429,19 @@ if __name__ == '__main__':
                         altdata_dict = dict()
                         altdata_dict['classifier']={'CNNLABEL' : fmap['CNNLABEL'].data[i]}
                         data['altdata'] = altdata_dict
-
+                            
                         try:
                             SkyPortal.postCandidate(i, fmap, 'DESITRIP', data_override=data)
+                        except UniqueViolationError as err:
+                            log.info(err.response.json())
+                        except Exception as err:
+                            print(err)
+#                             sys.exit(1)
+
+                        try:
                             SkyPortal.postSpectra(fmap['TARGETID'][i], cand_spectra)
-                        except:
-                            print("Candidate ",fmap['TARGETID'][i]," not posted to SkyPortal")
+                        except Exception as err:
+                            print(err)
 
                     # Make a plot of up to 16 transients
 
