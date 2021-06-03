@@ -362,7 +362,41 @@ class DBManager:
             dfs.to_sql(f'fibermap_daily',con,if_exists='replace')
             
         con.close
+    
+    @staticmethod
+    def load_exposure_tables_daily():
         
+        dir_root='/global/cfs/cdirs/desi/spectro/redux/daily/exposure_tables/'
+#         maxdate='20201214'
+        con = sqlite3.connect(DBManager.filename)
+                #find the last date
+        ans=con.execute(f"SELECT MAX(YYYYMMDD) FROM exposure_tables_daily")
+        maxdate = ans.fetchone()[0]
+        if maxdate is None: maxdate = 0
+        print('maxdate ',maxdate)
+        
+        dates = []
+        for path in glob.glob(f'{dir_root}/*/exposure_table_????????.csv'):
+            split = path.split('/')
+            date = split[-1][-12:-4]
+            dates.append(date)
+
+        dates=numpy.sort(dates)
+
+        dfs=[]
+        for date in dates:
+            if int(date) <= maxdate:
+                continue
+            file = f'/global/cfs/cdirs/desi/spectro/redux/daily/exposure_tables/{date[0:6]}/exposure_table_{date}.csv'
+            data = ascii.read(file)
+            df = data.to_pandas()
+            df['YYYYMMDD']=numpy.full(df.shape[0],int(date))
+            dfs.append(df)
+          
+        if len(dfs)>0:
+            dfs = pandas.concat(dfs, ignore_index=True, sort=False)
+            dfs.to_sql(f'exposure_tables_daily',con,if_exists='append')
+            
     @staticmethod
     def load_spectra_prod(prod="denali"):
         # from what I can tell all the information in daily is in cumulative
@@ -498,6 +532,7 @@ class DBManager:
     def load_daily():
         DBManager.load_zbest_daily()
         DBManager.load_fibermap_daily()
+        DBManager.load_exposure_tables_daily()
 #         DBManager.load_spectra(prod="daily")
 
     @staticmethod
