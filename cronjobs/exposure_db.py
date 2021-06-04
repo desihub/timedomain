@@ -191,8 +191,8 @@ if __name__ == '__main__':
             continue
         obsdate = int(obsdate)
         
-        #Only look from March 1st 2021
-        if obsdate<20210301:
+        #Only look from May 1st 2021
+        if obsdate<20210501:
             continue
         print('  + {}'.format(date))
     

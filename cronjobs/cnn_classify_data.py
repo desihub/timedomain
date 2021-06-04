@@ -516,12 +516,19 @@ if __name__ == '__main__':
                     outplot = '{}/transient_candidates_{}_{}.png'.format(plot_path, obsdate, tile_number)
                     fig.savefig(outplot, dpi=200)
                     print('Figure saved in {}', outplot)
+                    plt.clf()
                     
                     #Here plot redrock residuals
                     #Turning off residuals plots until it works
                     plot_residuals=False
                     
                     if plot_residuals:
+                        
+                        from desispec.interpolation import resample_flux
+                        from desispec.resolution import Resolution
+                        R = Resolution(cand_spectra.resolution_data['brz'][0])
+
+                        
                         fig, axes = plt.subplots(4,4, figsize=(15,10), sharex=True, sharey=True,
                                         gridspec_kw={'wspace':0, 'hspace':0})
 
@@ -534,14 +541,32 @@ if __name__ == '__main__':
                             coeff = allzbest['COEFF'][j][0:ncoeff]
                             tflux = templates[fulltype].flux.T.dot(coeff)
                             twave = templates[fulltype].wave * (1+allzbest[j]['Z'])
-
-                            plt.plot(allwave[j], allflux[j]-tflux, 'k-', alpha=0.5)
+                            #txflux = R.dot(resample_flux(cand_spectra.wave['brz'], twave, tflux))
+                            #res=allflux[j]-txflux
+                            txflux = R.dot(resample_flux(rewave, twave, tflux))
+                            res=reflux[j]-txflux
+                            ax.plot(allwave, res, 'k-', alpha=0.5)
                             #maxflux = max(maxflux, np.max(spectra.flux[band][ispec]))
+                            
+                            #res=res.reshape((1,res.shape[0]))  
+                            #res_spectra = Spectra(bands=['brz'],
+                            #               wave={'brz' : allwave},
+                            #               flux={'brz' : res},
+                            #               ivar={'brz' : res},
+                            #               resolution_data={'brz' : cand_spectra.resolution_data['brz'][0]}
+                            #           )
+                            
+                            #try:
+                            #    print("Adding residuals for candidate ",allfmap['TARGETID'][j])
+                            #    SkyPortal.postSpectra(allfmap['TARGETID'][j], res_spectra)
+                            #except Exception as err:
+                            #    print(err)
 
                         fig.tight_layout()
                         outplot = '{}/residual_candidates_{}_{}.png'.format(plot_path, obsdate, tile_number)
                         fig.savefig(outplot, dpi=200)
                         print('Figure saved in {}', outplot)
+                        plt.clf()
 
                 #Now add this tile info to the sqlite db
                 #Maybe expid is important for spectraldiff? Here we coadd
