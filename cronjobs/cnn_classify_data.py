@@ -299,8 +299,10 @@ if __name__ == '__main__':
                 zbfiles = sorted(glob('{}/zbest*.fits'.format(prefix_in)))
                 cafiles = sorted(glob('{}/coadd*.fits'.format(prefix_in)))
             else:
-                zbfiles = sorted(glob('{}/*/zbest*.fits'.format(prefix_in)))
-                cafiles = sorted(glob('{}/*/spectra*.fits'.format(prefix_in)))
+                #Only grabbing stuff from the most recent cumulative directory
+                zb_ca_dir = sorted(glob('{}/*/'.format(prefix_in)))[-1]
+                zbfiles = sorted(glob('{}/zbest*.fits'.format(zb_ca_dir)))
+                cafiles = sorted(glob('{}/spectra*.fits'.format(zb_ca_dir)))
                 #cafiles = sorted(glob('{}/cframe*.fits'.format(prefix_in)))
 
             # Loop through zbest and coadd files for each petal.
@@ -326,7 +328,8 @@ if __name__ == '__main__':
                     select_nite = pspectra.fibermap['NIGHT'] == int(obsdate)
                     pspectra = pspectra[select_nite]
 
-                    
+                #Should we move the coaddition to after the spectra selection?
+                #It would require to only select a single night first though.
                 cspectra = coadd_cameras(pspectra)
                 fibermap = cspectra.fibermap
 
@@ -340,6 +343,7 @@ if __name__ == '__main__':
                 isGoodFiber = fibermap['FIBERSTATUS'] == 0
                 isGoodZbest = (zbest['DELTACHI2'] > 25.) & (zbest['ZWARN'] == 0)
                 select = isTGT & isGAL & isBGS & isGoodFiber & isGoodZbest
+                
                 fibermap = delta_mag(cspectra, fibermap, select, nsigma=3)
 
                 print('     + selected: {}'.format(np.sum(select)))
@@ -478,6 +482,12 @@ if __name__ == '__main__':
                             )
 
                             color='blue'
+                            
+                            #If a candidate has a deltamag>2 sigma away from the mean deltamag distribution
+                            #it's flagged as a deltamag candidate and we plot it in red
+                            if allfmap['DELTAMAG_CANDIDATE'][j]:
+                                print("FOUND A DELTAMAG and DESITRIP CANDIDATE!")
+                                color='red'
                             rewave_nbin_inblock=rewave.shape[0]/float(heatmap.shape[0])
                             first_bin=0
                             for i in range(1,heatmap.shape[0]+1):
