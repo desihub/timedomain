@@ -370,11 +370,13 @@ class DBManager:
 #         maxdate='20201214'
         con = sqlite3.connect(DBManager.filename)
                 #find the last date
-        ans=con.execute(f"SELECT MAX(YYYYMMDD) FROM exposure_tables_daily")
-        maxdate = ans.fetchone()[0]
-        if maxdate is None: maxdate = 0
-        print('maxdate ',maxdate)
+        try:
+            ans=con.execute(f"SELECT MAX(YYYYMMDD) FROM exposure_tables_daily")
+            maxdate = ans.fetchone()[0]
+        except:
+            maxdate=0
         
+        print(maxdate)
         dates = []
         for path in glob.glob(f'{dir_root}/*/exposure_table_????????.csv'):
             split = path.split('/')
@@ -394,6 +396,7 @@ class DBManager:
             dfs.append(df)
           
         if len(dfs)>0:
+            print('saving to db')
             dfs = pandas.concat(dfs, ignore_index=True, sort=False)
             dfs.to_sql(f'exposure_tables_daily',con,if_exists='append')
             
