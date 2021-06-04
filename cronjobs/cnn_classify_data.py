@@ -299,8 +299,10 @@ if __name__ == '__main__':
                 zbfiles = sorted(glob('{}/zbest*.fits'.format(prefix_in)))
                 cafiles = sorted(glob('{}/coadd*.fits'.format(prefix_in)))
             else:
-                zbfiles = sorted(glob('{}/*/zbest*.fits'.format(prefix_in)))
-                cafiles = sorted(glob('{}/*/spectra*.fits'.format(prefix_in)))
+                #Only grabbing stuff from the most recent cumulative directory
+                zb_ca_dir = sorted(glob('{}/*/'.format(prefix_in)))[-1]
+                zbfiles = sorted(glob('{}/zbest*.fits'.format(zb_ca_dir)))
+                cafiles = sorted(glob('{}/spectra*.fits'.format(zb_ca_dir)))
                 #cafiles = sorted(glob('{}/cframe*.fits'.format(prefix_in)))
 
             # Loop through zbest and coadd files for each petal.
@@ -325,10 +327,9 @@ if __name__ == '__main__':
                 if int(obsdate)>20210503:
                     select_nite = pspectra.fibermap['NIGHT'] == int(obsdate)
                     pspectra = pspectra[select_nite]
-                    
-                    #This may break down if we have multiple observations in same nite
-                    #coadd them here
-                    
+
+                #Should we move the coaddition to after the spectra selection?
+                #It would require to only select a single night first though.
                 cspectra = coadd_cameras(pspectra)
                 fibermap = cspectra.fibermap
 
@@ -342,6 +343,7 @@ if __name__ == '__main__':
                 isGoodFiber = fibermap['FIBERSTATUS'] == 0
                 isGoodZbest = (zbest['DELTACHI2'] > 25.) & (zbest['ZWARN'] == 0)
                 select = isTGT & isGAL & isBGS & isGoodFiber & isGoodZbest
+                
                 fibermap = delta_mag(cspectra, fibermap, select, nsigma=3)
 
                 print('     + selected: {}'.format(np.sum(select)))
@@ -449,6 +451,8 @@ if __name__ == '__main__':
 
                         try:
                             SkyPortal.postSpectra(fmap['TARGETID'][i], cand_spectra)
+                            #Also post the residuals and redrock to skyportal!
+                
                         except Exception as err:
                             print(err)
 
@@ -478,6 +482,12 @@ if __name__ == '__main__':
                             )
 
                             color='blue'
+                            
+                            #If a candidate has a deltamag>2 sigma away from the mean deltamag distribution
+                            #it's flagged as a deltamag candidate and we plot it in red
+                            if allfmap['DELTAMAG_CANDIDATE'][j]:
+                                print("FOUND A DELTAMAG and DESITRIP CANDIDATE!")
+                                color='red'
                             rewave_nbin_inblock=rewave.shape[0]/float(heatmap.shape[0])
                             first_bin=0
                             for i in range(1,heatmap.shape[0]+1):
@@ -485,7 +495,7 @@ if __name__ == '__main__':
                                 last_bin=int(i*rewave_nbin_inblock)
                                 if (i==1):
                                     ax.plot(rewave[first_bin:last_bin+1], this_flux[0,first_bin:last_bin+1],c=color,alpha=alpha,\
-                                            label=str(allfmap['TARGETID'][i])+'\n'+label_names[labels[j]]+'\nz={:.2f}'.format(allzbest[j]['Z'])\
+                                            label=str(allfmap['TARGETID'][j])+'\n'+label_names[labels[j]]+'\nz={:.2f}'.format(allzbest[j]['Z'])\
                                            +'\n dg={:.2f}'.format(delta_fibermag_g)\
                                             +'\n dr={:.2f}'.format(delta_fibermag_r)\
                                            +'\n dz={:.2f}'.format(delta_fibermag_z)\
