@@ -62,6 +62,11 @@ import exposure_db
 
 # Add redrock templates to look at residuals 
 
+from scipy.ndimage import gaussian_filter1d
+from desispec.interpolation import resample_flux
+from desispec.resolution import Resolution
+
+
 import redrock.templates
 
 templates = dict()
@@ -395,18 +400,6 @@ if __name__ == '__main__':
 
                 # Save data to file - we need to add ra dec, and some id
                 if ntr > 0:
-                #    if tr_z is None:
-                #        tr_z = allzbest[idx]['Z']
-                #        tr_label = label_names_arr[labels[idx]]
-                #        tr_tile = np.full(ntr,tile_number)
-                #        tr_date = np.full(ntr,obsdate)
-                #        tr_spectrum = rsflux[idx]
-                #    else:
-                #        tr_z = np.vstack((tr_z,allzbest[idx]['Z']))
-                #        tr_label = np.vstack((tr_label,label_names_arr[labels[idx]]))
-                #        tr_tile = np.vstack((tr_tile,np.full(ntr,tile_number)))
-                #        tr_date = np.vstack((tr_date,np.full(ntr,obsdate)))
-                #        tr_spectrum = np.vstack((tr_spectrum,rsflux[idx]))
 
                     # Save classification info to a table.
                     classification = Table()
@@ -415,14 +408,19 @@ if __name__ == '__main__':
                     classification['CNNLABEL'] = label_names_arr[labels[idx]]
 
                     # Merge the classification and redrock fit to the fibermap.
-                    fmap = join(allfmap[idx], allzbest[idx], keys='TARGETID')
-                    fmap = join(fmap, classification, keys='TARGETID')
+                    #fmap = join(allfmap[idx], allzbest[idx], keys='TARGETID')
+                    #fmap = join(fmap, classification, keys='TARGETID')
+                    #Temporary fix for candidate mismatch
+                    fmap = hstack([allfmap[idx], allzbest[idx], classification])
+                    fmap['TARGETID_1'].name='TARGETID'
+                    fmap.remove_columns(['TARGETID_2','TARGETID_3']) 
 
                     # Pack data into Spectra and write to FITS.
                     cand_spectra = Spectra(bands=['brz'],
                                            wave={'brz' : allwave},
                                            flux={'brz' : allflux[idx]},
                                            ivar={'brz' : allivar[idx]},
+                                           mask={'brz' : allmask[idx]},
                                            resolution_data={'brz' : allres[idx]},
                                            fibermap=fmap
                                        )
@@ -430,6 +428,8 @@ if __name__ == '__main__':
                     outfits = '{}/transient_candidate_spectra_{}_{}.fits'.format(out_path, obsdate, tile_number)
                     write_spectra(outfits, cand_spectra)
                     print('Output file saved in {}'.format(outfits))
+                    
+                    R = Resolution(cand_spectra.resolution_data['brz'][0])
 
                     #DESITRIP_daily - Send the selected fluxes to SkyPortal - Divij Sharma
                     #Modified by AP in Apr 2021 to fix new error
@@ -462,6 +462,7 @@ if __name__ == '__main__':
 
                     fig, axes = plt.subplots(4,4, figsize=(15,10), sharex=True, sharey=True,
                                              gridspec_kw={'wspace':0, 'hspace':0})
+                    plt.ylim(-1,1)
 
                     #these lines are to add to the output plot the wavelengths between the arms
                     br_band=[5600,6000]
@@ -506,11 +507,25 @@ if __name__ == '__main__':
 
                         else:
                             ax.plot(rewave, rsflux[j], alpha=0.7, label='label: '+label_names[labels[j]]+'\nz={:.2f}'.format(allzbest[j]['Z']))
+                            
+                            
                         this_br_band=br_band/(1.+(allzbest[j]['Z']))
                         this_rz_band=rz_band/(1.+(allzbest[j]['Z']))  
                         ax.fill_between(this_br_band,[0,0],[1,1],alpha=0.1,color='k')
                         ax.fill_between(this_rz_band,[0,0],[1,1],alpha=0.1,color='k')                      
-                        ax.legend(fontsize=10)
+                        ax.legend(fontsize=6, loc='lower right')
+                        
+                        spectype = allzbest['SPECTYPE'][j].strip()
+                        subtype = allzbest['SUBTYPE'][j].strip()
+                        fulltype = (spectype, subtype)
+                        ncoeff = templates[fulltype].flux.shape[0]
+                        coeff = allzbest['COEFF'][j][0:ncoeff]
+                        tflux = templates[fulltype].flux.T.dot(coeff)
+                        twave = templates[fulltype].wave * (1+allzbest[j]['Z'])
+                        txflux = R.dot(resample_flux(cand_spectra.wave['brz'], twave, tflux))
+                        res=allflux[j]-txflux
+                        res_smooth = gaussian_filter1d(res, 25)
+                        ax.plot(allwave/(1.+(allzbest[j]['Z'])), res_smooth, 'k-', alpha=0.3)
 
                     fig.tight_layout()
                     outplot = '{}/transient_candidates_{}_{}.png'.format(plot_path, obsdate, tile_number)
@@ -518,34 +533,7 @@ if __name__ == '__main__':
                     print('Figure saved in {}', outplot)
                     plt.clf()
                     
-                    #Here plot redrock residuals
-                    #Turning off residuals plots until it works
-                    plot_residuals=False
                     
-                    if plot_residuals:
-                        
-                        from desispec.interpolation import resample_flux
-                        from desispec.resolution import Resolution
-                        R = Resolution(cand_spectra.resolution_data['brz'][0])
-
-                        
-                        fig, axes = plt.subplots(4,4, figsize=(15,10), sharex=True, sharey=True,
-                                        gridspec_kw={'wspace':0, 'hspace':0})
-
-                        for j, ax in zip(selection, axes.flatten()):
-
-                            spectype = allzbest['SPECTYPE'][j].strip()
-                            subtype = allzbest['SUBTYPE'][j].strip()
-                            fulltype = (spectype, subtype)
-                            ncoeff = templates[fulltype].flux.shape[0]
-                            coeff = allzbest['COEFF'][j][0:ncoeff]
-                            tflux = templates[fulltype].flux.T.dot(coeff)
-                            twave = templates[fulltype].wave * (1+allzbest[j]['Z'])
-                            #txflux = R.dot(resample_flux(cand_spectra.wave['brz'], twave, tflux))
-                            #res=allflux[j]-txflux
-                            txflux = R.dot(resample_flux(rewave, twave, tflux))
-                            res=reflux[j]-txflux
-                            ax.plot(allwave, res, 'k-', alpha=0.5)
                             #maxflux = max(maxflux, np.max(spectra.flux[band][ispec]))
                             
                             #res=res.reshape((1,res.shape[0]))  
@@ -562,11 +550,7 @@ if __name__ == '__main__':
                             #except Exception as err:
                             #    print(err)
 
-                        fig.tight_layout()
-                        outplot = '{}/residual_candidates_{}_{}.png'.format(plot_path, obsdate, tile_number)
-                        fig.savefig(outplot, dpi=200)
-                        print('Figure saved in {}', outplot)
-                        plt.clf()
+
 
                 #Now add this tile info to the sqlite db
                 #Maybe expid is important for spectraldiff? Here we coadd
