@@ -335,45 +335,47 @@ if __name__ == '__main__':
 
                 #Should we move the coaddition to after the spectra selection?
                 #It would require to only select a single night first though.
-                cspectra = coadd_cameras(pspectra)
-                fibermap = cspectra.fibermap
+                try:
+                    cspectra = coadd_cameras(pspectra)
+                    fibermap = cspectra.fibermap
 
-                # Apply standard event selection.
-                isTGT = fibermap['OBJTYPE'] == 'TGT'
-                isGAL = zbest['SPECTYPE'] == 'GALAXY'
+                    # Apply standard event selection.
+                    isTGT = fibermap['OBJTYPE'] == 'TGT'
+                    isGAL = zbest['SPECTYPE'] == 'GALAXY'
 
-                #This is old selection, does not work anymore! BGS target is always 0
-                #isBGS = fibermap['SV1_BGS_TARGET'] & bgs_mask.mask(sv1_bgs_bits) != 0
-                isBGS = bgs_mask.mask(bgs_bits) != 0
-                isGoodFiber = fibermap['FIBERSTATUS'] == 0
-                isGoodZbest = (zbest['DELTACHI2'] > 25.) & (zbest['ZWARN'] == 0)
-                select = isTGT & isGAL & isBGS & isGoodFiber & isGoodZbest
-                
-                fibermap = delta_mag(cspectra, fibermap, select, nsigma=3)
+                    #This is old selection, does not work anymore! BGS target is always 0
+                    #isBGS = fibermap['SV1_BGS_TARGET'] & bgs_mask.mask(sv1_bgs_bits) != 0
+                    isBGS = bgs_mask.mask(bgs_bits) != 0
+                    isGoodFiber = fibermap['FIBERSTATUS'] == 0
+                    isGoodZbest = (zbest['DELTACHI2'] > 25.) & (zbest['ZWARN'] == 0)
+                    select = isTGT & isGAL & isBGS & isGoodFiber & isGoodZbest
 
-                print('     + selected: {}'.format(np.sum(select)))
+                    fibermap = delta_mag(cspectra, fibermap, select, nsigma=3)
 
-                # Accumulate spectrum data.
-                if (np.sum(select) > 0):
-                    if allzbest is None:
-                        allzbest = zbest[select]
-                        allfmap = fibermap[select]
-                        allwave = cspectra.wave['brz']
-                        allflux = cspectra.flux['brz'][select]
-                        allivar = cspectra.ivar['brz'][select]
-                        allmask = cspectra.mask['brz'][select]
-                        allres  = cspectra.resolution_data['brz'][select]
-                    else:
-                        allzbest = vstack([allzbest, zbest[select]])
-                        allfmap = vstack([allfmap, fibermap[select]])
-                        allflux = np.vstack([allflux, cspectra.flux['brz'][select]])
-                        allivar = np.vstack([allivar, cspectra.ivar['brz'][select]])
-                        allmask = np.vstack([allmask, cspectra.mask['brz'][select]])
-                        allres  = np.vstack([allres, cspectra.resolution_data['brz'][select]])
+                    print('     + selected: {}'.format(np.sum(select)))
 
-        #                 # Break loop over petals - for now this is the easy way of checking if an exposure is 
-        #                 break
-                #fitsio.read_header(cafile)
+                    # Accumulate spectrum data.
+                    if (np.sum(select) > 0):
+                        if allzbest is None:
+                            allzbest = zbest[select]
+                            allfmap = fibermap[select]
+                            allwave = cspectra.wave['brz']
+                            allflux = cspectra.flux['brz'][select]
+                            allivar = cspectra.ivar['brz'][select]
+                            allmask = cspectra.mask['brz'][select]
+                            allres  = cspectra.resolution_data['brz'][select]
+                        else:
+                            allzbest = vstack([allzbest, zbest[select]])
+                            allfmap = vstack([allfmap, fibermap[select]])
+                            allflux = np.vstack([allflux, cspectra.flux['brz'][select]])
+                            allivar = np.vstack([allivar, cspectra.ivar['brz'][select]])
+                            allmask = np.vstack([allmask, cspectra.mask['brz'][select]])
+                            allres  = np.vstack([allres, cspectra.resolution_data['brz'][select]])
+
+                    # exception over petals - for now this is the easy way of removing problematic petals
+                except:
+                    print("Problems with petal")
+            
 
             if allzbest is None:
                 print("No useful BGS observations in this tile")
