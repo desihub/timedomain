@@ -84,7 +84,6 @@ class DBManager:
                     path = os.path.join(root,run,program,lunation)
                     if os.path.isdir(path):
                         for file in glob.glob(path+"/*.ecsv"):
-#                             print(file)
                             if "input" in file:
                                 continue
                             data = ascii.read(file)
@@ -185,24 +184,25 @@ class DBManager:
     # not debugged somehow got lost so rewrote
     @staticmethod
     def load_proposals_pv():       
-        runs = ["main","sv3","sv1"]
+        runs = ["main_year1","sv3","sv1"]
         lunations = ["BRIGHT","DARK"]
         priorities = ["LOW", "MEDIUM", "HIGH"]
         con = sqlite3.connect(DBManager.filename)   
         for run in runs:
             for lunation in lunations:
                 for priority in priorities:
-                    filename = f"/global/cfs/cdirs/desi/target/proposals/proposals_{run}_year1_frozen/indata/PV_{lunation}_{priority}.fits"
+                    filename = f"/global/cfs/cdirs/desi/target/proposals/proposals_{run}_frozen/indata/PV_{lunation}_{priority}.fits"
                     try:
                         dat = Table.read(filename, format='fits')
                     except:
                         print(f"{filename} not found")
                         continue                        
+                    dat.convert_bytestring_to_unicode()
                     
                     df = dat.to_pandas()
                     df['PRIORITY']=numpy.full(df.shape[0],priority)
                     df['LUNATION']=numpy.full(df.shape[0],lunation)
-                    df.to_sql('proposals_pv',con,if_exists='fail')            
+                    df.to_sql('proposals_pv',con,if_exists='fail')
         con.close()
 
     @staticmethod
@@ -218,13 +218,12 @@ class DBManager:
                     dat = Table.read(filename, format='fits')
                 except:
                     print(f"{filename} not found")
-                    continue                        
-
+                    continue
+                dat.convert_bytestring_to_unicode()
                 df = dat.to_pandas()
                 df['TARGET']=numpy.full(df.shape[0],target)
                 df['SURVEY']=numpy.full(df.shape[0],survey)
-                df.to_sql('dr9_pv',con,if_exists='append')   
-            
+                df.to_sql('dr9_pv',con,if_exists='fail')
             
         con.close()
             
