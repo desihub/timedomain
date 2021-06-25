@@ -188,6 +188,7 @@ class DBManager:
         runs = ["main","sv3","sv1"]
         lunations = ["BRIGHT","DARK"]
         priorities = ["LOW", "MEDIUM", "HIGH"]
+        con = sqlite3.connect(DBManager.filename)   
         for run in runs:
             for lunation in lunations:
                 for priority in priorities:
@@ -202,7 +203,30 @@ class DBManager:
                     df['PRIORITY']=numpy.full(df.shape[0],priority)
                     df['LUNATION']=numpy.full(df.shape[0],lunation)
                     df.to_sql('proposals_pv',con,if_exists='fail')            
-            con.close()
+        con.close()
+
+    @staticmethod
+    def load_dr9_pv():       
+        dirs=["savepath_dr9","savepath_dr9_corr"]
+        surveys=["sv3","main"]
+        targets = ["ext","fp","sga","tf"]
+        con = sqlite3.connect(DBManager.filename) 
+        for di, survey in zip(dirs,surveys):
+            for target in targets:
+                filename = f"/global/homes/k/ksaid/desi_pv/{di}/pv_{target}_full.fits"
+                try:
+                    dat = Table.read(filename, format='fits')
+                except:
+                    print(f"{filename} not found")
+                    continue                        
+
+                df = dat.to_pandas()
+                df['TARGET']=numpy.full(df.shape[0],target)
+                df['SURVEY']=numpy.full(df.shape[0],survey)
+                df.to_sql('dr9_pv',con,if_exists='append')   
+            
+            
+        con.close()
             
     @staticmethod
     def load_zbest_prod(prod="denali"):
