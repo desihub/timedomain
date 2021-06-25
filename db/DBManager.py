@@ -129,7 +129,7 @@ class DBManager:
 
         # main
         
-        # SHEMA EVOLUTION
+        # SCHEMA EVOLUTION
         # New keywords DESI_TARGET   SCND_TARGET
         fix = '''
         ALTER TABLE secondary
@@ -173,11 +173,12 @@ class DBManager:
             for icoeff in range(0,10):
                 dat[f'COEFF_{icoeff}']= dat['COEFF'][0:len(dat),icoeff]
             dat.remove_column('COEFF')
+            dat.convert_bytestring_to_unicode()
             
             df = dat.to_pandas()
             df['PRODUCTION']=numpy.full(df.shape[0],prod)
             df['COADD']=numpy.full(df.shape[0],coadd)
-            df.to_sql('redshifts_prod',con,if_exists='fail')            
+            df.to_sql('zcatalog_prod',con,if_exists='append')            
         con.close()
  
 
@@ -227,56 +228,19 @@ class DBManager:
             
         con.close()
             
-    @staticmethod
-    def load_zbest_prod(prod="denali"):
-
-        subdirs = ['cumulative','pernight']
-        substrs = ['thru','']
-        con = sqlite3.connect(DBManager.filename)        
-        for subdir,substr in zip(subdirs,substrs):
-            # per night
-            dir_root = f"/global/project/projectdirs/desi/spectro/redux/{prod}/tiles/{subdir}/"
-            dates = []
-            for path in glob.glob(f'{dir_root}/*/202?????'):
-                split = path.split('/')
-                dates.append(split[-1])
-            dates = numpy.unique(dates)
-
-            for date in dates:
-                for path in glob.glob(f'{dir_root}/*/{date}'):
-                    split = path.split('/')
-                    tile = split[-2]
-                    if tile.isnumeric():
-                        for i in range(10):                            
-                            filename = f'{dir_root}/{tile}/{date}/zbest-{i}-{tile}-{substr}{date}.fits'
-                            try:
-                                dat = Table.read(filename, format='fits',hdu=1)
-                            except:
-                                print(f"{filename} not found")
-                                continue
-
-                            for icoeff in range(0,10):
-                                dat[f'COEFF_{icoeff}']= dat['COEFF'][0:len(dat),icoeff]
-                            dat.remove_column('COEFF')
-                            df = dat.to_pandas()
-                            df['GROUPING'] = numpy.full(df.shape[0],subdir)
-                            df['PRODUCTION']=numpy.full(df.shape[0],prod)
-                            df['TILE']=numpy.full(df.shape[0],int(tile))
-                            df['PETAL']=numpy.full(df.shape[0],i)
-                            df['YYYYMMDD']=numpy.full(df.shape[0],int(date))
-                            df.to_sql(f'zbest_{prod}',con,if_exists='append')
-        con.close
-
+# 
+    # the first two nights of observation do not have anything in cumulative
     @staticmethod
     def load_zbest_daily():
         dir_root = "/global/project/projectdirs/desi/spectro/redux/daily/tiles/cumulative"
-        
+        maxdate=None
         con = sqlite3.connect(DBManager.filename)        
         #find the last date
         ans=con.execute(f"SELECT MAX(YYYYMMDD) FROM zbest_daily")
         maxdate = ans.fetchone()[0]
-        if maxdate is None: maxdate = 0
-        print('max data ',maxdate)
+        if maxdate is None: 
+            maxdate = 20201214
+        print('max date ',maxdate)
         dates = []
         for path in glob.glob(f'{dir_root}/*/202?????'):
             split = path.split('/')
@@ -307,6 +271,7 @@ class DBManager:
                             for icoeff in range(0,10):
                                 dat[f'COEFF_{icoeff}']= dat['COEFF'][0:len(dat),icoeff]
                             dat.remove_column('COEFF')
+                            dat.convert_bytestring_to_unicode()
                             df = dat.to_pandas()
                             df['GROUPING'] = numpy.full(df.shape[0],'cumulative')
                             df['PRODUCTION']=numpy.full(df.shape[0],'daily')
@@ -461,6 +426,47 @@ class DBManager:
             dfs = pandas.concat(dfs, ignore_index=True, sort=False)                        
             dfs.to_sql(f'spectra_{prod}',con,if_exists='append')
         con.close
+
+        
+#    @staticmethod
+#     def load_zbest_prod(prod="denali"):
+
+#         subdirs = ['cumulative','pernight']
+#         substrs = ['thru','']
+#         con = sqlite3.connect(DBManager.filename)        
+#         for subdir,substr in zip(subdirs,substrs):
+#             # per night
+#             dir_root = f"/global/project/projectdirs/desi/spectro/redux/{prod}/tiles/{subdir}/"
+#             dates = []
+#             for path in glob.glob(f'{dir_root}/*/202?????'):
+#                 split = path.split('/')
+#                 dates.append(split[-1])
+#             dates = numpy.unique(dates)
+
+#             for date in dates:
+#                 for path in glob.glob(f'{dir_root}/*/{date}'):
+#                     split = path.split('/')
+#                     tile = split[-2]
+#                     if tile.isnumeric():
+#                         for i in range(10):                            
+#                             filename = f'{dir_root}/{tile}/{date}/zbest-{i}-{tile}-{substr}{date}.fits'
+#                             try:
+#                                 dat = Table.read(filename, format='fits',hdu=1)
+#                             except:
+#                                 print(f"{filename} not found")
+#                                 continue
+
+#                             for icoeff in range(0,10):
+#                                 dat[f'COEFF_{icoeff}']= dat['COEFF'][0:len(dat),icoeff]
+#                             dat.remove_column('COEFF')
+#                             df = dat.to_pandas()
+#                             df['GROUPING'] = numpy.full(df.shape[0],subdir)
+#                             df['PRODUCTION']=numpy.full(df.shape[0],prod)
+#                             df['TILE']=numpy.full(df.shape[0],int(tile))
+#                             df['PETAL']=numpy.full(df.shape[0],i)
+#                             df['YYYYMMDD']=numpy.full(df.shape[0],int(date))
+#                             df.to_sql(f'zbest_{prod}',con,if_exists='append')
+#         con.close        
         
 #     @staticmethod
 #     # deprecated
