@@ -284,11 +284,11 @@ class DBManager:
     @staticmethod
     def load_fibermap_daily(schema=False):
         dir_root = "/global/project/projectdirs/desi/spectro/redux/daily/tiles/cumulative"
-        
+        maxdate=None
         con = sqlite3.connect(DBManager.filename)        
         #find the last date
-        ans=con.execute(f"SELECT MAX(YYYYMMDD) FROM fibermap_daily")
-        maxdate = ans.fetchone()[0]
+#         ans=con.execute(f"SELECT MAX(YYYYMMDD) FROM fibermap_daily")
+#         maxdate = ans.fetchone()[0]
         if maxdate is None: maxdate = 0
 
         print('max data ',maxdate)
@@ -314,7 +314,7 @@ class DBManager:
                             except:
                                 print(f"{filename} not found")
                                 continue
-                                
+                            dat.convert_bytestring_to_unicode()    
                             df = dat.to_pandas()
                             df['GROUPING'] = numpy.full(df.shape[0],'cumulative')
                             df['PRODUCTION']=numpy.full(df.shape[0],'daily')
@@ -353,6 +353,15 @@ class DBManager:
     
     @staticmethod
     def load_exposure_tables_daily():
+        
+        # schema evoluation for the following
+#         sqlite> alter table exposure_tables_daily add column EFFTIME_ETC real;
+#     sqlite> alter table exposure_tables_daily add column FAPRGRM real;
+#     sqlite> alter table exposure_tables_daily add column GOALTIME real;
+#     sqlite> alter table exposure_tables_daily add column GOALTYPE glob;
+#     sqlite> alter table exposure_tables_daily add column EBVFAC real;
+#     sqlite> alter table exposure_tables_daily add column AIRFAC real;
+#     sqlite> alter table exposure_tables_daily add column SPEED real;
         
         dir_root='/global/cfs/cdirs/desi/spectro/redux/daily/exposure_tables/'
 #         maxdate='20201214'
