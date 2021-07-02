@@ -617,14 +617,71 @@ class exposure_tables_daily:
                 dtypesToSchema(dfs.dtypes)
                 sys.exit()                 
         con.close()
+
+class proposals_pv:
+    schema="""
+        CREATE TABLE IF NOT EXISTS "proposals_pv" (
+            "OBJID"  INTEGER,
+            "BRICKID"  INTEGER,
+            "BRICKNAME"  TEXT,
+            "RA"  REAL,
+            "DEC"  REAL,
+            "PMRA"  TEXT,
+            "PMDEC"  TEXT,
+            "REF_EPOCH"  TEXT,
+            "OVERRIDE"  TEXT,
+            "PVTYPE"  TEXT,
+            "PVPRIORITY"  INTEGER,
+            "POINTINGID"  INTEGER,
+            "SGA_ID"  INTEGER,
+            "PRIORITY"  TEXT,
+            "LUNATION"  TEXT,
+            FOREIGN KEY (OBJID, BRICKID) REFERENCES DR9_PV (OBJID, BRICKID)
+    );
+    """
+
+    conn = sqlite3.connect("/global/cfs/cdirs/desi/science/td/db/temp.db")     
+    
+    @staticmethod
+    def create_table(overwrite = False):
+        cur = exposure_tables_daily.conn.cursor()
+        
+        if overwrite:
+            cur.execute("DROP TABLE IF EXISTS proposals_pv;")
+        cur.execute(proposals_pv.schema)
+        cur.close()
+
+    @staticmethod
+    def fill_table():      
+        runs = ["main_year1","sv3","sv1"]
+        lunations = ["BRIGHT","DARK"]
+        priorities = ["LOW", "MEDIUM", "HIGH"]
+        for run in runs:
+            for lunation in lunations:
+                for priority in priorities:
+                    filename = f"/global/cfs/cdirs/desi/target/proposals/proposals_{run}_frozen/indata/PV_{lunation}_{priority}.fits"
+                    try:
+                        dat = Table.read(filename, format='fits')
+                    except:
+                        print(f"{filename} not found")
+                        continue                        
+                    dat.convert_bytestring_to_unicode()
+                    
+                    df = dat.to_pandas()
+                    df['PRIORITY']=numpy.full(df.shape[0],priority)
+                    df['LUNATION']=numpy.full(df.shape[0],lunation)
+                    try:
+                        df.to_sql('proposals_pv',proposals_pv.conn,index=False,if_exists='append')
+                    except sqlite3.OperationalError as err:
+                        dtypesToSchema(df.dtypes)
+                        sys.exit()
         
     @staticmethod
     def fill_sga():
-        cur = secondary.conn.cursor()
+        cur = proposals_pv.conn.cursor()
         
         if overwrite:
-            cur.execute("UPDATE exposure_tables_daily SET SGA_ID=dr9_pv.SGA_ID FROM dr9 WHERE exposure_tables_daily.OBJID=dr9_pv.OBJID AND exposure_tables_daily.BRICKID=dr9_pv.BRICKID;")
-        cur.execute(exposure_tables_daily.schema)
+            cur.execute("UPDATE proposals_pv SET SGA_ID=dr9_pv.SGA_ID FROM dr9_pv WHERE proposals_pv.OBJID=dr9_pv.OBJID AND proposals_pv.BRICKID=dr9_pv.BRICKID;")
         cur.close()    
 
         
