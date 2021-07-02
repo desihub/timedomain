@@ -442,94 +442,7 @@ class zcatalog_prod:
                 
 class dr9_pv:
     schema="""
-        CREATE TABLE IF NOT EXISTS "zcatalog_prod" (
-        "OBJID"  INTEGER,
-        "BRICKID"  INTEGER,
-        "BRICKNAME"  TEXT,
-        "RA"  REAL,
-        "DEC"  REAL,
-        "TYPE"  TEXT,
-        "SERSIC"  TEXT,
-        "Z_PHOT_MEDIAN"  TEXT,
-        "Z_PHOT_L95"  TEXT,
-        "mag_g"  TEXT,
-        "mag_r"  TEXT,
-        "mag_z"  TEXT,
-        "mag_B"  TEXT,
-        "mag_g_err"  TEXT,
-        "mag_r_err"  TEXT,
-        "mag_z_err"  TEXT,
-        "fibre_mag_g"  TEXT,
-        "fibre_mag_r"  TEXT,
-        "fibre_mag_z"  TEXT,
-        "uncor_radius"  TEXT,
-        "BA_ratio"  TEXT,
-        "circ_radius"  TEXT,
-        "pos_angle"  TEXT,
-        "inSGA"  TEXT,
-        "inBGS"  TEXT,
-        "inlocalbright"  TEXT,
-        "inspecfootprint"  TEXT,
-        "SGA_pa"  TEXT,
-        "SGA_ba"  TEXT,
-        "SB_D25_g"  TEXT,
-        "SB_D25_r"  TEXT,
-        "SB_D25_z"  TEXT,
-        "RADIUS_SB25"  TEXT,
-        "SGA_MORPHTYPE"  TEXT,
-        "SGA_ID"  INTEGER,
-        "SGA_redshift"  TEXT,
-        "size_SGA"  TEXT,
-        "PMRA"  TEXT,
-        "PMDEC"  TEXT,
-        "REF_EPOCH"  TEXT,
-        "OVERRIDE"  TEXT,
-        "PVTYPE"  TEXT,
-        "PVPRIORITY"  INTEGER,
-        "TARGET"  TEXT,
-        "SURVEY"  TEXT);
-    """
-
-    conn = sqlite3.connect("/global/cfs/cdirs/desi/science/td/db/temp.db")     
-    
-    @staticmethod
-    def create_table(overwrite = False):
-        cur = secondary.conn.cursor()
-        
-        if overwrite:
-            cur.execute("DROP TABLE IF EXISTS dr9_pv;")
-        cur.execute(dr9_pv.schema)
-        cur.close()
-
-    @staticmethod
-    def fill_table(prod='denali'):      
-        dirs=["savepath_dr9","savepath_dr9_corr"]
-        surveys=["sv3","main"]
-        targets = ["ext","fp","sga","tf"]
-        for di, survey in zip(dirs,surveys):
-            for target in targets:
-                filename = f"/global/homes/k/ksaid/desi_pv/{di}/pv_{target}_full.fits"
-                try:
-                    dat = Table.read(filename, format='fits')
-                except:
-                    print(f"{filename} not found")
-                    continue
-                dat.convert_bytestring_to_unicode()
-                df = dat.to_pandas()
-                df['TARGET']=numpy.full(df.shape[0],target)
-                df['SURVEY']=numpy.full(df.shape[0],survey)
-                
-                try:
-                    df.to_sql('dr9_pv',dr9_pv.conn,if_exists='append')
-                except sqlite3.OperationalError as err:
-                    dtypesToSchema(df.dtypes)
-                    sys.exit()                 
-        con.close()
-                
-
-class exposure_tables:
-    schema="""
-        CREATE TABLE IF NOT EXISTS "zcatalog_prod" (
+        CREATE TABLE IF NOT EXISTS "dr9_pv" (
         "OBJID"  INTEGER,
         "BRICKID"  INTEGER,
         "BRICKNAME"  TEXT,
@@ -575,9 +488,7 @@ class exposure_tables:
         "PVPRIORITY"  INTEGER,
         "POINTINGID"  INTEGER,
         "TARGET"  TEXT,
-        "SURVEY"  TEXT,
-        FOREIGN KEY (OBJID, BRICKID) REFERENCES dr9_pv (OBJID, BRICKID)
-    );
+        "SURVEY"  TEXT);
     """
 
     conn = sqlite3.connect("/global/cfs/cdirs/desi/science/td/db/temp.db")     
@@ -587,12 +498,12 @@ class exposure_tables:
         cur = secondary.conn.cursor()
         
         if overwrite:
-            cur.execute("DROP TABLE IF EXISTS exposure_tables;")
-        cur.execute(exposure_tables.schema)
+            cur.execute("DROP TABLE IF EXISTS dr9_pv;")
+        cur.execute(dr9_pv.schema)
         cur.close()
 
     @staticmethod
-    def fill_table():      
+    def fill_table(prod='denali'):      
         dirs=["savepath_dr9","savepath_dr9_corr"]
         surveys=["sv3","main"]
         targets = ["ext","fp","sga","tf"]
@@ -608,12 +519,103 @@ class exposure_tables:
                 df = dat.to_pandas()
                 df['TARGET']=numpy.full(df.shape[0],target)
                 df['SURVEY']=numpy.full(df.shape[0],survey)
-
+                
                 try:
-                    df.to_sql('exposure_tables',exposure_tables.conn,if_exists='append')
+                    df.to_sql('dr9_pv',dr9_pv.conn,index=False,if_exists='append')
                 except sqlite3.OperationalError as err:
                     dtypesToSchema(df.dtypes)
                     sys.exit()                 
+                
+
+class exposure_tables_daily:
+    schema="""
+        CREATE TABLE IF NOT EXISTS "exposure_tables_daily" (
+            "EXPID"  INTEGER,
+            "EXPTIME"  REAL,
+            "OBSTYPE"  TEXT,
+            "SPECTROGRAPHS"  INTEGER,
+            "CAMWORD"  TEXT,
+            "TILEID"  INTEGER,
+            "NIGHT"  INTEGER,
+            "EXPFLAG"  INTEGER,
+            "HEADERERR"  TEXT,
+            "SURVEY"  INTEGER,
+            "SEQNUM"  INTEGER,
+            "SEQTOT"  INTEGER,
+            "PROGRAM"  TEXT,
+            "MJD-OBS"  REAL,
+            "REQRA"  REAL,
+            "REQDEC"  REAL,
+            "TARGTRA"  REAL,
+            "TARGTDEC"  REAL,
+            "COMMENTS"  TEXT,
+            "YYYYMMDD"  INTEGER,
+            "PURPOSE"  TEXT,
+            "FA_SURV"  TEXT,
+            "BADCAMWORD"  TEXT,
+            "BADAMPS"  TEXT,
+            "LASTSTEP"  TEXT,
+            "EFFTIME_ETC"  REAL,
+            "FAPRGRM"  TEXT,
+            "GOALTIME"  REAL,
+            "GOALTYPE"  TEXT,
+            "EBVFAC"  REAL,
+            "AIRFAC"  REAL,
+            "SPEED"  REAL
+    );
+    """
+
+    conn = sqlite3.connect("/global/cfs/cdirs/desi/science/td/db/temp.db")     
+    
+    @staticmethod
+    def create_table(overwrite = False):
+        cur = exposure_tables_daily.conn.cursor()
+        
+        if overwrite:
+            cur.execute("DROP TABLE IF EXISTS exposure_tables_daily;")
+        cur.execute(exposure_tables_daily.schema)
+        cur.close()
+
+    @staticmethod
+    def fill_table():      
+        dir_root='/global/cfs/cdirs/desi/spectro/redux/daily/exposure_tables/'
+#         maxdate='20201214'
+        con = sqlite3.connect(DBManager.filename)
+                #find the last date
+        try:
+            ans=con.execute(f"SELECT MAX(YYYYMMDD) FROM exposure_tables_daily")
+            maxdate = ans.fetchone()[0]
+        except:
+            maxdate=0
+        
+        print(maxdate)
+        dates = []
+        for path in glob.glob(f'{dir_root}/*/exposure_table_????????.csv'):
+            split = path.split('/')
+            date = split[-1][-12:-4]
+            dates.append(date)
+
+        dates=numpy.sort(dates)
+
+        dfs=[]
+        for date in dates:
+            if int(date) <= maxdate:
+                continue
+            file = f'/global/cfs/cdirs/desi/spectro/redux/daily/exposure_tables/{date[0:6]}/exposure_table_{date}.csv'
+            data = ascii.read(file)
+            df = data.to_pandas()
+            df['YYYYMMDD']=numpy.full(df.shape[0],int(date))
+            dfs.append(df)
+          
+        if len(dfs)>0:
+            print('saving to db')
+            dfs = pandas.concat(dfs, ignore_index=True, sort=False)
+            try:
+                dfs.to_sql(f'exposure_tables_daily',exposure_tables_daily.conn,index=False,if_exists='append')
+
+            except sqlite3.OperationalError as err:
+                dtypesToSchema(dfs.dtypes)
+                sys.exit()                 
         con.close()
         
     @staticmethod
@@ -621,10 +623,10 @@ class exposure_tables:
         cur = secondary.conn.cursor()
         
         if overwrite:
-            cur.execute("UPDATE exposure_tables SET SGA_ID=dr9_pv.SGA_ID FROM dr9 WHERE exposure_tables.OBJID=dr9.OBJID AND exposure_tables.BRICKID=dr9_pv.BRICKID;")
-        cur.execute(exposure_tables.schema)
+            cur.execute("UPDATE exposure_tables_daily SET SGA_ID=dr9_pv.SGA_ID FROM dr9 WHERE exposure_tables_daily.OBJID=dr9_pv.OBJID AND exposure_tables_daily.BRICKID=dr9_pv.BRICKID;")
+        cur.execute(exposure_tables_daily.schema)
         cur.close()    
-        
+
         
 class DBManager:
     
@@ -756,51 +758,6 @@ class DBManager:
             
         con.close
     
-    @staticmethod
-    def load_exposure_tables_daily():
-        
-        # schema evoluation for the following
-#         sqlite> alter table exposure_tables_daily add column EFFTIME_ETC real;
-#     sqlite> alter table exposure_tables_daily add column FAPRGRM real;
-#     sqlite> alter table exposure_tables_daily add column GOALTIME real;
-#     sqlite> alter table exposure_tables_daily add column GOALTYPE glob;
-#     sqlite> alter table exposure_tables_daily add column EBVFAC real;
-#     sqlite> alter table exposure_tables_daily add column AIRFAC real;
-#     sqlite> alter table exposure_tables_daily add column SPEED real;
-        
-        dir_root='/global/cfs/cdirs/desi/spectro/redux/daily/exposure_tables/'
-#         maxdate='20201214'
-        con = sqlite3.connect(DBManager.filename)
-                #find the last date
-        try:
-            ans=con.execute(f"SELECT MAX(YYYYMMDD) FROM exposure_tables_daily")
-            maxdate = ans.fetchone()[0]
-        except:
-            maxdate=0
-        
-        print(maxdate)
-        dates = []
-        for path in glob.glob(f'{dir_root}/*/exposure_table_????????.csv'):
-            split = path.split('/')
-            date = split[-1][-12:-4]
-            dates.append(date)
-
-        dates=numpy.sort(dates)
-
-        dfs=[]
-        for date in dates:
-            if int(date) <= maxdate:
-                continue
-            file = f'/global/cfs/cdirs/desi/spectro/redux/daily/exposure_tables/{date[0:6]}/exposure_table_{date}.csv'
-            data = ascii.read(file)
-            df = data.to_pandas()
-            df['YYYYMMDD']=numpy.full(df.shape[0],int(date))
-            dfs.append(df)
-          
-        if len(dfs)>0:
-            print('saving to db')
-            dfs = pandas.concat(dfs, ignore_index=True, sort=False)
-            dfs.to_sql(f'exposure_tables_daily',con,if_exists='append')
             
     @staticmethod
     def load_spectra_prod(prod="denali"):
