@@ -69,6 +69,8 @@ def dtypesToSchema(dtypes):
         else:
             nvalue = 'TEXT'
         print(f'"{index}"  {nvalue},')
+        
+
                                     
 class mtl():
 
@@ -176,11 +178,35 @@ class secondary:
     
     schema="""
     CREATE TABLE IF NOT EXISTS "secondary" (
-
+        "RA"  REAL,
+        "DEC"  REAL,
+        "PMRA"  TEXT,
+        "PMDEC"  TEXT,
+        "REF_EPOCH"  TEXT,
+        "OVERRIDE"  TEXT,
+        "FLUX_G"  TEXT,
+        "FLUX_R"  TEXT,
+        "FLUX_Z"  TEXT,
+        "PARALLAX"  TEXT,
+        "GAIA_PHOT_G_MEAN_MAG"  TEXT,
+        "GAIA_PHOT_BP_MEAN_MAG"  TEXT,
+        "GAIA_PHOT_RP_MEAN_MAG"  TEXT,
+        "GAIA_ASTROMETRIC_EXCESS_NOISE"  TEXT,
+        "TARGETID"  INTEGER,
+        "SV3_DESI_TARGET"  INTEGER,
+        "SV3_SCND_TARGET"  INTEGER,
+        "DESI_TARGET" INTEGER,
+        "SCND_TARGET" INTEGER,
+        "SCND_ORDER"  INTEGER,
+        "DESITARGET_v"  TEXT,
+        "RUN"  TEXT,
+        "PROGRAM"  TEXT,
+        "LUNATION"  TEXT
     );
     """
     
     runs=['sv3','main']
+    runs=['main']
     conn = sqlite3.connect("/global/cfs/cdirs/desi/science/td/db/temp.db")  
     
     @staticmethod
@@ -214,12 +240,10 @@ class secondary:
                             df['RUN']=numpy.full(df.shape[0],'sv3')
                             df['PROGRAM']=numpy.full(df.shape[0],program)
                             df['LUNATION']=numpy.full(df.shape[0],lunation)
-                            dtypesToSchema(df.dtypes)
-                            wef
                             try:
-                                df.to_sql('secondary',conn,index=False,if_exists='append')
+                                df.to_sql('secondary',secondary.conn,index=False,if_exists='append')
                             except sqlite3.OperationalError as err:
-                                print(df.dtypes)
+                                dtypesToSchema(df.dtypes)
                                 sys.exit()
                             
 
@@ -233,7 +257,7 @@ class secondary:
         ALTER TABLE secondary
         ADD COLUMN SCND_TARGET INT;
         '''
-        if 'main' in runs:
+        if 'main' in secondary.runs:
             dir_root = "/global/cfs/cdirs/desi/target/secondary/main/outdata/1.0.0/"
             lunations = ["bright", "dark"]
        
@@ -251,81 +275,150 @@ class secondary:
                             df['PROGRAM']=numpy.full(df.shape[0],program)
                             df['LUNATION']=numpy.full(df.shape[0],lunation)
                             try:
-                                df.to_sql('secondary',conn,index=False,if_exists='append')
+                                df.to_sql('secondary',secondary.conn,index=False,if_exists='append')
                             except sqlite3.OperationalError as err:
-                                print(df.dtypes)
+                                dtypesToSchema(df.dtypes)
                                 sys.exit()
-
-        
-class DBManager:
+                                
+class zcatalog_prod:
     
-    filename = "/global/cfs/cdirs/desi/science/td/db/desi.db"
+    schema="""
+    CREATE TABLE IF NOT EXISTS "zcatalog_prod" (
+        "TARGETID"  INTEGER,
+        "CHI2"  REAL,
+        "Z"  REAL,
+        "ZERR"  REAL,
+        "ZWARN"  INTEGER,
+        "NPIXELS"  INTEGER,
+        "SPECTYPE"  TEXT,
+        "SUBTYPE"  TEXT,
+        "NCOEFF"  INTEGER,
+        "DELTACHI2"  REAL,
+        "NUMEXP"  INTEGER,
+        "NUMTILE"  INTEGER,
+        "PETAL_LOC"  INTEGER,
+        "DEVICE_LOC"  INTEGER,
+        "LOCATION"  INTEGER,
+        "FIBER"  INTEGER,
+        "FIBERSTATUS"  INTEGER,
+        "TARGET_RA"  REAL,
+        "TARGET_DEC"  REAL,
+        "PMRA"  TEXT,
+        "PMDEC"  TEXT,
+        "REF_EPOCH"  TEXT,
+        "LAMBDA_REF"  TEXT,
+        "FA_TARGET"  INTEGER,
+        "FA_TYPE"  INTEGER,
+        "OBJTYPE"  TEXT,
+        "PRIORITY"  INTEGER,
+        "SUBPRIORITY"  REAL,
+        "OBSCONDITIONS"  INTEGER,
+        "RELEASE"  INTEGER,
+        "BRICKID"  INTEGER,
+        "BRICK_OBJID"  INTEGER,
+        "MORPHTYPE"  TEXT,
+        "FLUX_G"  TEXT,
+        "FLUX_R"  TEXT,
+        "FLUX_Z"  TEXT,
+        "FLUX_IVAR_G"  TEXT,
+        "FLUX_IVAR_R"  TEXT,
+        "FLUX_IVAR_Z"  TEXT,
+        "MASKBITS"  INTEGER,
+        "REF_ID"  INTEGER,
+        "REF_CAT"  TEXT,
+        "GAIA_PHOT_G_MEAN_MAG"  TEXT,
+        "GAIA_PHOT_BP_MEAN_MAG"  TEXT,
+        "GAIA_PHOT_RP_MEAN_MAG"  TEXT,
+        "PARALLAX"  TEXT,
+        "BRICKNAME"  TEXT,
+        "EBV"  TEXT,
+        "FLUX_W1"  TEXT,
+        "FLUX_W2"  TEXT,
+        "FIBERFLUX_G"  TEXT,
+        "FIBERFLUX_R"  TEXT,
+        "FIBERFLUX_Z"  TEXT,
+        "FIBERTOTFLUX_G"  TEXT,
+        "FIBERTOTFLUX_R"  TEXT,
+        "FIBERTOTFLUX_Z"  TEXT,
+        "SERSIC"  TEXT,
+        "SHAPE_R"  TEXT,
+        "SHAPE_E1"  TEXT,
+        "SHAPE_E2"  TEXT,
+        "PHOTSYS"  TEXT,
+        "PRIORITY_INIT"  INTEGER,
+        "NUMOBS_INIT"  INTEGER,
+        "SV2_DESI_TARGET"  INTEGER,
+        "SV2_BGS_TARGET"  INTEGER,
+        "SV2_MWS_TARGET"  INTEGER,
+        "SV2_SCND_TARGET"  INTEGER,
+        "DESI_TARGET"  INTEGER,
+        "BGS_TARGET"  INTEGER,
+        "MWS_TARGET"  INTEGER,
+        "TILEID"  INTEGER,
+        "COADD_NUMEXP"  INTEGER,
+        "COADD_EXPTIME"  TEXT,
+        "MEAN_DELTA_X"  TEXT,
+        "RMS_DELTA_X"  TEXT,
+        "MEAN_DELTA_Y"  TEXT,
+        "RMS_DELTA_Y"  TEXT,
+        "MEAN_FIBER_X"  TEXT,
+        "MEAN_FIBER_Y"  TEXT,
+        "MEAN_FIBER_RA"  REAL,
+        "MEAN_FIBER_DEC"  REAL,
+        "MEAN_FIBERASSIGN_X"  TEXT,
+        "MEAN_FIBERASSIGN_Y"  TEXT,
+        "FIRST_NIGHT"  INTEGER,
+        "LAST_NIGHT"  INTEGER,
+        "NUM_NIGHT"  INTEGER,
+        "FIRST_EXPID"  INTEGER,
+        "LAST_EXPID"  INTEGER,
+        "NUM_EXPID"  INTEGER,
+        "FIRST_TILEID"  INTEGER,
+        "LAST_TILEID"  INTEGER,
+        "NUM_TILEID"  INTEGER,
+        "FIRST_FIBER"  INTEGER,
+        "LAST_FIBER"  INTEGER,
+        "NUM_FIBER"  INTEGER,
+        "FIRST_MJD"  TEXT,
+        "LAST_MJD"  TEXT,
+        "NUM_MJD"  INTEGER,
+        "SV1_SCND_TARGET"  INTEGER,
+        "SV1_BGS_TARGET"  INTEGER,
+        "SV1_DESI_TARGET"  INTEGER,
+        "SV1_MWS_TARGET"  INTEGER,
+        "CMX_TARGET"  INTEGER,
+        "COEFF_0"  REAL,
+        "COEFF_1"  REAL,
+        "COEFF_2"  REAL,
+        "COEFF_3"  REAL,
+        "COEFF_4"  REAL,
+        "COEFF_5"  REAL,
+        "COEFF_6"  REAL,
+        "COEFF_7"  REAL,
+        "COEFF_8"  REAL,
+        "COEFF_9"  REAL,
+        "PRODUCTION"  TEXT,
+        "COADD"  TEXT
+    );
+    """
 
-    # ONLY DO ToO since not obvious others are needed.
+    conn = sqlite3.connect("/global/cfs/cdirs/desi/science/td/db/temp.db")     
+    
     @staticmethod
-
-
-    @staticmethod
-    def load_secondary(runs=['sv3','main']): # createTable=False):
-
-        # SV3
-        if 'sv3' in runs:
-            dir_root = "/global/cfs/cdirs/desi/target/secondary/sv3/outdata/0.57.0/"
-            lunations = ["bright", "dark"]
-
-            con = sqlite3.connect(DBManager.filename)         
-            for lunation in lunations:
-                for root, dirs, files in os.walk(os.path.join(dir_root,lunation)):
-                    for file in files:
-                        if file.endswith('.fits'):
-                            filename = os.path.join(root,file)
-                            print(file)
-                            program = file[:-5]
-                            dat = Table.read(filename, format='fits')
-                            df = dat.to_pandas()
-                            df['DESITARGET_v']= numpy.full(df.shape[0],'0.57.0')
-                            df['RUN']=numpy.full(df.shape[0],'sv3')
-                            df['PROGRAM']=numpy.full(df.shape[0],program)
-                            df['LUNATION']=numpy.full(df.shape[0],lunation)
-                            df.to_sql('secondary',con,if_exists='append')
-
-        # main
+    def create_table(overwrite = False):
+        cur = secondary.conn.cursor()
         
-        # SCHEMA EVOLUTION
-        # New keywords DESI_TARGET   SCND_TARGET
-        fix = '''
-        ALTER TABLE secondary
-        ADD COLUMN DESI_TARGET INT;
-        ALTER TABLE secondary
-        ADD COLUMN SCND_TARGET INT;
-        '''
-        if 'main' in runs:
-            dir_root = "/global/cfs/cdirs/desi/target/secondary/main/outdata/1.0.0/"
-            lunations = ["bright", "dark"]
+        if overwrite:
+            cur.execute("DROP TABLE IF EXISTS zcatalog_prod;")
+        cur.execute(zcatalog_prod.schema)
+        cur.close()
 
-            con = sqlite3.connect(DBManager.filename)         
-            for lunation in lunations:
-                for root, dirs, files in os.walk(os.path.join(dir_root,lunation)):
-                    for file in files:
-                        if file.endswith('.fits'):
-                            filename = os.path.join(root,file)
-                            print(file)
-                            program = file[:-5]
-                            dat = Table.read(filename, format='fits')
-                            df = dat.to_pandas()
-                            df['DESITARGET_v']= numpy.full(df.shape[0],'1.0.0')
-                            df['RUN']=numpy.full(df.shape[0],'main')
-                            df['PROGRAM']=numpy.full(df.shape[0],program)
-                            df['LUNATION']=numpy.full(df.shape[0],lunation)
-                            df.to_sql('secondary',con,if_exists='append')
-        con.close()
-        
     @staticmethod
-    def load_redshifts_prod(prod='denali'):
+    def fill_table(prod='denali'):
         root = f"/global/project/projectdirs/desi/spectro/redux/{prod}"
         coadds = ["cumulative","pernight"]
+        coadds = ["cumulative"]
         
-        con = sqlite3.connect(DBManager.filename) 
         for coadd in coadds:
             filename = os.path.join(root,f"zcatalog-denali-{coadd}.fits")
             print(filename)
@@ -340,40 +433,79 @@ class DBManager:
             df = dat.to_pandas()
             df['PRODUCTION']=numpy.full(df.shape[0],prod)
             df['COADD']=numpy.full(df.shape[0],coadd)
-            df.to_sql('zcatalog_prod',con,if_exists='append')            
-        con.close()
- 
+            try:
+                df.to_sql('zcatalog_prod',zcatalog_prod.conn,index=False,if_exists='append') 
+            except sqlite3.OperationalError as err:
+                dtypesToSchema(df.dtypes)
+                sys.exit()     
 
-    # not debugged somehow got lost so rewrote
+                
+class dr9_pv:
+    schema="""
+        CREATE TABLE IF NOT EXISTS "zcatalog_prod" (
+        "OBJID"  INTEGER,
+        "BRICKID"  INTEGER,
+        "BRICKNAME"  TEXT,
+        "RA"  REAL,
+        "DEC"  REAL,
+        "TYPE"  TEXT,
+        "SERSIC"  TEXT,
+        "Z_PHOT_MEDIAN"  TEXT,
+        "Z_PHOT_L95"  TEXT,
+        "mag_g"  TEXT,
+        "mag_r"  TEXT,
+        "mag_z"  TEXT,
+        "mag_B"  TEXT,
+        "mag_g_err"  TEXT,
+        "mag_r_err"  TEXT,
+        "mag_z_err"  TEXT,
+        "fibre_mag_g"  TEXT,
+        "fibre_mag_r"  TEXT,
+        "fibre_mag_z"  TEXT,
+        "uncor_radius"  TEXT,
+        "BA_ratio"  TEXT,
+        "circ_radius"  TEXT,
+        "pos_angle"  TEXT,
+        "inSGA"  TEXT,
+        "inBGS"  TEXT,
+        "inlocalbright"  TEXT,
+        "inspecfootprint"  TEXT,
+        "SGA_pa"  TEXT,
+        "SGA_ba"  TEXT,
+        "SB_D25_g"  TEXT,
+        "SB_D25_r"  TEXT,
+        "SB_D25_z"  TEXT,
+        "RADIUS_SB25"  TEXT,
+        "SGA_MORPHTYPE"  TEXT,
+        "SGA_ID"  INTEGER,
+        "SGA_redshift"  TEXT,
+        "size_SGA"  TEXT,
+        "PMRA"  TEXT,
+        "PMDEC"  TEXT,
+        "REF_EPOCH"  TEXT,
+        "OVERRIDE"  TEXT,
+        "PVTYPE"  TEXT,
+        "PVPRIORITY"  INTEGER,
+        "TARGET"  TEXT,
+        "SURVEY"  TEXT);
+    """
+
+    conn = sqlite3.connect("/global/cfs/cdirs/desi/science/td/db/temp.db")     
+    
     @staticmethod
-    def load_proposals_pv():       
-        runs = ["main_year1","sv3","sv1"]
-        lunations = ["BRIGHT","DARK"]
-        priorities = ["LOW", "MEDIUM", "HIGH"]
-        con = sqlite3.connect(DBManager.filename)   
-        for run in runs:
-            for lunation in lunations:
-                for priority in priorities:
-                    filename = f"/global/cfs/cdirs/desi/target/proposals/proposals_{run}_frozen/indata/PV_{lunation}_{priority}.fits"
-                    try:
-                        dat = Table.read(filename, format='fits')
-                    except:
-                        print(f"{filename} not found")
-                        continue                        
-                    dat.convert_bytestring_to_unicode()
-                    
-                    df = dat.to_pandas()
-                    df['PRIORITY']=numpy.full(df.shape[0],priority)
-                    df['LUNATION']=numpy.full(df.shape[0],lunation)
-                    df.to_sql('proposals_pv',con,if_exists='fail')
-        con.close()
+    def create_table(overwrite = False):
+        cur = secondary.conn.cursor()
+        
+        if overwrite:
+            cur.execute("DROP TABLE IF EXISTS dr9_pv;")
+        cur.execute(dr9_pv.schema)
+        cur.close()
 
     @staticmethod
-    def load_dr9_pv():       
+    def fill_table(prod='denali'):      
         dirs=["savepath_dr9","savepath_dr9_corr"]
         surveys=["sv3","main"]
         targets = ["ext","fp","sga","tf"]
-        con = sqlite3.connect(DBManager.filename) 
         for di, survey in zip(dirs,surveys):
             for target in targets:
                 filename = f"/global/homes/k/ksaid/desi_pv/{di}/pv_{target}_full.fits"
@@ -386,10 +518,121 @@ class DBManager:
                 df = dat.to_pandas()
                 df['TARGET']=numpy.full(df.shape[0],target)
                 df['SURVEY']=numpy.full(df.shape[0],survey)
-                df.to_sql('dr9_pv',con,if_exists='fail')
-            
+                
+                try:
+                    df.to_sql('dr9_pv',dr9_pv.conn,if_exists='append')
+                except sqlite3.OperationalError as err:
+                    dtypesToSchema(df.dtypes)
+                    sys.exit()                 
         con.close()
-            
+                
+
+class exposure_tables:
+    schema="""
+        CREATE TABLE IF NOT EXISTS "zcatalog_prod" (
+        "OBJID"  INTEGER,
+        "BRICKID"  INTEGER,
+        "BRICKNAME"  TEXT,
+        "RA"  REAL,
+        "DEC"  REAL,
+        "TYPE"  TEXT,
+        "SERSIC"  TEXT,
+        "Z_PHOT_MEDIAN"  TEXT,
+        "Z_PHOT_L95"  TEXT,
+        "mag_g"  TEXT,
+        "mag_r"  TEXT,
+        "mag_z"  TEXT,
+        "mag_B"  TEXT,
+        "mag_g_err"  TEXT,
+        "mag_r_err"  TEXT,
+        "mag_z_err"  TEXT,
+        "fibre_mag_g"  TEXT,
+        "fibre_mag_r"  TEXT,
+        "fibre_mag_z"  TEXT,
+        "uncor_radius"  TEXT,
+        "BA_ratio"  TEXT,
+        "circ_radius"  TEXT,
+        "pos_angle"  TEXT,
+        "inSGA"  TEXT,
+        "inBGS"  TEXT,
+        "inlocalbright"  TEXT,
+        "inspecfootprint"  TEXT,
+        "SGA_pa"  TEXT,
+        "SGA_ba"  TEXT,
+        "SB_D25_g"  TEXT,
+        "SB_D25_r"  TEXT,
+        "SB_D25_z"  TEXT,
+        "RADIUS_SB25"  TEXT,
+        "SGA_MORPHTYPE"  TEXT,
+        "SGA_ID"  INTEGER,
+        "SGA_redshift"  TEXT,
+        "size_SGA"  TEXT,
+        "PMRA"  TEXT,
+        "PMDEC"  TEXT,
+        "REF_EPOCH"  TEXT,
+        "OVERRIDE"  TEXT,
+        "PVTYPE"  TEXT,
+        "PVPRIORITY"  INTEGER,
+        "POINTINGID"  INTEGER,
+        "TARGET"  TEXT,
+        "SURVEY"  TEXT,
+        FOREIGN KEY (OBJID, BRICKID) REFERENCES dr9_pv (OBJID, BRICKID)
+    );
+    """
+
+    conn = sqlite3.connect("/global/cfs/cdirs/desi/science/td/db/temp.db")     
+    
+    @staticmethod
+    def create_table(overwrite = False):
+        cur = secondary.conn.cursor()
+        
+        if overwrite:
+            cur.execute("DROP TABLE IF EXISTS exposure_tables;")
+        cur.execute(exposure_tables.schema)
+        cur.close()
+
+    @staticmethod
+    def fill_table():      
+        dirs=["savepath_dr9","savepath_dr9_corr"]
+        surveys=["sv3","main"]
+        targets = ["ext","fp","sga","tf"]
+        for di, survey in zip(dirs,surveys):
+            for target in targets:
+                filename = f"/global/homes/k/ksaid/desi_pv/{di}/pv_{target}_full.fits"
+                try:
+                    dat = Table.read(filename, format='fits')
+                except:
+                    print(f"{filename} not found")
+                    continue
+                dat.convert_bytestring_to_unicode()
+                df = dat.to_pandas()
+                df['TARGET']=numpy.full(df.shape[0],target)
+                df['SURVEY']=numpy.full(df.shape[0],survey)
+
+                try:
+                    df.to_sql('exposure_tables',exposure_tables.conn,if_exists='append')
+                except sqlite3.OperationalError as err:
+                    dtypesToSchema(df.dtypes)
+                    sys.exit()                 
+        con.close()
+        
+    @staticmethod
+    def fill_sga():
+        cur = secondary.conn.cursor()
+        
+        if overwrite:
+            cur.execute("UPDATE exposure_tables SET SGA_ID=dr9_pv.SGA_ID FROM dr9 WHERE exposure_tables.OBJID=dr9.OBJID AND exposure_tables.BRICKID=dr9_pv.BRICKID;")
+        cur.execute(exposure_tables.schema)
+        cur.close()    
+        
+        
+class DBManager:
+    
+    filename = "/global/cfs/cdirs/desi/science/td/db/desi.db"
+
+
+ 
+
 # 
     # the first two nights of observation do not have anything in cumulative
     @staticmethod
