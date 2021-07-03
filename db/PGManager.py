@@ -7,7 +7,9 @@ import psycopg2
 import re
 from astropy.table import Table
 import sqlite3
-
+from sqlalchemy import create_engine
+from sqlalchemy import text
+import sqlalchemy
 import fitsio
 
 import numpy
@@ -60,21 +62,40 @@ spectra_prod:
     /global/project/projectdirs/desi/spectro/redux/{prod}/tiles/cumulative/*/spectra*.fits
     
 """
+
+try:
+    with open('/global/homes/a/akim/secrets/desi_pg.txt', 'r') as f:
+        data = f.read()
+        uname, passwd = data.split()
+        engine = create_engine(f'postgresql://{uname}:{passwd}@decatdb.lbl.gov/desi')
+        
+#     conn = sqlite3.connect("/global/cfs/cdirs/desi/science/td/db/desi.db") 
+
+except:
+    print("No connection")
+
 def dtypesToSchema(dtypes):
     for index,value in dtypes.items():
-        if numpy.issubdtype(value, numpy.integer):
-            nvalue ='INTEGER'
-        elif numpy.issubdtype(value, numpy.float):
-            nvalue ='REAL'
-        else:
+        if value == numpy.float64:
+            nvalue = 'DOUBLE PRECISION'
+        elif value == numpy.float32:
+            nvalue = 'REAL'
+        elif value == numpy.int64:
+            nvalue = 'BIGINT'
+        elif value == numpy.int32:
+            nvalue = 'INTEGER'
+        elif value == numpy.int16 or value == numpy.uint8 :
+            nvalue = 'SMALLINT'
+        elif value == numpy.object:
             nvalue = 'TEXT'
-        print(f'"{index}"  {nvalue},')
-        
-
+        else:
+            print ("unknown ",value)
+#         print(f'"{index}"  {nvalue}, {value}')
+        print(f'"{index}"  {nvalue},')       
                                     
-class mtl():
+class mtl:
 
-    schema="""
+    schema=f"""
         CREATE TABLE IF NOT EXISTS "mtl" (
           "RA" REAL,
           "DEC" REAL,
@@ -132,16 +153,14 @@ class mtl():
     runs = ["main","sv3","sv2"]
     runs=["sv3"]
     programs = ["","ToO","secondary"]
-    lunations = ["bright","dark",""]
-#     conn = psycopg2.connect("dbname=test user=postgres")
-    conn = sqlite3.connect("/global/cfs/cdirs/desi/science/td/db/temp.db")    
+    lunations = ["bright","dark",""] 
 
     @staticmethod
     def create_table(overwrite = False):
-        cur = mtl.conn.cursor()
+        cur = conn.cursor()
         
         if overwrite:
-            cur.execute("DROP TABLE IF EXISTS mtl;")
+            cur.execute(f"DROP TABLE IF EXISTS mtl;")
         cur.execute(mtl.schema)
         
         cur.close()
@@ -165,7 +184,7 @@ class mtl():
                             df['PROGRAM']=numpy.full(df.shape[0],program)
                             df['LUNATION']=numpy.full(df.shape[0],lunation)
                             try:
-                                df.to_sql('mtl',mtl.conn,index=False,if_exists='append')
+                                df.to_sql('mtl',conn,index=False,if_exists='append')
                             except sqlite3.OperationalError as err:
                                 dtypesToSchema(df.dtypes)
 
@@ -175,9 +194,9 @@ class mtl():
                         print (path, 'not exists')
 
 class secondary:
-    
-    schema="""
-    CREATE TABLE IF NOT EXISTS "secondary" (
+
+    schema=f"""
+    CREATE TABLE IF NOT EXISTS secondary (
         "RA"  REAL,
         "DEC"  REAL,
         "PMRA"  TEXT,
@@ -207,14 +226,13 @@ class secondary:
     
     runs=['sv3','main']
     runs=['main']
-    conn = sqlite3.connect("/global/cfs/cdirs/desi/science/td/db/temp.db")  
     
     @staticmethod
     def create_table(overwrite = False):
-        cur = secondary.conn.cursor()
+        cur = conn.cursor()
         
         if overwrite:
-            cur.execute("DROP TABLE IF EXISTS secondary;")
+            cur.execute(f"DROP TABLE IF EXISTS secondary;")
         cur.execute(secondary.schema)
         cur.close()
         
@@ -241,7 +259,7 @@ class secondary:
                             df['PROGRAM']=numpy.full(df.shape[0],program)
                             df['LUNATION']=numpy.full(df.shape[0],lunation)
                             try:
-                                df.to_sql('secondary',secondary.conn,index=False,if_exists='append')
+                                df.to_sql('secondary',conn,index=False,if_exists='append')
                             except sqlite3.OperationalError as err:
                                 dtypesToSchema(df.dtypes)
                                 sys.exit()
@@ -275,143 +293,142 @@ class secondary:
                             df['PROGRAM']=numpy.full(df.shape[0],program)
                             df['LUNATION']=numpy.full(df.shape[0],lunation)
                             try:
-                                df.to_sql('secondary',secondary.conn,index=False,if_exists='append')
+                                df.to_sql('secondary',conn,index=False,if_exists='append')
                             except sqlite3.OperationalError as err:
                                 dtypesToSchema(df.dtypes)
                                 sys.exit()
                                 
-class zcatalog_prod:
+class zcatalog_denali_cumulative:
     
     schema="""
-    CREATE TABLE IF NOT EXISTS "zcatalog_prod" (
-        "TARGETID"  INTEGER,
-        "CHI2"  REAL,
-        "Z"  REAL,
-        "ZERR"  REAL,
-        "ZWARN"  INTEGER,
-        "NPIXELS"  INTEGER,
+    CREATE TABLE IF NOT EXISTS "zcatalog_denali_cumulative" (
+        "TARGETID"  BIGINT,
+        "CHI2"  DOUBLE PRECISION,
+        "Z"  DOUBLE PRECISION,
+        "ZERR"  DOUBLE PRECISION,
+        "ZWARN"  BIGINT,
+        "NPIXELS"  BIGINT,
         "SPECTYPE"  TEXT,
         "SUBTYPE"  TEXT,
-        "NCOEFF"  INTEGER,
-        "DELTACHI2"  REAL,
+        "NCOEFF"  BIGINT,
+        "DELTACHI2"  DOUBLE PRECISION,
         "NUMEXP"  INTEGER,
         "NUMTILE"  INTEGER,
-        "PETAL_LOC"  INTEGER,
+        "PETAL_LOC"  SMALLINT,
         "DEVICE_LOC"  INTEGER,
-        "LOCATION"  INTEGER,
+        "LOCATION"  BIGINT,
         "FIBER"  INTEGER,
         "FIBERSTATUS"  INTEGER,
-        "TARGET_RA"  REAL,
-        "TARGET_DEC"  REAL,
-        "PMRA"  TEXT,
-        "PMDEC"  TEXT,
-        "REF_EPOCH"  TEXT,
-        "LAMBDA_REF"  TEXT,
-        "FA_TARGET"  INTEGER,
-        "FA_TYPE"  INTEGER,
+        "TARGET_RA"  DOUBLE PRECISION,
+        "TARGET_DEC"  DOUBLE PRECISION,
+        "PMRA"  REAL,
+        "PMDEC"  REAL,
+        "REF_EPOCH"  REAL,
+        "LAMBDA_REF"  REAL,
+        "FA_TARGET"  BIGINT,
+        "FA_TYPE"  SMALLINT,
         "OBJTYPE"  TEXT,
         "PRIORITY"  INTEGER,
-        "SUBPRIORITY"  REAL,
+        "SUBPRIORITY"  DOUBLE PRECISION,
         "OBSCONDITIONS"  INTEGER,
-        "RELEASE"  INTEGER,
+        "RELEASE"  SMALLINT,
         "BRICKID"  INTEGER,
         "BRICK_OBJID"  INTEGER,
         "MORPHTYPE"  TEXT,
-        "FLUX_G"  TEXT,
-        "FLUX_R"  TEXT,
-        "FLUX_Z"  TEXT,
-        "FLUX_IVAR_G"  TEXT,
-        "FLUX_IVAR_R"  TEXT,
-        "FLUX_IVAR_Z"  TEXT,
-        "MASKBITS"  INTEGER,
-        "REF_ID"  INTEGER,
+        "FLUX_G"  REAL,
+        "FLUX_R"  REAL,
+        "FLUX_Z"  REAL,
+        "FLUX_IVAR_G"  REAL,
+        "FLUX_IVAR_R"  REAL,
+        "FLUX_IVAR_Z"  REAL,
+        "MASKBITS"  SMALLINT,
+        "REF_ID"  BIGINT,
         "REF_CAT"  TEXT,
-        "GAIA_PHOT_G_MEAN_MAG"  TEXT,
-        "GAIA_PHOT_BP_MEAN_MAG"  TEXT,
-        "GAIA_PHOT_RP_MEAN_MAG"  TEXT,
-        "PARALLAX"  TEXT,
+        "GAIA_PHOT_G_MEAN_MAG"  REAL,
+        "GAIA_PHOT_BP_MEAN_MAG"  REAL,
+        "GAIA_PHOT_RP_MEAN_MAG"  REAL,
+        "PARALLAX"  REAL,
         "BRICKNAME"  TEXT,
-        "EBV"  TEXT,
-        "FLUX_W1"  TEXT,
-        "FLUX_W2"  TEXT,
-        "FIBERFLUX_G"  TEXT,
-        "FIBERFLUX_R"  TEXT,
-        "FIBERFLUX_Z"  TEXT,
-        "FIBERTOTFLUX_G"  TEXT,
-        "FIBERTOTFLUX_R"  TEXT,
-        "FIBERTOTFLUX_Z"  TEXT,
-        "SERSIC"  TEXT,
-        "SHAPE_R"  TEXT,
-        "SHAPE_E1"  TEXT,
-        "SHAPE_E2"  TEXT,
+        "EBV"  REAL,
+        "FLUX_W1"  REAL,
+        "FLUX_W2"  REAL,
+        "FIBERFLUX_G"  REAL,
+        "FIBERFLUX_R"  REAL,
+        "FIBERFLUX_Z"  REAL,
+        "FIBERTOTFLUX_G"  REAL,
+        "FIBERTOTFLUX_R"  REAL,
+        "FIBERTOTFLUX_Z"  REAL,
+        "SERSIC"  REAL,
+        "SHAPE_R"  REAL,
+        "SHAPE_E1"  REAL,
+        "SHAPE_E2"  REAL,
         "PHOTSYS"  TEXT,
-        "PRIORITY_INIT"  INTEGER,
-        "NUMOBS_INIT"  INTEGER,
-        "SV2_DESI_TARGET"  INTEGER,
-        "SV2_BGS_TARGET"  INTEGER,
-        "SV2_MWS_TARGET"  INTEGER,
-        "SV2_SCND_TARGET"  INTEGER,
-        "DESI_TARGET"  INTEGER,
-        "BGS_TARGET"  INTEGER,
-        "MWS_TARGET"  INTEGER,
+        "PRIORITY_INIT"  BIGINT,
+        "NUMOBS_INIT"  BIGINT,
+        "SV2_DESI_TARGET"  BIGINT,
+        "SV2_BGS_TARGET"  BIGINT,
+        "SV2_MWS_TARGET"  BIGINT,
+        "SV2_SCND_TARGET"  BIGINT,
+        "DESI_TARGET"  BIGINT,
+        "BGS_TARGET"  BIGINT,
+        "MWS_TARGET"  BIGINT,
         "TILEID"  INTEGER,
-        "COADD_NUMEXP"  INTEGER,
-        "COADD_EXPTIME"  TEXT,
-        "MEAN_DELTA_X"  TEXT,
-        "RMS_DELTA_X"  TEXT,
-        "MEAN_DELTA_Y"  TEXT,
-        "RMS_DELTA_Y"  TEXT,
-        "MEAN_FIBER_X"  TEXT,
-        "MEAN_FIBER_Y"  TEXT,
-        "MEAN_FIBER_RA"  REAL,
-        "MEAN_FIBER_DEC"  REAL,
-        "MEAN_FIBERASSIGN_X"  TEXT,
-        "MEAN_FIBERASSIGN_Y"  TEXT,
+        "COADD_NUMEXP"  SMALLINT,
+        "COADD_EXPTIME"  REAL,
+        "MEAN_DELTA_X"  REAL,
+        "RMS_DELTA_X"  REAL,
+        "MEAN_DELTA_Y"  REAL,
+        "RMS_DELTA_Y"  REAL,
+        "MEAN_FIBER_X"  REAL,
+        "MEAN_FIBER_Y"  REAL,
+        "MEAN_FIBER_RA"  DOUBLE PRECISION,
+        "MEAN_FIBER_DEC"  DOUBLE PRECISION,
+        "MEAN_FIBERASSIGN_X"  REAL,
+        "MEAN_FIBERASSIGN_Y"  REAL,
         "FIRST_NIGHT"  INTEGER,
         "LAST_NIGHT"  INTEGER,
-        "NUM_NIGHT"  INTEGER,
+        "NUM_NIGHT"  SMALLINT,
         "FIRST_EXPID"  INTEGER,
         "LAST_EXPID"  INTEGER,
-        "NUM_EXPID"  INTEGER,
+        "NUM_EXPID"  SMALLINT,
         "FIRST_TILEID"  INTEGER,
         "LAST_TILEID"  INTEGER,
-        "NUM_TILEID"  INTEGER,
+        "NUM_TILEID"  SMALLINT,
         "FIRST_FIBER"  INTEGER,
         "LAST_FIBER"  INTEGER,
-        "NUM_FIBER"  INTEGER,
-        "FIRST_MJD"  TEXT,
-        "LAST_MJD"  TEXT,
-        "NUM_MJD"  INTEGER,
-        "SV1_SCND_TARGET"  INTEGER,
-        "SV1_BGS_TARGET"  INTEGER,
-        "SV1_DESI_TARGET"  INTEGER,
-        "SV1_MWS_TARGET"  INTEGER,
-        "CMX_TARGET"  INTEGER,
-        "COEFF_0"  REAL,
-        "COEFF_1"  REAL,
-        "COEFF_2"  REAL,
-        "COEFF_3"  REAL,
-        "COEFF_4"  REAL,
-        "COEFF_5"  REAL,
-        "COEFF_6"  REAL,
-        "COEFF_7"  REAL,
-        "COEFF_8"  REAL,
-        "COEFF_9"  REAL,
-        "PRODUCTION"  TEXT,
-        "COADD"  TEXT
+        "NUM_FIBER"  SMALLINT,
+        "FIRST_MJD"  REAL,
+        "LAST_MJD"  REAL,
+        "NUM_MJD"  SMALLINT,
+        "SV1_SCND_TARGET"  BIGINT,
+        "SV1_BGS_TARGET"  BIGINT,
+        "SV1_DESI_TARGET"  BIGINT,
+        "SV1_MWS_TARGET"  BIGINT,
+        "CMX_TARGET"  BIGINT,
+        "COEFF_0"  DOUBLE PRECISION,
+        "COEFF_1"  DOUBLE PRECISION,
+        "COEFF_2"  DOUBLE PRECISION,
+        "COEFF_3"  DOUBLE PRECISION,
+        "COEFF_4"  DOUBLE PRECISION,
+        "COEFF_5"  DOUBLE PRECISION,
+        "COEFF_6"  DOUBLE PRECISION,
+        "COEFF_7"  DOUBLE PRECISION,
+        "COEFF_8"  DOUBLE PRECISION,
+        "COEFF_9"  DOUBLE PRECISION
     );
-    """
-
-    conn = sqlite3.connect("/global/cfs/cdirs/desi/science/td/db/temp.db")     
+    """    
     
     @staticmethod
     def create_table(overwrite = False):
-        cur = secondary.conn.cursor()
         
-        if overwrite:
-            cur.execute("DROP TABLE IF EXISTS zcatalog_prod;")
-        cur.execute(zcatalog_prod.schema)
-        cur.close()
+        with engine.connect() as conn:
+#             cur = conn.cursor()
+
+            if overwrite:
+                conn.execute(text("DROP TABLE IF EXISTS zcatalog_denali_cumulative;"))
+                             
+            conn.execute(text(zcatalog_denali_cumulative.schema))
+            conn.close()
 
     @staticmethod
     def fill_table(prod='denali'):
@@ -431,13 +448,15 @@ class zcatalog_prod:
             dat.convert_bytestring_to_unicode()
             
             df = dat.to_pandas()
-            df['PRODUCTION']=numpy.full(df.shape[0],prod)
-            df['COADD']=numpy.full(df.shape[0],coadd)
+#             df['PRODUCTION']=numpy.full(df.shape[0],prod)
+#             df['COADD']=numpy.full(df.shape[0],coadd)
+
             try:
-                df.to_sql('zcatalog_prod',zcatalog_prod.conn,index=False,if_exists='append') 
-            except sqlite3.OperationalError as err:
+                df.to_sql('zcatalog_denali_cumulative',engine,index=False,if_exists='append') 
+            except:
                 dtypesToSchema(df.dtypes)
-                sys.exit()     
+                print(df[0])
+                sys.exit()            
 
                 
 class dr9_pv:
@@ -491,11 +510,9 @@ class dr9_pv:
         "SURVEY"  TEXT);
     """
 
-    conn = sqlite3.connect("/global/cfs/cdirs/desi/science/td/db/temp.db")     
-    
     @staticmethod
     def create_table(overwrite = False):
-        cur = secondary.conn.cursor()
+        cur = conn.cursor()
         
         if overwrite:
             cur.execute("DROP TABLE IF EXISTS dr9_pv;")
@@ -521,7 +538,7 @@ class dr9_pv:
                 df['SURVEY']=numpy.full(df.shape[0],survey)
                 
                 try:
-                    df.to_sql('dr9_pv',dr9_pv.conn,index=False,if_exists='append')
+                    df.to_sql('dr9_pv',conn,index=False,if_exists='append')
                 except sqlite3.OperationalError as err:
                     dtypesToSchema(df.dtypes)
                     sys.exit()                 
@@ -565,12 +582,9 @@ class exposure_tables_daily:
     );
     """
 
-    conn = sqlite3.connect("/global/cfs/cdirs/desi/science/td/db/temp.db")     
-    
     @staticmethod
     def create_table(overwrite = False):
-        cur = exposure_tables_daily.conn.cursor()
-        
+        cur = conn.cursor()   
         if overwrite:
             cur.execute("DROP TABLE IF EXISTS exposure_tables_daily;")
         cur.execute(exposure_tables_daily.schema)
@@ -580,7 +594,7 @@ class exposure_tables_daily:
     def fill_table():      
         dir_root='/global/cfs/cdirs/desi/spectro/redux/daily/exposure_tables/'
 #         maxdate='20201214'
-        con = sqlite3.connect(DBManager.filename)
+
                 #find the last date
         try:
             ans=con.execute(f"SELECT MAX(YYYYMMDD) FROM exposure_tables_daily")
@@ -611,12 +625,11 @@ class exposure_tables_daily:
             print('saving to db')
             dfs = pandas.concat(dfs, ignore_index=True, sort=False)
             try:
-                dfs.to_sql(f'exposure_tables_daily',exposure_tables_daily.conn,index=False,if_exists='append')
+                dfs.to_sql(f'exposure_tables_daily',conn,index=False,if_exists='append')
 
             except sqlite3.OperationalError as err:
                 dtypesToSchema(dfs.dtypes)
                 sys.exit()                 
-        con.close()
 
 class proposals_pv:
     schema="""
@@ -639,12 +652,11 @@ class proposals_pv:
             FOREIGN KEY (OBJID, BRICKID) REFERENCES DR9_PV (OBJID, BRICKID)
     );
     """
-
-    conn = sqlite3.connect("/global/cfs/cdirs/desi/science/td/db/temp.db")     
+  
     
     @staticmethod
     def create_table(overwrite = False):
-        cur = exposure_tables_daily.conn.cursor()
+        cur = conn.cursor()
         
         if overwrite:
             cur.execute("DROP TABLE IF EXISTS proposals_pv;")
@@ -671,61 +683,87 @@ class proposals_pv:
                     df['PRIORITY']=numpy.full(df.shape[0],priority)
                     df['LUNATION']=numpy.full(df.shape[0],lunation)
                     try:
-                        df.to_sql('proposals_pv',proposals_pv.conn,index=False,if_exists='append')
+                        df.to_sql('proposals_pv',conn,index=False,if_exists='append')
                     except sqlite3.OperationalError as err:
                         dtypesToSchema(df.dtypes)
                         sys.exit()
         
     @staticmethod
     def fill_sga():
-        cur = proposals_pv.conn.cursor()
-        
-        if overwrite:
-            cur.execute("UPDATE proposals_pv SET SGA_ID=dr9_pv.SGA_ID FROM dr9_pv WHERE proposals_pv.OBJID=dr9_pv.OBJID AND proposals_pv.BRICKID=dr9_pv.BRICKID;")
+
+        cur = conn.cursor()
+        cur.execute("UPDATE proposals_pv SET SGA_ID=(select dr9_pv.SGA_ID FROM dr9_pv WHERE proposals_pv.OBJID=dr9_pv.OBJID AND proposals_pv.BRICKID=dr9_pv.BRICKID);")
+           
         cur.close()    
 
-        
-class DBManager:
-    
-    filename = "/global/cfs/cdirs/desi/science/td/db/desi.db"
 
-
- 
-
-# 
-    # the first two nights of observation do not have anything in cumulative
+class zbest_daily:
+    schema="""
+        CREATE TABLE IF NOT EXISTS "zbest_daily" (
+        "TARGETID"  INTEGER,
+        "CHI2"  REAL,
+        "Z"  REAL,
+        "ZERR"  REAL,
+        "ZWARN"  INTEGER,
+        "NPIXELS"  INTEGER,
+        "SPECTYPE"  TEXT,
+        "SUBTYPE"  TEXT,
+        "NCOEFF"  INTEGER,
+        "DELTACHI2"  REAL,
+        "NUMEXP"  INTEGER,
+        "NUMTILE"  INTEGER,
+        "COEFF_0"  REAL,
+        "COEFF_1"  REAL,
+        "COEFF_2"  REAL,
+        "COEFF_3"  REAL,
+        "COEFF_4"  REAL,
+        "COEFF_5"  REAL,
+        "COEFF_6"  REAL,
+        "COEFF_7"  REAL,
+        "COEFF_8"  REAL,
+        "COEFF_9"  REAL,
+        "TILE"  INTEGER,
+        "PETAL"  INTEGER,
+        "YYYYMMDD"  INTEGER
+    );
+    """
+  
     @staticmethod
-    def load_zbest_daily():
+    def create_table(overwrite = False):
+        cur = conn.cursor()
+        
+        if overwrite:
+            cur.execute("DROP TABLE IF EXISTS zbest_daily;")
+        cur.execute(zbest_daily.schema)
+        cur.close()
+
+    @staticmethod
+    def fill_table():      
         dir_root = "/global/project/projectdirs/desi/spectro/redux/daily/tiles/cumulative"
-        maxdate=None
-        con = sqlite3.connect(DBManager.filename)        
+     
         #find the last date
-        ans=con.execute(f"SELECT MAX(YYYYMMDD) FROM zbest_daily")
-        maxdate = ans.fetchone()[0]
-        if maxdate is None: 
-            maxdate = 20201214
-        print('max date ',maxdate)
+        dates_db=[]
+        try:
+            for row in conn.execute(f"SELECT DISTINCT YYYYMMDD FROM zbest_daily"):
+                dates_db.append(row[0])
+        except:
+            pass
+            
         dates = []
         for path in glob.glob(f'{dir_root}/*/202?????'):
             split = path.split('/')
             dates.append(split[-1])
         dates = numpy.unique(dates)
-
         for date in dates:
-            if int(date) >= maxdate:
+            if int(date) not in dates_db:
+                # Do things in terms of dates
+                dfs=[]
                 for path in glob.glob(f'{dir_root}/*/{date}'):
                     split = path.split('/')
                     tile = split[-2]
                     if tile.isnumeric():
                         print(date,tile)
                         for i in range(10):                            
-                            
-                            # check to see if this file has been done already and if so break
-                            if (int(date) == maxdate):
-                                ans=con.execute(f"SELECT count(*) FROM zbest_daily WHERE YYYYMMDD={date} AND TILE={tile} AND PETAL={i}")
-                                if ans.fetchone()[0] !=0:
-                                    continue
-                            
                             filename = f'{dir_root}/{tile}/{date}/zbest-{i}-{tile}-thru{date}.fits'
                             try:
                                 dat = Table.read(filename, format='fits',hdu=1)
@@ -737,84 +775,181 @@ class DBManager:
                             dat.remove_column('COEFF')
                             dat.convert_bytestring_to_unicode()
                             df = dat.to_pandas()
-                            df['GROUPING'] = numpy.full(df.shape[0],'cumulative')
-                            df['PRODUCTION']=numpy.full(df.shape[0],'daily')
                             df['TILE']=numpy.full(df.shape[0],int(tile))
                             df['PETAL']=numpy.full(df.shape[0],i)
                             df['YYYYMMDD']=numpy.full(df.shape[0],int(date))
-                            df.to_sql(f'zbest_daily',con,if_exists='append')
-        con.close
+                            dfs.append(df)
+                if len(dfs)>0:
+                    try:
+                        dfs = pandas.concat(dfs, ignore_index=True, sort=False)
+                        dfs.to_sql(f'zbest_daily',conn,index=False,if_exists='append')
+                    except sqlite3.OperationalError as err:
+                        dtypesToSchema(dfs.dtypes)
+                        sys.exit()
+                        
+                        
+class fibermap_daily:
+    schema="""
+        CREATE TABLE IF NOT EXISTS "fibermap_daily" (
+        "TARGETID"  INTEGER,
+        "PETAL_LOC"  INTEGER,
+        "DEVICE_LOC"  INTEGER,
+        "LOCATION"  INTEGER,
+        "FIBER"  INTEGER,
+        "FIBERSTATUS"  INTEGER,
+        "TARGET_RA"  REAL,
+        "TARGET_DEC"  REAL,
+        "PMRA"  TEXT,
+        "PMDEC"  TEXT,
+        "REF_EPOCH"  TEXT,
+        "LAMBDA_REF"  TEXT,
+        "FA_TARGET"  INTEGER,
+        "FA_TYPE"  INTEGER,
+        "OBJTYPE"  TEXT,
+        "FIBERASSIGN_X"  TEXT,
+        "FIBERASSIGN_Y"  TEXT,
+        "NUMTARGET"  INTEGER,
+        "PRIORITY"  INTEGER,
+        "SUBPRIORITY"  REAL,
+        "OBSCONDITIONS"  INTEGER,
+        "MORPHTYPE"  TEXT,
+        "FLUX_G"  TEXT,
+        "FLUX_R"  TEXT,
+        "FLUX_Z"  TEXT,
+        "FLUX_IVAR_G"  TEXT,
+        "FLUX_IVAR_R"  TEXT,
+        "FLUX_IVAR_Z"  TEXT,
+        "REF_ID"  INTEGER,
+        "REF_CAT"  TEXT,
+        "GAIA_PHOT_G_MEAN_MAG"  TEXT,
+        "GAIA_PHOT_BP_MEAN_MAG"  TEXT,
+        "GAIA_PHOT_RP_MEAN_MAG"  TEXT,
+        "PARALLAX"  TEXT,
+        "EBV"  TEXT,
+        "FLUX_W1"  TEXT,
+        "FLUX_W2"  TEXT,
+        "FLUX_IVAR_W1"  TEXT,
+        "FLUX_IVAR_W2"  TEXT,
+        "FIBERFLUX_G"  TEXT,
+        "FIBERFLUX_R"  TEXT,
+        "FIBERFLUX_Z"  TEXT,
+        "FIBERTOTFLUX_G"  TEXT,
+        "FIBERTOTFLUX_R"  TEXT,
+        "FIBERTOTFLUX_Z"  TEXT,
+        "MASKBITS"  INTEGER,
+        "SV1_DESI_TARGET"  INTEGER,
+        "SV1_BGS_TARGET"  INTEGER,
+        "SV1_MWS_TARGET"  INTEGER,
+        "SV1_SCND_TARGET"  INTEGER,
+        "SV2_DESI_TARGET"  INTEGER,
+        "SV2_BGS_TARGET"  INTEGER,
+        "SV2_MWS_TARGET"  INTEGER,
+        "SV2_SCND_TARGET"  INTEGER,
+        "SV3_DESI_TARGET"  INTEGER,
+        "SV3_BGS_TARGET"  INTEGER,
+        "SV3_MWS_TARGET"  INTEGER,
+        "SV3_SCND_TARGET"  INTEGER,
+        "SERSIC"  TEXT,
+        "SHAPE_R"  TEXT,
+        "SHAPE_E1"  TEXT,
+        "SHAPE_E2"  TEXT,
+        "PHOTSYS"  TEXT,
+        "CMX_TARGET"  INTEGER,
+        "PRIORITY_INIT"  INTEGER,
+        "NUMOBS_INIT"  INTEGER,
+        "RELEASE"  INTEGER,
+        "BRICKID"  INTEGER,
+        "BRICKNAME"  TEXT,
+        "BRICK_OBJID"  INTEGER,
+        "BLOBDIST"  TEXT,
+        "FIBERFLUX_IVAR_G"  TEXT,
+        "FIBERFLUX_IVAR_R"  TEXT,
+        "FIBERFLUX_IVAR_Z"  TEXT,
+        "DESI_TARGET"  INTEGER,
+        "BGS_TARGET"  INTEGER,
+        "MWS_TARGET"  INTEGER,
+        "HPXPIXEL"  INTEGER,
+        "NUM_ITER"  INTEGER,
+        "FIBER_X"  REAL,
+        "FIBER_Y"  REAL,
+        "DELTA_X"  REAL,
+        "DELTA_Y"  REAL,
+        "FIBER_RA"  REAL,
+        "FIBER_DEC"  REAL,
+        "NIGHT"  INTEGER,
+        "EXPID"  INTEGER,
+        "MJD"  REAL,
+        "EXPTIME"  REAL,
+        "PSF_TO_FIBER_SPECFLUX"  REAL,
+        "TILEID"  INTEGER,
+        "YYYYMMDD"  INTEGER
+    );
+    """
+  
+    @staticmethod
+    def create_table(overwrite = False):
+        cur = conn.cursor()
+        
+        if overwrite:
+            cur.execute("DROP TABLE IF EXISTS fibermap_daily;")
+        cur.execute(fibermap_daily.schema)
+        cur.close()
 
     @staticmethod
-    def load_fibermap_daily(schema=False):
+    def fill_table():      
         dir_root = "/global/project/projectdirs/desi/spectro/redux/daily/tiles/cumulative"
-        maxdate=None
-        con = sqlite3.connect(DBManager.filename)        
+     
         #find the last date
-#         ans=con.execute(f"SELECT MAX(YYYYMMDD) FROM fibermap_daily")
-#         maxdate = ans.fetchone()[0]
-        if maxdate is None: maxdate = 0
-
-        print('max data ',maxdate)
+        dates_db=[]
+        try:
+            for row in conn.execute(f"SELECT DISTINCT YYYYMMDD FROM fibermap_daily"):
+                dates_db.append(row[0])
+        except:
+            pass
+            
         dates = []
         for path in glob.glob(f'{dir_root}/*/202?????'):
             split = path.split('/')
             dates.append(split[-1])
         dates = numpy.unique(dates)
-        
-        dfs=[]   # used only for schema
         for date in dates:
-            if int(date) >= maxdate:
+            if int(date) not in dates_db:
+                print(date)
+                # Do things in terms of dates
+                dfs=[]
                 for path in glob.glob(f'{dir_root}/*/{date}'):
                     split = path.split('/')
                     tile = split[-2]
                     if tile.isnumeric():
-                        print(date,tile)
-                        if schema:
-                            i=0
+#                         print(date,tile)
+                        for i in range(10):                            
                             filename = f'{dir_root}/{tile}/{date}/zbest-{i}-{tile}-thru{date}.fits'
                             try:
                                 dat = Table.read(filename, format='fits',hdu=2)
                             except:
                                 print(f"{filename} not found")
                                 continue
-                            dat.convert_bytestring_to_unicode()    
-                            df = dat.to_pandas()
-                            df['GROUPING'] = numpy.full(df.shape[0],'cumulative')
-                            df['PRODUCTION']=numpy.full(df.shape[0],'daily')
-                            df['TILE']=numpy.full(df.shape[0],int(tile))
-                            df['PETAL']=numpy.full(df.shape[0],i)
-                            df['YYYYMMDD']=numpy.full(df.shape[0],int(date))
-                            dfs.append(df[0:0])
-                        else:                                
-                            for i in range(10):      
-                                # check to see if this file has been done already and if so break
-                                if (int(date) == maxdate):
-                                    ans=con.execute(f"SELECT count(*) FROM fibermap_daily WHERE YYYYMMDD={date} AND TILE={tile} AND PETAL={i}")
-                                    if ans.fetchone()[0] !=0:
-                                        continue
 
-                                filename = f'{dir_root}/{tile}/{date}/zbest-{i}-{tile}-thru{date}.fits'
-                                try:
-                                    dat = Table.read(filename, format='fits',hdu=2)
-                                except:
-                                    print(f"{filename} not found")
-                                    continue
-                                df = dat.to_pandas()
-                                df['GROUPING'] = numpy.full(df.shape[0],'cumulative')
-                                df['PRODUCTION']=numpy.full(df.shape[0],'daily')
-                                df['TILE']=numpy.full(df.shape[0],int(tile))
-                                df['PETAL']=numpy.full(df.shape[0],i)
-                                df['YYYYMMDD']=numpy.full(df.shape[0],int(date))
-                                df.to_sql(f'fibermap_daily',con,if_exists='append')
-                            
-        if schema:
-            dfs = pandas.concat(dfs, ignore_index=True, sort=False)
-            dfs=dfs[0:0]
-            dfs.to_sql(f'fibermap_daily',con,if_exists='replace')
-            
-        con.close
+                            dat.convert_bytestring_to_unicode()
+                            df = dat.to_pandas()
+#                             df['TILE']=numpy.full(df.shape[0],int(tile))
+#                             df['PETAL']=numpy.full(df.shape[0],i)
+                            df['YYYYMMDD']=numpy.full(df.shape[0],int(date))
+                            dfs.append(df)
+                if len(dfs)>0:
+                    try:
+                        dfs = pandas.concat(dfs, ignore_index=True, sort=False)
+                        dfs.to_sql(f'fibermap_daily',conn,index=False,if_exists='append')
+                    except sqlite3.OperationalError as err:
+                        dtypesToSchema(dfs.dtypes)
+                        sys.exit()
+                                                
+        
+        
+class DBManager:
     
+    filename = "/global/cfs/cdirs/desi/science/td/db/desi.db"
+
             
     @staticmethod
     def load_spectra_prod(prod="denali"):
@@ -855,138 +990,6 @@ class DBManager:
             dfs.to_sql(f'spectra_{prod}',con,if_exists='append')
         con.close
 
-        
-#    @staticmethod
-#     def load_zbest_prod(prod="denali"):
-
-#         subdirs = ['cumulative','pernight']
-#         substrs = ['thru','']
-#         con = sqlite3.connect(DBManager.filename)        
-#         for subdir,substr in zip(subdirs,substrs):
-#             # per night
-#             dir_root = f"/global/project/projectdirs/desi/spectro/redux/{prod}/tiles/{subdir}/"
-#             dates = []
-#             for path in glob.glob(f'{dir_root}/*/202?????'):
-#                 split = path.split('/')
-#                 dates.append(split[-1])
-#             dates = numpy.unique(dates)
-
-#             for date in dates:
-#                 for path in glob.glob(f'{dir_root}/*/{date}'):
-#                     split = path.split('/')
-#                     tile = split[-2]
-#                     if tile.isnumeric():
-#                         for i in range(10):                            
-#                             filename = f'{dir_root}/{tile}/{date}/zbest-{i}-{tile}-{substr}{date}.fits'
-#                             try:
-#                                 dat = Table.read(filename, format='fits',hdu=1)
-#                             except:
-#                                 print(f"{filename} not found")
-#                                 continue
-
-#                             for icoeff in range(0,10):
-#                                 dat[f'COEFF_{icoeff}']= dat['COEFF'][0:len(dat),icoeff]
-#                             dat.remove_column('COEFF')
-#                             df = dat.to_pandas()
-#                             df['GROUPING'] = numpy.full(df.shape[0],subdir)
-#                             df['PRODUCTION']=numpy.full(df.shape[0],prod)
-#                             df['TILE']=numpy.full(df.shape[0],int(tile))
-#                             df['PETAL']=numpy.full(df.shape[0],i)
-#                             df['YYYYMMDD']=numpy.full(df.shape[0],int(date))
-#                             df.to_sql(f'zbest_{prod}',con,if_exists='append')
-#         con.close        
-        
-#     @staticmethod
-#     # deprecated
-#     def load_spectra(prod="daily"):
-#         if prod == "daily":
-#             dir_root = "/global/project/projectdirs/desi/spectro/redux/daily/tiles/"
-#         else:
-#             dir_root = f"/global/project/projectdirs/desi/spectro/redux/{prod}/tiles/pernight/"
-        
-#         con = sqlite3.connect(DBManager.filename)        
-#         #find the last date
-#         ans=con.execute(f"SELECT MAX(YYYYMMDD) FROM spectra WHERE PRODUCTION = '{prod}'")
-#         maxdate = ans.fetchone()[0]
-#         if maxdate is None: maxdate = 0
-#         print(maxdate)
-
-#         dates = []
-#         for path in glob.glob(f'{dir_root}/*/202?????'):
-#             split = path.split('/')
-#             dates.append(split[-1])
-#         dates = numpy.unique(dates)
-
-#         dfs=[]
-#         for date in dates:
-#             if int(date) >= maxdate:
-#                 for path in glob.glob(f'{dir_root}/*/{date}'):
-#                     split = path.split('/')
-#                     tile = split[-2]
-#                     if tile.isnumeric():
-#                         for i in range(10):                            
-                            
-#                             # check to see if this file has been done already and if so break
-#                             if (int(date) == maxdate):
-#                                 ans=con.execute(f"SELECT count(*) FROM spectra WHERE PRODUCTION = '{prod}' AND YYYYMMDD={date} AND TILE={tile} AND PETAL={i}")
-#                                 if ans.fetchone()[0] !=0:
-#                                     print(f"skipping {date} {tile} {i}")
-#                                     break
-                            
-#                             filename = f'{dir_root}/{tile}/{date}/spectra-{i}-{tile}-{date}.fits'
-#                             print(filename)
-#                             try:
-#                                 dat = Table.read(filename, format='fits')
-#                             except:
-#                                 print(f"{filename} not found")
-#                                 break
-                                
-#                             df = dat.to_pandas()
-#                             df['PRODUCTION']=numpy.full(df.shape[0],prod)
-#                             df['TILE']=numpy.full(df.shape[0],int(tile))
-#                             df['PETAL']=numpy.full(df.shape[0],i)
-#                             df['YYYYMMDD']=numpy.full(df.shape[0],int(date))
-#                             dfs.append(df)
-#         if len(dfs) != 0:
-#             dfs = pandas.concat(dfs, ignore_index=True, sort=False)                    
-#             dfs.to_sql('spectra',con,if_exists='append')  
-#         con.close    
-
-#     deprecated
-#     def load_mtl():
-
-#         root = "/global/cfs/cdirs/desi/survey/ops/surveyops/trunk/mtl/"
-#         runs = ["sv3","sv2"]
-#         programs = ["","ToO","secondary"]
-#         lunations = ["bright","dark"]
-
-#         # The files have column names with SV?_ so purge them
-
-#         dfs=[]
-#         for run in runs:
-#             dfall_2 = None
-#             for program in programs:
-#                 for lunation in lunations:
-#                     path = os.path.join(root,run,program,lunation)
-#                     if os.path.isdir(path):
-#                         for file in glob.glob(path+"/*.ecsv"):
-#                             print(file)
-#                             data = ascii.read(file)
-#                             df = data.to_pandas()
-
-#                             df['RUN']=numpy.full(df.shape[0],run)
-#                             df['PROGRAM']=numpy.full(df.shape[0],program)
-#                             df['LUNATION']=numpy.full(df.shape[0],lunation)
-                            
-#                             dfs.append(df)
-#                     else:
-#                         print (path, 'not exists')
-
-#         dfs = pandas.concat(dfs, ignore_index=True, sort=False)
-                    
-#         con = sqlite3.connect(DBManager.filename)
-#         dfs.to_sql('mtl',con,if_exists='replace')  
-#         con.close()
         
     @staticmethod
     def load_daily():
