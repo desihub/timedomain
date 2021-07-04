@@ -220,11 +220,8 @@ class zcatalog_denali:
     def create_table(overwrite = False):
         
         with engine.connect() as conn:
-#             cur = conn.cursor()
-
             if overwrite:
-                conn.execute(text("DROP TABLE IF EXISTS zcatalog_denali;"))
-                             
+                conn.execute(text("DROP TABLE IF EXISTS zcatalog_denali;"))                            
             conn.execute(text(zcatalog_denali.schema))
             conn.close()
 
@@ -257,74 +254,65 @@ class mtl:
 
     schema=f"""
         CREATE TABLE IF NOT EXISTS "mtl" (
-          "RA" REAL,
-          "DEC" REAL,
-          "PMRA" REAL,
-          "PMDEC" REAL,
-          "REF_EPOCH" REAL,
-          "FLUX_G" REAL,
-          "FLUX_R" REAL,
-          "FLUX_Z" REAL,
-          "PARALLAX" REAL,
-          "GAIA_PHOT_G_MEAN_MAG" REAL,
-          "GAIA_PHOT_BP_MEAN_MAG" REAL,
-          "GAIA_PHOT_RP_MEAN_MAG" REAL,
-          "GAIA_ASTROMETRIC_EXCESS_NOISE" REAL,
-          "TARGETID" INTEGER,
-          "DESI_TARGET" INTEGER,
-          "BGS_TARGET" INTEGER,
-          "MWS_TARGET" INTEGER,
-          "SCND_TARGET" INTEGER,
-          "SV3_DESI_TARGET" INTEGER,
-          "SV3_SCND_TARGET" INTEGER,
-          "SV3_BGS_TARGET"       INTEGER,
-          "SV3_MWS_TARGET"       INTEGER,
-          "SCND_ORDER" INTEGER,
-          "NUMOBS_MORE"  INTEGER,
-          "Z"            REAL,
-          "ZWARN"        INTEGER,
-          "ZTILEID"      INTEGER,
-          "Z_QN"          REAL,
-          "IS_QSO_QN"       INTEGER,
-          "DELTACHI2"        REAL,
-          "PRIORITY_INIT" INTEGER,
-          "SUBPRIORITY" REAL,
-          "NUMOBS_INIT" INTEGER,
-          "NUMOBS" INTEGER,
-          "OBSCONDITIONS" INTEGER,
-          "CHECKER" TEXT,
-          "TOO_TYPE" TEXT,
-          "TOO_PRIO" TEXT,
-          "OCLAYER" TEXT,
-          "MJD_BEGIN" REAL,
-          "MJD_END" REAL,
-          "TOOID" INTEGER,
-          "TARGET_STATE"      TEXT,
-          "TIMESTAMP"         TEXT,
-          "VERSION"           TEXT,
-          "PRIORITY"           INTEGER,         
-          "RUN" TEXT,
-          "PROGRAM" TEXT,
-          "LUNATION" TEXT
+            ra  DOUBLE PRECISION,
+            dec  DOUBLE PRECISION,
+            ref_epoch  REAL,
+            parallax  REAL,
+            pmra  REAL,
+            pmdec  REAL,
+            targetid  BIGINT,
+            sv3_desi_target  BIGINT,
+            sv3_bgs_target  BIGINT,
+            sv3_mws_target  BIGINT,
+            subpriority  DOUBLE PRECISION,
+            obsconditions  INTEGER,
+            priority_init  BIGINT,
+            numobs_init  BIGINT,
+            sv3_scnd_target  BIGINT,
+            numobs_more  BIGINT,
+            numobs  BIGINT,
+            z  DOUBLE PRECISION,
+            zwarn  BIGINT,
+            ztileid  INTEGER,
+            target_state  TEXT,
+            timestamp  TEXT,
+            version  TEXT,
+            priority  BIGINT,
+            run  TEXT,
+            program  TEXT,
+            lunation  TEXT,
+            flux_g  REAL,
+            flux_r  REAL,
+            flux_z  REAL,
+            gaia_phot_g_mean_mag  REAL,
+            gaia_phot_bp_mean_mag  REAL,
+            gaia_phot_rp_mean_mag  REAL,
+            gaia_astrometric_excess_noise  REAL,
+            scnd_order  INTEGER,
+            checker  TEXT,
+            too_type  TEXT,
+            too_prio  TEXT,
+            oclayer  TEXT,
+            mjd_begin  DOUBLE PRECISION,
+            mjd_end  DOUBLE PRECISION,
+            tooid  BIGINT
         );
         """
 
     root = "/global/cfs/cdirs/desi/survey/ops/surveyops/trunk/mtl/"
     runs = ["main","sv3","sv2"]
     runs=["sv3"]
-    programs = ["","ToO","secondary"]
+    programs = ["ToO","","secondary"]
     lunations = ["bright","dark",""] 
 
     @staticmethod
     def create_table(overwrite = False):
-        cur = conn.cursor()
-        
-        if overwrite:
-            cur.execute(f"DROP TABLE IF EXISTS mtl;")
-        cur.execute(mtl.schema)
-        
-        cur.close()
-        
+        with engine.connect() as conn:
+            if overwrite:
+                conn.execute(f"DROP TABLE IF EXISTS mtl;")
+            conn.execute(mtl.schema)
+            conn.close()
+
     @staticmethod    
     def fill_table():
 
@@ -340,14 +328,14 @@ class mtl:
                                 continue
                             data = ascii.read(file)
                             df = data.to_pandas()
-                            df['RUN']=numpy.full(df.shape[0],run)
-                            df['PROGRAM']=numpy.full(df.shape[0],program)
-                            df['LUNATION']=numpy.full(df.shape[0],lunation)
+                            df['run']=numpy.full(df.shape[0],run)
+                            df['program']=numpy.full(df.shape[0],program)
+                            df['lunation']=numpy.full(df.shape[0],lunation)
+                            df.columns= df.columns.str.lower()
                             try:
-                                df.to_sql('mtl',conn,index=False,if_exists='append')
-                            except sqlite3.OperationalError as err:
+                                df.to_sql('mtl',engine,index=False,if_exists='append')
+                            except:
                                 dtypesToSchema(df.dtypes)
-
                                 print(df.dtypes)
                                 sys.exit()
                     else:
@@ -420,7 +408,7 @@ class secondary:
                             df['LUNATION']=numpy.full(df.shape[0],lunation)
                             try:
                                 df.to_sql('secondary',conn,index=False,if_exists='append')
-                            except sqlite3.OperationalError as err:
+                            except:
                                 dtypesToSchema(df.dtypes)
                                 sys.exit()
                             
