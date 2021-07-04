@@ -89,10 +89,170 @@ def dtypesToSchema(dtypes):
         elif value == numpy.object:
             nvalue = 'TEXT'
         else:
-            print ("unknown ",value)
-#         print(f'"{index}"  {nvalue}, {value}')
-        print(f'"{index}"  {nvalue},')       
-                                    
+            print ("**unknown** ",value)
+#         print(f'{index}  {nvalue}, {value}')
+        print(f'{index.lower()}  {nvalue},')       
+
+class zcatalog_denali:
+    
+    schema="""
+    CREATE TABLE IF NOT EXISTS "zcatalog_denali" (
+        targetid  BIGINT,
+        chi2  DOUBLE PRECISION,
+        z  DOUBLE PRECISION,
+        zerr  DOUBLE PRECISION,
+        zwarn  BIGINT,
+        npixels  BIGINT,
+        spectype  TEXT,
+        subtype  TEXT,
+        ncoeff  BIGINT,
+        deltachi2  DOUBLE PRECISION,
+        numexp  INTEGER,
+        numtile  INTEGER,
+        petal_loc  SMALLINT,
+        device_loc  INTEGER,
+        location  BIGINT,
+        fiber  INTEGER,
+        fiberstatus  INTEGER,
+        target_ra  DOUBLE PRECISION,
+        target_dec  DOUBLE PRECISION,
+        pmra  REAL,
+        pmdec  REAL,
+        ref_epoch  REAL,
+        lambda_ref  REAL,
+        fa_target  BIGINT,
+        fa_type  SMALLINT,
+        objtype  TEXT,
+        priority  INTEGER,
+        subpriority  DOUBLE PRECISION,
+        obsconditions  INTEGER,
+        release  SMALLINT,
+        brickid  INTEGER,
+        brick_objid  INTEGER,
+        morphtype  TEXT,
+        flux_g  REAL,
+        flux_r  REAL,
+        flux_z  REAL,
+        flux_ivar_g  REAL,
+        flux_ivar_r  REAL,
+        flux_ivar_z  REAL,
+        maskbits  SMALLINT,
+        ref_id  BIGINT,
+        ref_cat  TEXT,
+        gaia_phot_g_mean_mag  REAL,
+        gaia_phot_bp_mean_mag  REAL,
+        gaia_phot_rp_mean_mag  REAL,
+        parallax  REAL,
+        brickname  TEXT,
+        ebv  REAL,
+        flux_w1  REAL,
+        flux_w2  REAL,
+        fiberflux_g  REAL,
+        fiberflux_r  REAL,
+        fiberflux_z  REAL,
+        fibertotflux_g  REAL,
+        fibertotflux_r  REAL,
+        fibertotflux_z  REAL,
+        sersic  REAL,
+        shape_r  REAL,
+        shape_e1  REAL,
+        shape_e2  REAL,
+        photsys  TEXT,
+        priority_init  BIGINT,
+        numobs_init  BIGINT,
+        sv2_desi_target  BIGINT,
+        sv2_bgs_target  BIGINT,
+        sv2_mws_target  BIGINT,
+        sv2_scnd_target  BIGINT,
+        desi_target  BIGINT,
+        bgs_target  BIGINT,
+        mws_target  BIGINT,
+        tileid  INTEGER,
+        coadd_numexp  SMALLINT,
+        coadd_exptime  REAL,
+        mean_delta_x  REAL,
+        rms_delta_x  REAL,
+        mean_delta_y  REAL,
+        rms_delta_y  REAL,
+        mean_fiber_x  REAL,
+        mean_fiber_y  REAL,
+        mean_fiber_ra  DOUBLE PRECISION,
+        mean_fiber_dec  DOUBLE PRECISION,
+        mean_fiberassign_x  REAL,
+        mean_fiberassign_y  REAL,
+        first_night  INTEGER,
+        last_night  INTEGER,
+        num_night  SMALLINT,
+        first_expid  INTEGER,
+        last_expid  INTEGER,
+        num_expid  SMALLINT,
+        first_tileid  INTEGER,
+        last_tileid  INTEGER,
+        num_tileid  SMALLINT,
+        first_fiber  INTEGER,
+        last_fiber  INTEGER,
+        num_fiber  SMALLINT,
+        first_mjd  REAL,
+        last_mjd  REAL,
+        num_mjd  SMALLINT,
+        sv1_scnd_target  BIGINT,
+        sv1_bgs_target  BIGINT,
+        sv1_desi_target  BIGINT,
+        sv1_mws_target  BIGINT,
+        cmx_target  BIGINT,
+        coeff_0  DOUBLE PRECISION,
+        coeff_1  DOUBLE PRECISION,
+        coeff_2  DOUBLE PRECISION,
+        coeff_3  DOUBLE PRECISION,
+        coeff_4  DOUBLE PRECISION,
+        coeff_5  DOUBLE PRECISION,
+        coeff_6  DOUBLE PRECISION,
+        coeff_7  DOUBLE PRECISION,
+        coeff_8  DOUBLE PRECISION,
+        coeff_9  DOUBLE PRECISION,
+        PRIMARY KEY (targetid, tileid)
+    );
+    """    
+    
+    # 
+    
+    @staticmethod
+    def create_table(overwrite = False):
+        
+        with engine.connect() as conn:
+#             cur = conn.cursor()
+
+            if overwrite:
+                conn.execute(text("DROP TABLE IF EXISTS zcatalog_denali;"))
+                             
+            conn.execute(text(zcatalog_denali.schema))
+            conn.close()
+
+    @staticmethod
+    def fill_table(prod='denali'):
+        root = f"/global/project/projectdirs/desi/spectro/redux/{prod}"
+        coadds = ["cumulative","pernight"]
+        coadds = ["cumulative"]
+        
+        for coadd in coadds:
+            filename = os.path.join(root,f"zcatalog-denali-{coadd}.fits")
+            print(filename)
+            dat = Table.read(filename, format='fits')
+            
+            # There is a multidimensional column that needs to be broken up
+            for icoeff in range(0,10):
+                dat[f'COEFF_{icoeff}']= dat['COEFF'][0:len(dat),icoeff]
+            dat.remove_column('COEFF')
+            dat.convert_bytestring_to_unicode()
+            
+            df = dat.to_pandas()
+            df.columns= df.columns.str.lower()
+            try:
+                df.to_sql('zcatalog_denali',engine,index=False,if_exists='append') 
+            except:
+                dtypesToSchema(df.dtypes)
+                print(df[0])
+                sys.exit()
 class mtl:
 
     schema=f"""
@@ -298,165 +458,7 @@ class secondary:
                                 dtypesToSchema(df.dtypes)
                                 sys.exit()
                                 
-class zcatalog_denali_cumulative:
-    
-    schema="""
-    CREATE TABLE IF NOT EXISTS "zcatalog_denali_cumulative" (
-        "TARGETID"  BIGINT,
-        "CHI2"  DOUBLE PRECISION,
-        "Z"  DOUBLE PRECISION,
-        "ZERR"  DOUBLE PRECISION,
-        "ZWARN"  BIGINT,
-        "NPIXELS"  BIGINT,
-        "SPECTYPE"  TEXT,
-        "SUBTYPE"  TEXT,
-        "NCOEFF"  BIGINT,
-        "DELTACHI2"  DOUBLE PRECISION,
-        "NUMEXP"  INTEGER,
-        "NUMTILE"  INTEGER,
-        "PETAL_LOC"  SMALLINT,
-        "DEVICE_LOC"  INTEGER,
-        "LOCATION"  BIGINT,
-        "FIBER"  INTEGER,
-        "FIBERSTATUS"  INTEGER,
-        "TARGET_RA"  DOUBLE PRECISION,
-        "TARGET_DEC"  DOUBLE PRECISION,
-        "PMRA"  REAL,
-        "PMDEC"  REAL,
-        "REF_EPOCH"  REAL,
-        "LAMBDA_REF"  REAL,
-        "FA_TARGET"  BIGINT,
-        "FA_TYPE"  SMALLINT,
-        "OBJTYPE"  TEXT,
-        "PRIORITY"  INTEGER,
-        "SUBPRIORITY"  DOUBLE PRECISION,
-        "OBSCONDITIONS"  INTEGER,
-        "RELEASE"  SMALLINT,
-        "BRICKID"  INTEGER,
-        "BRICK_OBJID"  INTEGER,
-        "MORPHTYPE"  TEXT,
-        "FLUX_G"  REAL,
-        "FLUX_R"  REAL,
-        "FLUX_Z"  REAL,
-        "FLUX_IVAR_G"  REAL,
-        "FLUX_IVAR_R"  REAL,
-        "FLUX_IVAR_Z"  REAL,
-        "MASKBITS"  SMALLINT,
-        "REF_ID"  BIGINT,
-        "REF_CAT"  TEXT,
-        "GAIA_PHOT_G_MEAN_MAG"  REAL,
-        "GAIA_PHOT_BP_MEAN_MAG"  REAL,
-        "GAIA_PHOT_RP_MEAN_MAG"  REAL,
-        "PARALLAX"  REAL,
-        "BRICKNAME"  TEXT,
-        "EBV"  REAL,
-        "FLUX_W1"  REAL,
-        "FLUX_W2"  REAL,
-        "FIBERFLUX_G"  REAL,
-        "FIBERFLUX_R"  REAL,
-        "FIBERFLUX_Z"  REAL,
-        "FIBERTOTFLUX_G"  REAL,
-        "FIBERTOTFLUX_R"  REAL,
-        "FIBERTOTFLUX_Z"  REAL,
-        "SERSIC"  REAL,
-        "SHAPE_R"  REAL,
-        "SHAPE_E1"  REAL,
-        "SHAPE_E2"  REAL,
-        "PHOTSYS"  TEXT,
-        "PRIORITY_INIT"  BIGINT,
-        "NUMOBS_INIT"  BIGINT,
-        "SV2_DESI_TARGET"  BIGINT,
-        "SV2_BGS_TARGET"  BIGINT,
-        "SV2_MWS_TARGET"  BIGINT,
-        "SV2_SCND_TARGET"  BIGINT,
-        "DESI_TARGET"  BIGINT,
-        "BGS_TARGET"  BIGINT,
-        "MWS_TARGET"  BIGINT,
-        "TILEID"  INTEGER,
-        "COADD_NUMEXP"  SMALLINT,
-        "COADD_EXPTIME"  REAL,
-        "MEAN_DELTA_X"  REAL,
-        "RMS_DELTA_X"  REAL,
-        "MEAN_DELTA_Y"  REAL,
-        "RMS_DELTA_Y"  REAL,
-        "MEAN_FIBER_X"  REAL,
-        "MEAN_FIBER_Y"  REAL,
-        "MEAN_FIBER_RA"  DOUBLE PRECISION,
-        "MEAN_FIBER_DEC"  DOUBLE PRECISION,
-        "MEAN_FIBERASSIGN_X"  REAL,
-        "MEAN_FIBERASSIGN_Y"  REAL,
-        "FIRST_NIGHT"  INTEGER,
-        "LAST_NIGHT"  INTEGER,
-        "NUM_NIGHT"  SMALLINT,
-        "FIRST_EXPID"  INTEGER,
-        "LAST_EXPID"  INTEGER,
-        "NUM_EXPID"  SMALLINT,
-        "FIRST_TILEID"  INTEGER,
-        "LAST_TILEID"  INTEGER,
-        "NUM_TILEID"  SMALLINT,
-        "FIRST_FIBER"  INTEGER,
-        "LAST_FIBER"  INTEGER,
-        "NUM_FIBER"  SMALLINT,
-        "FIRST_MJD"  REAL,
-        "LAST_MJD"  REAL,
-        "NUM_MJD"  SMALLINT,
-        "SV1_SCND_TARGET"  BIGINT,
-        "SV1_BGS_TARGET"  BIGINT,
-        "SV1_DESI_TARGET"  BIGINT,
-        "SV1_MWS_TARGET"  BIGINT,
-        "CMX_TARGET"  BIGINT,
-        "COEFF_0"  DOUBLE PRECISION,
-        "COEFF_1"  DOUBLE PRECISION,
-        "COEFF_2"  DOUBLE PRECISION,
-        "COEFF_3"  DOUBLE PRECISION,
-        "COEFF_4"  DOUBLE PRECISION,
-        "COEFF_5"  DOUBLE PRECISION,
-        "COEFF_6"  DOUBLE PRECISION,
-        "COEFF_7"  DOUBLE PRECISION,
-        "COEFF_8"  DOUBLE PRECISION,
-        "COEFF_9"  DOUBLE PRECISION
-    );
-    """    
-    
-    @staticmethod
-    def create_table(overwrite = False):
-        
-        with engine.connect() as conn:
-#             cur = conn.cursor()
 
-            if overwrite:
-                conn.execute(text("DROP TABLE IF EXISTS zcatalog_denali_cumulative;"))
-                             
-            conn.execute(text(zcatalog_denali_cumulative.schema))
-            conn.close()
-
-    @staticmethod
-    def fill_table(prod='denali'):
-        root = f"/global/project/projectdirs/desi/spectro/redux/{prod}"
-        coadds = ["cumulative","pernight"]
-        coadds = ["cumulative"]
-        
-        for coadd in coadds:
-            filename = os.path.join(root,f"zcatalog-denali-{coadd}.fits")
-            print(filename)
-            dat = Table.read(filename, format='fits')
-            
-            # There is a multidimensional column that needs to be broken up
-            for icoeff in range(0,10):
-                dat[f'COEFF_{icoeff}']= dat['COEFF'][0:len(dat),icoeff]
-            dat.remove_column('COEFF')
-            dat.convert_bytestring_to_unicode()
-            
-            df = dat.to_pandas()
-#             df['PRODUCTION']=numpy.full(df.shape[0],prod)
-#             df['COADD']=numpy.full(df.shape[0],coadd)
-
-            try:
-                df.to_sql('zcatalog_denali_cumulative',engine,index=False,if_exists='append') 
-            except:
-                dtypesToSchema(df.dtypes)
-                print(df[0])
-                sys.exit()            
 
                 
 class dr9_pv:
