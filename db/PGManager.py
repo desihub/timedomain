@@ -88,11 +88,115 @@ def dtypesToSchema(dtypes):
             nvalue = 'SMALLINT'
         elif value == numpy.object:
             nvalue = 'TEXT'
+        elif value == numpy.bool:
+            nvalue = 'BOOLEAN'
         else:
             print ("**unknown** ",value)
 #         print(f'{index}  {nvalue}, {value}')
         print(f'{index.lower()}  {nvalue},')       
 
+class secondary:
+
+    schema=f"""
+    CREATE TABLE IF NOT EXISTS secondary (
+        ra  DOUBLE PRECISION,
+        dec  DOUBLE PRECISION,
+        pmra  REAL,
+        pmdec  REAL,
+        ref_epoch  REAL,
+        override  BOOLEAN,
+        flux_g  REAL,
+        flux_r  REAL,
+        flux_z  REAL,
+        parallax  REAL,
+        gaia_phot_g_mean_mag  REAL,
+        gaia_phot_bp_mean_mag  REAL,
+        gaia_phot_rp_mean_mag  REAL,
+        gaia_astrometric_excess_noise  REAL,
+        targetid  BIGINT,
+        sv3_desi_target  BIGINT,
+        sv3_scnd_target  BIGINT,
+        scnd_order  INTEGER,
+        desitarget_v  TEXT,
+        run  TEXT,
+        program  TEXT,
+        lunation  TEXT
+    );
+    """
+    runs=['main','sv3']
+    
+    @staticmethod
+    def create_table(overwrite = False):
+        with engine.connect() as conn:
+            if overwrite:
+                conn.execute(text("DROP TABLE IF EXISTS secondary;"))                            
+            conn.execute(secondary.schema)
+            conn.close()
+        
+    
+    @staticmethod
+    def fill_table():
+        
+        # SV3
+        if 'sv3' in secondary.runs:
+            dir_root = "/global/cfs/cdirs/desi/target/secondary/sv3/outdata/0.57.0/"
+            lunations = ["bright", "dark"]
+       
+            for lunation in lunations:
+                for root, dirs, files in os.walk(os.path.join(dir_root,lunation)):
+                    for file in files:
+                        if file.endswith('.fits'):
+                            filename = os.path.join(root,file)
+                            print(file)
+                            program = file[:-5]
+                            dat = Table.read(filename, format='fits')
+                            df = dat.to_pandas()
+                            df['desitarget_v']= numpy.full(df.shape[0],'0.57.0')
+                            df['run']=numpy.full(df.shape[0],'sv3')
+                            df['program']=numpy.full(df.shape[0],program)
+                            df['lunation']=numpy.full(df.shape[0],lunation)
+                            df.columns= df.columns.str.lower()
+                            try:
+                                df.to_sql('secondary',engine,index=False,if_exists='append')
+                            except:
+                                dtypesToSchema(df.dtypes)
+                                sys.exit()
+                            
+
+        # main
+        
+        # SCHEMA EVOLUTION
+        # New keywords DESI_TARGET   SCND_TARGET
+        fix = '''
+        ALTER TABLE secondary
+        ADD COLUMN DESI_TARGET INT;
+        ALTER TABLE secondary
+        ADD COLUMN SCND_TARGET INT;
+        '''
+        if 'main' in secondary.runs:
+            dir_root = "/global/cfs/cdirs/desi/target/secondary/main/outdata/1.0.0/"
+            lunations = ["bright", "dark"]
+       
+            for lunation in lunations:
+                for root, dirs, files in os.walk(os.path.join(dir_root,lunation)):
+                    for file in files:
+                        if file.endswith('.fits'):
+                            filename = os.path.join(root,file)
+                            print(file)
+                            program = file[:-5]
+                            dat = Table.read(filename, format='fits')
+                            df = dat.to_pandas()
+                            df['desitarget_v']= numpy.full(df.shape[0],'1.0.0')
+                            df['run']=numpy.full(df.shape[0],'main')
+                            df['program']=numpy.full(df.shape[0],program)
+                            df['lunation']=numpy.full(df.shape[0],lunation)
+                            df.columns= df.columns.str.lower()
+                            try:
+                                df.to_sql('secondary',engine,index=False,if_exists='append')
+                            except:
+                                dtypesToSchema(df.dtypes)
+                                sys.exit()    
+    
 class zcatalog_denali:
     
     schema="""
@@ -341,110 +445,7 @@ class mtl:
                     else:
                         print (path, 'not exists')
 
-class secondary:
 
-    schema=f"""
-    CREATE TABLE IF NOT EXISTS secondary (
-        "RA"  REAL,
-        "DEC"  REAL,
-        "PMRA"  TEXT,
-        "PMDEC"  TEXT,
-        "REF_EPOCH"  TEXT,
-        "OVERRIDE"  TEXT,
-        "FLUX_G"  TEXT,
-        "FLUX_R"  TEXT,
-        "FLUX_Z"  TEXT,
-        "PARALLAX"  TEXT,
-        "GAIA_PHOT_G_MEAN_MAG"  TEXT,
-        "GAIA_PHOT_BP_MEAN_MAG"  TEXT,
-        "GAIA_PHOT_RP_MEAN_MAG"  TEXT,
-        "GAIA_ASTROMETRIC_EXCESS_NOISE"  TEXT,
-        "TARGETID"  INTEGER,
-        "SV3_DESI_TARGET"  INTEGER,
-        "SV3_SCND_TARGET"  INTEGER,
-        "DESI_TARGET" INTEGER,
-        "SCND_TARGET" INTEGER,
-        "SCND_ORDER"  INTEGER,
-        "DESITARGET_v"  TEXT,
-        "RUN"  TEXT,
-        "PROGRAM"  TEXT,
-        "LUNATION"  TEXT
-    );
-    """
-    
-    runs=['sv3','main']
-    runs=['main']
-    
-    @staticmethod
-    def create_table(overwrite = False):
-        cur = conn.cursor()
-        
-        if overwrite:
-            cur.execute(f"DROP TABLE IF EXISTS secondary;")
-        cur.execute(secondary.schema)
-        cur.close()
-        
-    
-    @staticmethod
-    def fill_table():
-        
-        # SV3
-        if 'sv3' in secondary.runs:
-            dir_root = "/global/cfs/cdirs/desi/target/secondary/sv3/outdata/0.57.0/"
-            lunations = ["bright", "dark"]
-       
-            for lunation in lunations:
-                for root, dirs, files in os.walk(os.path.join(dir_root,lunation)):
-                    for file in files:
-                        if file.endswith('.fits'):
-                            filename = os.path.join(root,file)
-                            print(file)
-                            program = file[:-5]
-                            dat = Table.read(filename, format='fits')
-                            df = dat.to_pandas()
-                            df['DESITARGET_v']= numpy.full(df.shape[0],'0.57.0')
-                            df['RUN']=numpy.full(df.shape[0],'sv3')
-                            df['PROGRAM']=numpy.full(df.shape[0],program)
-                            df['LUNATION']=numpy.full(df.shape[0],lunation)
-                            try:
-                                df.to_sql('secondary',conn,index=False,if_exists='append')
-                            except:
-                                dtypesToSchema(df.dtypes)
-                                sys.exit()
-                            
-
-        # main
-        
-        # SCHEMA EVOLUTION
-        # New keywords DESI_TARGET   SCND_TARGET
-        fix = '''
-        ALTER TABLE secondary
-        ADD COLUMN DESI_TARGET INT;
-        ALTER TABLE secondary
-        ADD COLUMN SCND_TARGET INT;
-        '''
-        if 'main' in secondary.runs:
-            dir_root = "/global/cfs/cdirs/desi/target/secondary/main/outdata/1.0.0/"
-            lunations = ["bright", "dark"]
-       
-            for lunation in lunations:
-                for root, dirs, files in os.walk(os.path.join(dir_root,lunation)):
-                    for file in files:
-                        if file.endswith('.fits'):
-                            filename = os.path.join(root,file)
-                            print(file)
-                            program = file[:-5]
-                            dat = Table.read(filename, format='fits')
-                            df = dat.to_pandas()
-                            df['DESITARGET_v']= numpy.full(df.shape[0],'1.0.0')
-                            df['RUN']=numpy.full(df.shape[0],'main')
-                            df['PROGRAM']=numpy.full(df.shape[0],program)
-                            df['LUNATION']=numpy.full(df.shape[0],lunation)
-                            try:
-                                df.to_sql('secondary',conn,index=False,if_exists='append')
-                            except sqlite3.OperationalError as err:
-                                dtypesToSchema(df.dtypes)
-                                sys.exit()
                                 
 
 
