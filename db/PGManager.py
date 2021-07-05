@@ -61,6 +61,10 @@ spectra_prod:
     Table sources:
     /global/project/projectdirs/desi/spectro/redux/{prod}/tiles/cumulative/*/spectra*.fits
     
+fibermap_daily:
+
+    read from cumulative only those taken that night
+
 """
 
 try:
@@ -93,7 +97,99 @@ def dtypesToSchema(dtypes):
         else:
             print ("**unknown** ",value)
 #         print(f'{index}  {nvalue}, {value}')
-        print(f'{index.lower()}  {nvalue},')       
+        print(f'{index.lower()}  {nvalue},') 
+    
+class zbest_daily:
+    schema="""
+        CREATE TABLE IF NOT EXISTS "zbest_daily" (
+        targetid  BIGINT,
+        chi2  DOUBLE PRECISION,
+        z  DOUBLE PRECISION,
+        zerr  DOUBLE PRECISION,
+        zwarn  BIGINT,
+        npixels  BIGINT,
+        spectype  TEXT,
+        subtype  TEXT,
+        ncoeff  BIGINT,
+        deltachi2  DOUBLE PRECISION,
+        numexp  INTEGER,
+        numtile  INTEGER,
+        coeff_0  DOUBLE PRECISION,
+        coeff_1  DOUBLE PRECISION,
+        coeff_2  DOUBLE PRECISION,
+        coeff_3  DOUBLE PRECISION,
+        coeff_4  DOUBLE PRECISION,
+        coeff_5  DOUBLE PRECISION,
+        coeff_6  DOUBLE PRECISION,
+        coeff_7  DOUBLE PRECISION,
+        coeff_8  DOUBLE PRECISION,
+        coeff_9  DOUBLE PRECISION,
+        tile  BIGINT,
+        petal  BIGINT,
+        yyyymmdd  BIGINT,
+        PRIMARY KEY (targetid, tile, yyyymmdd)
+    );
+    """
+  
+    @staticmethod
+    def create_table(overwrite = False):
+        with engine.connect() as conn:
+            if overwrite:
+                conn.execute(text("DROP TABLE IF EXISTS zbest_daily;"))                            
+            conn.execute(zbest_daily.schema)
+            conn.close()
+
+    @staticmethod
+    def fill_table():      
+        dir_root = "/global/project/projectdirs/desi/spectro/redux/daily/tiles/cumulative"
+     
+        #find the last date
+        dates_db=[]
+        try:
+            with engine.connect() as conn:
+                for row in conn.execute(f"SELECT DISTINCT YYYYMMDD FROM zbest_daily"):
+                    dates_db.append(row[0])
+        except:
+            pass
+            
+        dates = []
+        for path in glob.glob(f'{dir_root}/*/202?????'):
+            split = path.split('/')
+            dates.append(split[-1])
+        dates = numpy.unique(dates)
+        for date in dates:
+            if int(date) not in dates_db:
+                # Do things in terms of dates
+                dfs=[]
+                print(date)
+                for path in glob.glob(f'{dir_root}/*/{date}'):
+                    split = path.split('/')
+                    tile = split[-2]
+                    if tile.isnumeric():
+                        for i in range(10):                            
+                            filename = f'{dir_root}/{tile}/{date}/zbest-{i}-{tile}-thru{date}.fits'
+                            try:
+                                dat = Table.read(filename, format='fits',hdu=1)
+                            except:
+                                print(f"{filename} not found")
+                                continue
+                            for icoeff in range(0,10):
+                                dat[f'COEFF_{icoeff}']= dat['COEFF'][0:len(dat),icoeff]
+                            dat.remove_column('COEFF')
+                            dat.convert_bytestring_to_unicode()
+                            df = dat.to_pandas()
+                            df['TILE']=numpy.full(df.shape[0],int(tile))
+                            df['PETAL']=numpy.full(df.shape[0],i)
+                            df['YYYYMMDD']=numpy.full(df.shape[0],int(date))
+                            df.columns= df.columns.str.lower()
+                            dfs.append(df)
+                if len(dfs)>0:
+                    try:
+                        dfs = pandas.concat(dfs, ignore_index=True, sort=False)
+                        dfs.to_sql(f'zbest_daily',engine,index=False,if_exists='append')
+                    except sqlite3.OperationalError as err:
+                        dtypesToSchema(dfs.dtypes)
+                        sys.exit()
 
 class dr9_pv:
     schema="""
@@ -629,34 +725,34 @@ class exposure_tables_daily:
 class proposals_pv:
     schema="""
         CREATE TABLE IF NOT EXISTS "proposals_pv" (
-            "OBJID"  INTEGER,
-            "BRICKID"  INTEGER,
-            "BRICKNAME"  TEXT,
-            "RA"  REAL,
-            "DEC"  REAL,
-            "PMRA"  TEXT,
-            "PMDEC"  TEXT,
-            "REF_EPOCH"  TEXT,
-            "OVERRIDE"  TEXT,
-            "PVTYPE"  TEXT,
-            "PVPRIORITY"  INTEGER,
-            "POINTINGID"  INTEGER,
-            "SGA_ID"  INTEGER,
-            "PRIORITY"  TEXT,
-            "LUNATION"  TEXT
+            objid  BIGINT,
+            brickid  INTEGER,
+            brickname  TEXT,
+            ra  DOUBLE PRECISION,
+            dec  DOUBLE PRECISION,
+            pmra  REAL,
+            pmdec  REAL,
+            ref_epoch  REAL,
+            override  BOOLEAN,
+            pvtype  TEXT,
+            pvpriority  INTEGER,
+            pointingid  INTEGER,
+            sga_id  BIGINT,
+            priority  TEXT,
+            lunation  TEXT
     );
     """
   
     
     @staticmethod
     def create_table(overwrite = False):
-        cur = conn.cursor()
-        
-        if overwrite:
-            cur.execute("DROP TABLE IF EXISTS proposals_pv;")
-        cur.execute(proposals_pv.schema)
-        cur.close()
-
+        with engine.connect() as conn:
+            if overwrite:
+                conn.execute(text("DROP TABLE IF EXISTS proposals_pv;"))                            
+            conn.execute(proposals_pv.schema)
+            conn.close()
+            
+            
     @staticmethod
     def fill_table():      
         runs = ["main_year1","sv3","sv1"]
@@ -674,10 +770,11 @@ class proposals_pv:
                     dat.convert_bytestring_to_unicode()
                     
                     df = dat.to_pandas()
-                    df['PRIORITY']=numpy.full(df.shape[0],priority)
-                    df['LUNATION']=numpy.full(df.shape[0],lunation)
+                    df['priority']=numpy.full(df.shape[0],priority)
+                    df['lunation']=numpy.full(df.shape[0],lunation)
+                    df.columns= df.columns.str.lower()
                     try:
-                        df.to_sql('proposals_pv',conn,index=False,if_exists='append')
+                        df.to_sql('proposals_pv',engine,index=False,if_exists='append')
                     except sqlite3.OperationalError as err:
                         dtypesToSchema(df.dtypes)
                         sys.exit()
@@ -691,203 +788,109 @@ class proposals_pv:
         cur.close()    
 
 
-class zbest_daily:
-    schema="""
-        CREATE TABLE IF NOT EXISTS "zbest_daily" (
-        "TARGETID"  INTEGER,
-        "CHI2"  REAL,
-        "Z"  REAL,
-        "ZERR"  REAL,
-        "ZWARN"  INTEGER,
-        "NPIXELS"  INTEGER,
-        "SPECTYPE"  TEXT,
-        "SUBTYPE"  TEXT,
-        "NCOEFF"  INTEGER,
-        "DELTACHI2"  REAL,
-        "NUMEXP"  INTEGER,
-        "NUMTILE"  INTEGER,
-        "COEFF_0"  REAL,
-        "COEFF_1"  REAL,
-        "COEFF_2"  REAL,
-        "COEFF_3"  REAL,
-        "COEFF_4"  REAL,
-        "COEFF_5"  REAL,
-        "COEFF_6"  REAL,
-        "COEFF_7"  REAL,
-        "COEFF_8"  REAL,
-        "COEFF_9"  REAL,
-        "TILE"  INTEGER,
-        "PETAL"  INTEGER,
-        "YYYYMMDD"  INTEGER
-    );
-    """
-  
-    @staticmethod
-    def create_table(overwrite = False):
-        cur = conn.cursor()
-        
-        if overwrite:
-            cur.execute("DROP TABLE IF EXISTS zbest_daily;")
-        cur.execute(zbest_daily.schema)
-        cur.close()
 
-    @staticmethod
-    def fill_table():      
-        dir_root = "/global/project/projectdirs/desi/spectro/redux/daily/tiles/cumulative"
-     
-        #find the last date
-        dates_db=[]
-        try:
-            for row in conn.execute(f"SELECT DISTINCT YYYYMMDD FROM zbest_daily"):
-                dates_db.append(row[0])
-        except:
-            pass
-            
-        dates = []
-        for path in glob.glob(f'{dir_root}/*/202?????'):
-            split = path.split('/')
-            dates.append(split[-1])
-        dates = numpy.unique(dates)
-        for date in dates:
-            if int(date) not in dates_db:
-                # Do things in terms of dates
-                dfs=[]
-                for path in glob.glob(f'{dir_root}/*/{date}'):
-                    split = path.split('/')
-                    tile = split[-2]
-                    if tile.isnumeric():
-                        print(date,tile)
-                        for i in range(10):                            
-                            filename = f'{dir_root}/{tile}/{date}/zbest-{i}-{tile}-thru{date}.fits'
-                            try:
-                                dat = Table.read(filename, format='fits',hdu=1)
-                            except:
-                                print(f"{filename} not found")
-                                continue
-                            for icoeff in range(0,10):
-                                dat[f'COEFF_{icoeff}']= dat['COEFF'][0:len(dat),icoeff]
-                            dat.remove_column('COEFF')
-                            dat.convert_bytestring_to_unicode()
-                            df = dat.to_pandas()
-                            df['TILE']=numpy.full(df.shape[0],int(tile))
-                            df['PETAL']=numpy.full(df.shape[0],i)
-                            df['YYYYMMDD']=numpy.full(df.shape[0],int(date))
-                            dfs.append(df)
-                if len(dfs)>0:
-                    try:
-                        dfs = pandas.concat(dfs, ignore_index=True, sort=False)
-                        dfs.to_sql(f'zbest_daily',conn,index=False,if_exists='append')
-                    except sqlite3.OperationalError as err:
-                        dtypesToSchema(dfs.dtypes)
-                        sys.exit()
                         
                         
 class fibermap_daily:
     schema="""
         CREATE TABLE IF NOT EXISTS "fibermap_daily" (
-        "TARGETID"  INTEGER,
-        "PETAL_LOC"  INTEGER,
-        "DEVICE_LOC"  INTEGER,
-        "LOCATION"  INTEGER,
-        "FIBER"  INTEGER,
-        "FIBERSTATUS"  INTEGER,
-        "TARGET_RA"  REAL,
-        "TARGET_DEC"  REAL,
-        "PMRA"  TEXT,
-        "PMDEC"  TEXT,
-        "REF_EPOCH"  TEXT,
-        "LAMBDA_REF"  TEXT,
-        "FA_TARGET"  INTEGER,
-        "FA_TYPE"  INTEGER,
-        "OBJTYPE"  TEXT,
-        "FIBERASSIGN_X"  TEXT,
-        "FIBERASSIGN_Y"  TEXT,
-        "NUMTARGET"  INTEGER,
-        "PRIORITY"  INTEGER,
-        "SUBPRIORITY"  REAL,
-        "OBSCONDITIONS"  INTEGER,
-        "MORPHTYPE"  TEXT,
-        "FLUX_G"  TEXT,
-        "FLUX_R"  TEXT,
-        "FLUX_Z"  TEXT,
-        "FLUX_IVAR_G"  TEXT,
-        "FLUX_IVAR_R"  TEXT,
-        "FLUX_IVAR_Z"  TEXT,
-        "REF_ID"  INTEGER,
-        "REF_CAT"  TEXT,
-        "GAIA_PHOT_G_MEAN_MAG"  TEXT,
-        "GAIA_PHOT_BP_MEAN_MAG"  TEXT,
-        "GAIA_PHOT_RP_MEAN_MAG"  TEXT,
-        "PARALLAX"  TEXT,
-        "EBV"  TEXT,
-        "FLUX_W1"  TEXT,
-        "FLUX_W2"  TEXT,
-        "FLUX_IVAR_W1"  TEXT,
-        "FLUX_IVAR_W2"  TEXT,
-        "FIBERFLUX_G"  TEXT,
-        "FIBERFLUX_R"  TEXT,
-        "FIBERFLUX_Z"  TEXT,
-        "FIBERTOTFLUX_G"  TEXT,
-        "FIBERTOTFLUX_R"  TEXT,
-        "FIBERTOTFLUX_Z"  TEXT,
-        "MASKBITS"  INTEGER,
-        "SV1_DESI_TARGET"  INTEGER,
-        "SV1_BGS_TARGET"  INTEGER,
-        "SV1_MWS_TARGET"  INTEGER,
-        "SV1_SCND_TARGET"  INTEGER,
-        "SV2_DESI_TARGET"  INTEGER,
-        "SV2_BGS_TARGET"  INTEGER,
-        "SV2_MWS_TARGET"  INTEGER,
-        "SV2_SCND_TARGET"  INTEGER,
-        "SV3_DESI_TARGET"  INTEGER,
-        "SV3_BGS_TARGET"  INTEGER,
-        "SV3_MWS_TARGET"  INTEGER,
-        "SV3_SCND_TARGET"  INTEGER,
-        "SERSIC"  TEXT,
-        "SHAPE_R"  TEXT,
-        "SHAPE_E1"  TEXT,
-        "SHAPE_E2"  TEXT,
-        "PHOTSYS"  TEXT,
-        "CMX_TARGET"  INTEGER,
-        "PRIORITY_INIT"  INTEGER,
-        "NUMOBS_INIT"  INTEGER,
-        "RELEASE"  INTEGER,
-        "BRICKID"  INTEGER,
-        "BRICKNAME"  TEXT,
-        "BRICK_OBJID"  INTEGER,
-        "BLOBDIST"  TEXT,
-        "FIBERFLUX_IVAR_G"  TEXT,
-        "FIBERFLUX_IVAR_R"  TEXT,
-        "FIBERFLUX_IVAR_Z"  TEXT,
-        "DESI_TARGET"  INTEGER,
-        "BGS_TARGET"  INTEGER,
-        "MWS_TARGET"  INTEGER,
-        "HPXPIXEL"  INTEGER,
-        "NUM_ITER"  INTEGER,
-        "FIBER_X"  REAL,
-        "FIBER_Y"  REAL,
-        "DELTA_X"  REAL,
-        "DELTA_Y"  REAL,
-        "FIBER_RA"  REAL,
-        "FIBER_DEC"  REAL,
-        "NIGHT"  INTEGER,
-        "EXPID"  INTEGER,
-        "MJD"  REAL,
-        "EXPTIME"  REAL,
-        "PSF_TO_FIBER_SPECFLUX"  REAL,
-        "TILEID"  INTEGER,
-        "YYYYMMDD"  INTEGER
+            targetid  BIGINT,
+            petal_loc  SMALLINT,
+            device_loc  INTEGER,
+            location  BIGINT,
+            fiber  INTEGER,
+            fiberstatus  INTEGER,
+            target_ra  DOUBLE PRECISION,
+            target_dec  DOUBLE PRECISION,
+            pmra  REAL,
+            pmdec  REAL,
+            ref_epoch  REAL,
+            lambda_ref  REAL,
+            fa_target  BIGINT,
+            fa_type  SMALLINT,
+            objtype  TEXT,
+            fiberassign_x  REAL,
+            fiberassign_y  REAL,
+            numtarget  SMALLINT,
+            priority  INTEGER,
+            subpriority  DOUBLE PRECISION,
+            obsconditions  INTEGER,
+            release  SMALLINT,
+            brickid  INTEGER,
+            brick_objid  INTEGER,
+            morphtype  TEXT,
+            flux_g  REAL,
+            flux_r  REAL,
+            flux_z  REAL,
+            flux_ivar_g  REAL,
+            flux_ivar_r  REAL,
+            flux_ivar_z  REAL,
+            maskbits  SMALLINT,
+            ref_id  BIGINT,
+            ref_cat  TEXT,
+            gaia_phot_g_mean_mag  REAL,
+            gaia_phot_bp_mean_mag  REAL,
+            gaia_phot_rp_mean_mag  REAL,
+            parallax  REAL,
+            brickname  TEXT,
+            ebv  REAL,
+            flux_w1  REAL,
+            flux_w2  REAL,
+            flux_ivar_w1  REAL,
+            flux_ivar_w2  REAL,
+            fiberflux_g  REAL,
+            fiberflux_r  REAL,
+            fiberflux_z  REAL,
+            fibertotflux_g  REAL,
+            fibertotflux_r  REAL,
+            fibertotflux_z  REAL,
+            sersic  REAL,
+            shape_r  REAL,
+            shape_e1  REAL,
+            shape_e2  REAL,
+            photsys  TEXT,
+            cmx_target  BIGINT,
+            sv1_desi_target  BIGINT,
+            sv1_bgs_target  BIGINT,
+            sv1_mws_target  BIGINT,
+            priority_init  BIGINT,
+            numobs_init  BIGINT,
+            desi_target  BIGINT,
+            bgs_target  BIGINT,
+            mws_target  BIGINT,
+            scnd_target  BIGINT,
+            plate_ra  DOUBLE PRECISION,
+            plate_dec  DOUBLE PRECISION,
+            num_iter  BIGINT,
+            fiber_x  DOUBLE PRECISION,
+            fiber_y  DOUBLE PRECISION,
+            delta_x  DOUBLE PRECISION,
+            delta_y  DOUBLE PRECISION,
+            fiber_ra  DOUBLE PRECISION,
+            fiber_dec  DOUBLE PRECISION,
+            exptime  DOUBLE PRECISION,
+            psf_to_fiber_specflux  DOUBLE PRECISION,
+            night  INTEGER,
+            expid  INTEGER,
+            mjd  DOUBLE PRECISION,
+            tileid  INTEGER,
+            yyyymmdd  BIGINT,
+            blobdist  REAL,
+            fiberflux_ivar_g  REAL,
+            fiberflux_ivar_r  REAL,
+            fiberflux_ivar_z  REAL,
+            hpxpixel  BIGINT
     );
     """
   
     @staticmethod
     def create_table(overwrite = False):
-        cur = conn.cursor()
-        
-        if overwrite:
-            cur.execute("DROP TABLE IF EXISTS fibermap_daily;")
-        cur.execute(fibermap_daily.schema)
-        cur.close()
+        with engine.connect() as conn:
+            if overwrite:
+                conn.execute(text("DROP TABLE IF EXISTS fibermap_daily;"))                            
+            conn.execute(fibermap_daily.schema)
+            conn.close()
+
 
     @staticmethod
     def fill_table():      
@@ -896,8 +899,9 @@ class fibermap_daily:
         #find the last date
         dates_db=[]
         try:
-            for row in conn.execute(f"SELECT DISTINCT YYYYMMDD FROM fibermap_daily"):
-                dates_db.append(row[0])
+            with engine.connect() as conn:
+                for row in conn.execute(f"SELECT DISTINCT YYYYMMDD FROM fibermap_daily"):
+                    dates_db.append(row[0])
         except:
             pass
             
@@ -928,13 +932,16 @@ class fibermap_daily:
                             df = dat.to_pandas()
 #                             df['TILE']=numpy.full(df.shape[0],int(tile))
 #                             df['PETAL']=numpy.full(df.shape[0],i)
+                            df=df[df['NIGHT']== int(date)]
                             df['YYYYMMDD']=numpy.full(df.shape[0],int(date))
+                            
+                            df.columns= df.columns.str.lower()
                             dfs.append(df)
                 if len(dfs)>0:
                     try:
                         dfs = pandas.concat(dfs, ignore_index=True, sort=False)
-                        dfs.to_sql(f'fibermap_daily',conn,index=False,if_exists='append')
-                    except sqlite3.OperationalError as err:
+                        dfs.to_sql(f'fibermap_daily',engine,index=False,if_exists='append')
+                    except:
                         dtypesToSchema(dfs.dtypes)
                         sys.exit()
                                                 
