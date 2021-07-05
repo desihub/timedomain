@@ -537,38 +537,38 @@ class mtl:
 class exposure_tables_daily:
     schema="""
         CREATE TABLE IF NOT EXISTS "exposure_tables_daily" (
-            "EXPID"  INTEGER,
-            "EXPTIME"  REAL,
-            "OBSTYPE"  TEXT,
-            "SPECTROGRAPHS"  INTEGER,
-            "CAMWORD"  TEXT,
-            "TILEID"  INTEGER,
-            "NIGHT"  INTEGER,
-            "EXPFLAG"  INTEGER,
-            "HEADERERR"  TEXT,
-            "SURVEY"  INTEGER,
-            "SEQNUM"  INTEGER,
-            "SEQTOT"  INTEGER,
-            "PROGRAM"  TEXT,
-            "MJD-OBS"  REAL,
-            "REQRA"  REAL,
-            "REQDEC"  REAL,
-            "TARGTRA"  REAL,
-            "TARGTDEC"  REAL,
-            "COMMENTS"  TEXT,
-            "YYYYMMDD"  INTEGER,
-            "PURPOSE"  TEXT,
-            "FA_SURV"  TEXT,
-            "BADCAMWORD"  TEXT,
-            "BADAMPS"  TEXT,
-            "LASTSTEP"  TEXT,
-            "EFFTIME_ETC"  REAL,
-            "FAPRGRM"  TEXT,
-            "GOALTIME"  REAL,
-            "GOALTYPE"  TEXT,
-            "EBVFAC"  REAL,
-            "AIRFAC"  REAL,
-            "SPEED"  REAL
+        expid  BIGINT PRIMARY KEY,
+        exptime  DOUBLE PRECISION,
+        obstype  TEXT,
+        spectrographs  DOUBLE PRECISION,
+        camword  TEXT,
+        tileid  BIGINT,
+        night  BIGINT,
+        expflag  TEXT,
+        headererr  TEXT,
+        survey  TEXT,
+        seqnum  BIGINT,
+        seqtot  BIGINT,
+        program  TEXT,
+        mjd_obs  DOUBLE PRECISION,
+        reqra  DOUBLE PRECISION,
+        reqdec  DOUBLE PRECISION,
+        targtra  DOUBLE PRECISION,
+        targtdec  DOUBLE PRECISION,
+        comments  TEXT,
+        yyyymmdd  BIGINT,
+        purpose  TEXT,
+        fa_surv  TEXT,
+        badcamword  TEXT,
+        badamps  TEXT,
+        laststep  TEXT,
+        efftime_etc  DOUBLE PRECISION,
+        faprgrm  TEXT,
+        goaltime  DOUBLE PRECISION,
+        goaltype  TEXT,
+        ebvfac  DOUBLE PRECISION,
+        airfac  DOUBLE PRECISION,
+        speed  DOUBLE PRECISION
     );
     """
 
@@ -587,8 +587,9 @@ class exposure_tables_daily:
         #find the last date
         dates_db=[]
         try:
-            for row in conn.execute(f"SELECT DISTINCT YYYYMMDD FROM exposure_tables_daily"):
-                dates_db.append(row[0])
+            with engine.connect() as conn:
+                for row in conn.execute(f"SELECT DISTINCT yyyymmdd FROM exposure_tables_daily"):
+                    dates_db.append(row[0])
         except:
             pass
         
@@ -599,7 +600,7 @@ class exposure_tables_daily:
             dates.append(date)
 
         dates=numpy.sort(dates)
-        dates=numpy.flip(dates)
+#         dates=numpy.flip(dates)
 
         dfs=[]
         for date in dates:
@@ -610,13 +611,14 @@ class exposure_tables_daily:
                 df['YYYYMMDD']=numpy.full(df.shape[0],int(date))
                 df.columns= df.columns.str.lower()
                 dfs.append(df)
-                dtypesToSchema(dfs.dtypes)
-                wef
+                
 
           
         if len(dfs)>0:
-            print('saving to db')
             dfs = pandas.concat(dfs, ignore_index=True, sort=False)
+            dfs.rename(columns={"mjd-obs": "mjd_obs"}, inplace=True)
+                
+            df.columns= df.columns.str.lower()
             try:
                 dfs.to_sql(f'exposure_tables_daily',engine,index=False,if_exists='append')
 
