@@ -95,6 +95,90 @@ def dtypesToSchema(dtypes):
 #         print(f'{index}  {nvalue}, {value}')
         print(f'{index.lower()}  {nvalue},')       
 
+class dr9_pv:
+    schema="""
+        CREATE TABLE IF NOT EXISTS "dr9_pv" (
+        objid  BIGINT,
+        brickid  INTEGER,
+        brickname  TEXT,
+        ra  DOUBLE PRECISION,
+        dec  DOUBLE PRECISION,
+        type  TEXT,
+        sersic  REAL,
+        z_phot_median  REAL,
+        z_phot_l95  REAL,
+        mag_g  REAL,
+        mag_r  REAL,
+        mag_z  REAL,
+        mag_b  REAL,
+        mag_g_err  REAL,
+        mag_r_err  REAL,
+        mag_z_err  REAL,
+        fibre_mag_g  REAL,
+        fibre_mag_r  REAL,
+        fibre_mag_z  REAL,
+        uncor_radius  REAL,
+        ba_ratio  REAL,
+        circ_radius  REAL,
+        pos_angle  REAL,
+        insga  BOOLEAN,
+        inbgs  BOOLEAN,
+        inlocalbright  BOOLEAN,
+        inspecfootprint  BOOLEAN,
+        sga_pa  REAL,
+        sga_ba  REAL,
+        sb_d25_g  REAL,
+        sb_d25_r  REAL,
+        sb_d25_z  REAL,
+        radius_sb25  REAL,
+        sga_morphtype  TEXT,
+        sga_id  BIGINT,
+        sga_redshift  REAL,
+        size_sga  REAL,
+        pmra  REAL,
+        pmdec  REAL,
+        ref_epoch  REAL,
+        override  BOOLEAN,
+        pvtype  TEXT,
+        pvpriority  INTEGER,
+        target  TEXT,
+        survey  TEXT,
+        pointingid  INTEGER
+    );
+    """
+
+    @staticmethod
+    def create_table(overwrite = False):
+        with engine.connect() as conn:
+            if overwrite:
+                conn.execute(text("DROP TABLE IF EXISTS dr9_pv;"))                            
+            conn.execute(dr9_pv.schema)
+            conn.close()
+            
+    @staticmethod
+    def fill_table():      
+        dirs=["savepath_dr9","savepath_dr9_corr"]
+        surveys=["sv3","main"]
+        targets = ["ext","fp","sga","tf"]
+        for di, survey in zip(dirs,surveys):
+            for target in targets:
+                filename = f"/global/homes/k/ksaid/desi_pv/{di}/pv_{target}_full.fits"
+                try:
+                    dat = Table.read(filename, format='fits')
+                except:
+                    print(f"{filename} not found")
+                    continue
+                dat.convert_bytestring_to_unicode()
+                df = dat.to_pandas()
+                df['target']=numpy.full(df.shape[0],target)
+                df['survey']=numpy.full(df.shape[0],survey)
+                df.columns= df.columns.str.lower()
+                try:
+                    df.to_sql('dr9_pv',engine,index=False,if_exists='append')
+                except:
+                    dtypesToSchema(df.dtypes)
+                    sys.exit()
+    
 class secondary:
 
     schema=f"""
@@ -115,12 +199,14 @@ class secondary:
         gaia_astrometric_excess_noise  REAL,
         targetid  BIGINT,
         sv3_desi_target  BIGINT,
-        sv3_scnd_target  BIGINT,
+        sv3_scnd_target  BIGINT,      
         scnd_order  INTEGER,
         desitarget_v  TEXT,
         run  TEXT,
         program  TEXT,
-        lunation  TEXT
+        lunation  TEXT,
+        desi_target  BIGINT,
+        scnd_target  BIGINT
     );
     """
     runs=['main','sv3']
@@ -446,94 +532,7 @@ class mtl:
                         print (path, 'not exists')
 
 
-                                
-
-
-                
-class dr9_pv:
-    schema="""
-        CREATE TABLE IF NOT EXISTS "dr9_pv" (
-        "OBJID"  INTEGER,
-        "BRICKID"  INTEGER,
-        "BRICKNAME"  TEXT,
-        "RA"  REAL,
-        "DEC"  REAL,
-        "TYPE"  TEXT,
-        "SERSIC"  TEXT,
-        "Z_PHOT_MEDIAN"  TEXT,
-        "Z_PHOT_L95"  TEXT,
-        "mag_g"  TEXT,
-        "mag_r"  TEXT,
-        "mag_z"  TEXT,
-        "mag_B"  TEXT,
-        "mag_g_err"  TEXT,
-        "mag_r_err"  TEXT,
-        "mag_z_err"  TEXT,
-        "fibre_mag_g"  TEXT,
-        "fibre_mag_r"  TEXT,
-        "fibre_mag_z"  TEXT,
-        "uncor_radius"  TEXT,
-        "BA_ratio"  TEXT,
-        "circ_radius"  TEXT,
-        "pos_angle"  TEXT,
-        "inSGA"  TEXT,
-        "inBGS"  TEXT,
-        "inlocalbright"  TEXT,
-        "inspecfootprint"  TEXT,
-        "SGA_pa"  TEXT,
-        "SGA_ba"  TEXT,
-        "SB_D25_g"  TEXT,
-        "SB_D25_r"  TEXT,
-        "SB_D25_z"  TEXT,
-        "RADIUS_SB25"  TEXT,
-        "SGA_MORPHTYPE"  TEXT,
-        "SGA_ID"  INTEGER,
-        "SGA_redshift"  TEXT,
-        "size_SGA"  TEXT,
-        "PMRA"  TEXT,
-        "PMDEC"  TEXT,
-        "REF_EPOCH"  TEXT,
-        "OVERRIDE"  TEXT,
-        "PVTYPE"  TEXT,
-        "PVPRIORITY"  INTEGER,
-        "POINTINGID"  INTEGER,
-        "TARGET"  TEXT,
-        "SURVEY"  TEXT);
-    """
-
-    @staticmethod
-    def create_table(overwrite = False):
-        cur = conn.cursor()
-        
-        if overwrite:
-            cur.execute("DROP TABLE IF EXISTS dr9_pv;")
-        cur.execute(dr9_pv.schema)
-        cur.close()
-
-    @staticmethod
-    def fill_table(prod='denali'):      
-        dirs=["savepath_dr9","savepath_dr9_corr"]
-        surveys=["sv3","main"]
-        targets = ["ext","fp","sga","tf"]
-        for di, survey in zip(dirs,surveys):
-            for target in targets:
-                filename = f"/global/homes/k/ksaid/desi_pv/{di}/pv_{target}_full.fits"
-                try:
-                    dat = Table.read(filename, format='fits')
-                except:
-                    print(f"{filename} not found")
-                    continue
-                dat.convert_bytestring_to_unicode()
-                df = dat.to_pandas()
-                df['TARGET']=numpy.full(df.shape[0],target)
-                df['SURVEY']=numpy.full(df.shape[0],survey)
-                
-                try:
-                    df.to_sql('dr9_pv',conn,index=False,if_exists='append')
-                except sqlite3.OperationalError as err:
-                    dtypesToSchema(df.dtypes)
-                    sys.exit()                 
-                
+      
 
 class exposure_tables_daily:
     schema="""
@@ -575,25 +574,24 @@ class exposure_tables_daily:
 
     @staticmethod
     def create_table(overwrite = False):
-        cur = conn.cursor()   
-        if overwrite:
-            cur.execute("DROP TABLE IF EXISTS exposure_tables_daily;")
-        cur.execute(exposure_tables_daily.schema)
-        cur.close()
+        with engine.connect() as conn:
+            if overwrite:
+                conn.execute(f"DROP TABLE IF EXISTS exposure_tables_daily;")
+            conn.execute(exposure_tables_daily.schema)
+            conn.close()
 
     @staticmethod
     def fill_table():      
         dir_root='/global/cfs/cdirs/desi/spectro/redux/daily/exposure_tables/'
-#         maxdate='20201214'
 
-                #find the last date
+        #find the last date
+        dates_db=[]
         try:
-            ans=con.execute(f"SELECT MAX(YYYYMMDD) FROM exposure_tables_daily")
-            maxdate = ans.fetchone()[0]
+            for row in conn.execute(f"SELECT DISTINCT YYYYMMDD FROM exposure_tables_daily"):
+                dates_db.append(row[0])
         except:
-            maxdate=0
+            pass
         
-        print(maxdate)
         dates = []
         for path in glob.glob(f'{dir_root}/*/exposure_table_????????.csv'):
             split = path.split('/')
@@ -601,24 +599,28 @@ class exposure_tables_daily:
             dates.append(date)
 
         dates=numpy.sort(dates)
+        dates=numpy.flip(dates)
 
         dfs=[]
         for date in dates:
-            if int(date) <= maxdate:
-                continue
-            file = f'/global/cfs/cdirs/desi/spectro/redux/daily/exposure_tables/{date[0:6]}/exposure_table_{date}.csv'
-            data = ascii.read(file)
-            df = data.to_pandas()
-            df['YYYYMMDD']=numpy.full(df.shape[0],int(date))
-            dfs.append(df)
+            if int(date) not in dates_db:
+                file = f'/global/cfs/cdirs/desi/spectro/redux/daily/exposure_tables/{date[0:6]}/exposure_table_{date}.csv'
+                data = ascii.read(file)
+                df = data.to_pandas()
+                df['YYYYMMDD']=numpy.full(df.shape[0],int(date))
+                df.columns= df.columns.str.lower()
+                dfs.append(df)
+                dtypesToSchema(dfs.dtypes)
+                wef
+
           
         if len(dfs)>0:
             print('saving to db')
             dfs = pandas.concat(dfs, ignore_index=True, sort=False)
             try:
-                dfs.to_sql(f'exposure_tables_daily',conn,index=False,if_exists='append')
+                dfs.to_sql(f'exposure_tables_daily',engine,index=False,if_exists='append')
 
-            except sqlite3.OperationalError as err:
+            except:
                 dtypesToSchema(dfs.dtypes)
                 sys.exit()                 
 
@@ -639,8 +641,7 @@ class proposals_pv:
             "POINTINGID"  INTEGER,
             "SGA_ID"  INTEGER,
             "PRIORITY"  TEXT,
-            "LUNATION"  TEXT,
-            FOREIGN KEY (OBJID, BRICKID) REFERENCES DR9_PV (OBJID, BRICKID)
+            "LUNATION"  TEXT
     );
     """
   
