@@ -781,11 +781,17 @@ class proposals_pv:
         
     @staticmethod
     def fill_sga():
-
-        cur = conn.cursor()
-        cur.execute("UPDATE proposals_pv SET SGA_ID=(select dr9_pv.SGA_ID FROM dr9_pv WHERE proposals_pv.OBJID=dr9_pv.OBJID AND proposals_pv.BRICKID=dr9_pv.BRICKID);")
-           
-        cur.close()    
+        with engine.connect() as conn:
+            conn.execute("create table temp as (select * from proposals_pv);")
+            query = """
+            UPDATE temp
+            SET sga_id = dr9_pv.sga_id
+            FROM dr9_pv
+            WHERE temp.objid = dr9_pv.objid
+            AND temp.brickid = dr9_pv.brickid;
+            """
+            conn.execute(query)
+  
 
 
 
@@ -879,7 +885,8 @@ class fibermap_daily:
             fiberflux_ivar_g  REAL,
             fiberflux_ivar_r  REAL,
             fiberflux_ivar_z  REAL,
-            hpxpixel  BIGINT
+            hpxpixel  BIGINT,
+            PRIMARY KEY (targetid, expid)
     );
     """
   
