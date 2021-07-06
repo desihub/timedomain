@@ -886,6 +886,15 @@ class fibermap_daily:
             fiberflux_ivar_r  REAL,
             fiberflux_ivar_z  REAL,
             hpxpixel  BIGINT,
+            sv1_scnd_target  DOUBLE PRECISION,
+            sv2_desi_target  DOUBLE PRECISION,
+            sv2_bgs_target  DOUBLE PRECISION,
+            sv2_mws_target  DOUBLE PRECISION,
+            sv2_scnd_target  DOUBLE PRECISION,
+            sv3_desi_target  DOUBLE PRECISION,
+            sv3_bgs_target  DOUBLE PRECISION,
+            sv3_mws_target  DOUBLE PRECISION,
+            sv3_scnd_target  DOUBLE PRECISION,
             PRIMARY KEY (targetid, expid)
     );
     """
@@ -951,76 +960,10 @@ class fibermap_daily:
                     except:
                         dtypesToSchema(dfs.dtypes)
                         sys.exit()
-                                                
-        
-        
-class DBManager:
-    
-    filename = "/global/cfs/cdirs/desi/science/td/db/desi.db"
-
-            
-    @staticmethod
-    def load_spectra_prod(prod="denali"):
-        # from what I can tell all the information in daily is in cumulative
-        subdirs = ['cumulative']
-        substrs = ['thru']
-        con = sqlite3.connect(DBManager.filename)        
-        for subdir,substr in zip(subdirs,substrs):
-            # per night
-            dir_root = f"/global/project/projectdirs/desi/spectro/redux/{prod}/tiles/{subdir}/"
-            dates = []
-            for path in glob.glob(f'{dir_root}/*/202?????'):
-                split = path.split('/')
-                dates.append(split[-1])
-            dates = numpy.unique(dates)
-
-            dfs=[]
-            for date in dates:
-                for path in glob.glob(f'{dir_root}/*/{date}'):
-                    split = path.split('/')
-                    tile = split[-2]
-                    if tile.isnumeric():
-                        for i in range(10):                            
-                            filename = f'{dir_root}/{tile}/{date}/spectra-{i}-{tile}-{substr}{date}.fits'
-                            try:
-                                dat = Table.read(filename, format='fits')
-                            except:
-                                print(f"{filename} not found")
-                                continue
-                            df = dat.to_pandas()
-                            df['GROUPING'] = numpy.full(df.shape[0],subdir)
-                            df['PRODUCTION']=numpy.full(df.shape[0],prod)
-                            df['TILE']=numpy.full(df.shape[0],int(tile))
-                            df['PETAL']=numpy.full(df.shape[0],i)
-                            df['YYYYMMDD']=numpy.full(df.shape[0],int(date))
-                            dfs.append(df)
-            dfs = pandas.concat(dfs, ignore_index=True, sort=False)                        
-            dfs.to_sql(f'spectra_{prod}',con,if_exists='append')
-        con.close
-
-        
-    @staticmethod
-    def load_daily():
-        DBManager.load_zbest_daily()
-        DBManager.load_fibermap_daily()
-        DBManager.load_exposure_tables_daily()
-#         DBManager.load_spectra(prod="daily")
-
-    @staticmethod
-    def byProgram(program):
-
-        command = f'''SELECT DISTINCT secondary.PROGRAM, secondary.TARGETID, secondary.RA, secondary.DEC, zbest.PRODUCTION, zbest.YYYYMMDD, zbest.Z, zbest.ZERR, zbest.SPECTYPE, redshifts_prod.PRODUCTION, redshifts_prod.Z, redshifts_prod.ZERR, redshifts_prod.SPECTYPE, redshifts_prod.DELTACHI2, redshifts_prod.ZWARN
-        FROM secondary
-            LEFT JOIN zbest using(TARGETID)
-            LEFT JOIN redshifts_prod using(TARGETID)
-            WHERE  secondary.PROGRAM LIKE "PV%" and redshifts_prod.COADD="cumulative"
-        ORDER BY
-            secondary.PROGRAM,
-            secondary.TARGETID
-        LIMIT 10;
-        ''' 
 
         
 if __name__ == "__main__":
     # running as a cron job on cori10
-    DBManager.load_daily()
+    zbest_daily.load_table()
+    fibermap_daily.load_table()
+    exposure_tables_daily.load_table()
