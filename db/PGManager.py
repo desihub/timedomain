@@ -909,9 +909,14 @@ class fibermap_daily:
 
 
     @staticmethod
-    def fill_table():      
-        dir_root = "/global/project/projectdirs/desi/spectro/redux/daily/tiles/cumulative"
-     
+    def fill_table(): 
+        
+        magicdate='20210503'  # the last date that daily directory was created
+#         dir_root = "/global/project/projectdirs/desi/spectro/redux/daily/tiles/cumulative"
+        dir_root = "/global/project/projectdirs/desi/spectro/redux/daily/tiles/"
+        
+        
+        
         #find the last date
         dates_db=[]
         try:
@@ -925,19 +930,32 @@ class fibermap_daily:
         for path in glob.glob(f'{dir_root}/*/202?????'):
             split = path.split('/')
             dates.append(split[-1])
+        for path in glob.glob(f'{dir_root}/cumulative/*/202?????'):
+            split = path.split('/')
+            dates.append(split[-1])
+            
         dates = numpy.unique(dates)
+        dates=dates[dates >= '20201214']
+        
         for date in dates:
             if int(date) not in dates_db:
                 print(date)
                 # Do things in terms of dates
                 dfs=[]
-                for path in glob.glob(f'{dir_root}/*/{date}'):
+                if date<=magicdate:
+                    use_root = dir_root
+                else:
+                    use_root = dir_root+'/cumulative/'
+                for path in glob.glob(f'{use_root}/*/{date}'):
                     split = path.split('/')
                     tile = split[-2]
                     if tile.isnumeric():
 #                         print(date,tile)
-                        for i in range(10):                            
-                            filename = f'{dir_root}/{tile}/{date}/zbest-{i}-{tile}-thru{date}.fits'
+                        for i in range(10):
+                            if date<=magicdate:
+                                filename = f'{use_root}/{tile}/{date}/zbest-{i}-{tile}-{date}.fits'
+                            else:
+                                filename = f'{use_root}/{tile}/{date}/zbest-{i}-{tile}-thru{date}.fits'
                             try:
                                 dat = Table.read(filename, format='fits',hdu=2)
                             except:
@@ -960,6 +978,7 @@ class fibermap_daily:
                     except:
                         dtypesToSchema(dfs.dtypes)
                         sys.exit()
+
 
         
 if __name__ == "__main__":
