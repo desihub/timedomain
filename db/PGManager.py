@@ -274,6 +274,22 @@ class dr9_pv:
                 except:
                     dtypesToSchema(df.dtypes)
                     sys.exit()
+                    
+    @staticmethod
+    def null_sga():
+        with engine.connect() as conn:
+#             conn.execute("create table temp as (select * from dr9_pv);")
+            query = """
+            UPDATE dr9_pv
+            SET sga_id = NULL,
+                sga_morphtype  = NULL,
+                sga_redshift  = NULL,
+                sga_pa  = NULL,
+                sga_ba = NULL
+            WHERE sga_id = 0
+            OR sga_id = -1;
+            """
+            conn.execute(query)
     
 class secondary:
 
@@ -739,7 +755,8 @@ class proposals_pv:
             pointingid  INTEGER,
             sga_id  BIGINT,
             priority  TEXT,
-            lunation  TEXT
+            lunation  TEXT,
+            run       TEXT
     );
     """
   
@@ -772,6 +789,7 @@ class proposals_pv:
                     df = dat.to_pandas()
                     df['priority']=numpy.full(df.shape[0],priority)
                     df['lunation']=numpy.full(df.shape[0],lunation)
+                    df['run']=numpy.full(df.shape[0],run)
                     df.columns= df.columns.str.lower()
                     try:
                         df.to_sql('proposals_pv',engine,index=False,if_exists='append')
@@ -782,13 +800,20 @@ class proposals_pv:
     @staticmethod
     def fill_sga():
         with engine.connect() as conn:
-            conn.execute("create table temp as (select * from proposals_pv);")
+#             conn.execute("create table temp as (select * from proposals_pv);")
             query = """
-            UPDATE temp
+            UPDATE proposals_pv
+            SET sga_id = NULL
+            WHERE sga_id <1;
+            """
+            conn.execute(query)
+        
+            query = """
+            UPDATE proposals_pv
             SET sga_id = dr9_pv.sga_id
             FROM dr9_pv
-            WHERE temp.objid = dr9_pv.objid
-            AND temp.brickid = dr9_pv.brickid;
+            WHERE proposals_pv.objid = dr9_pv.objid
+            AND proposals_pv.brickid = dr9_pv.brickid;
             """
             conn.execute(query)
   
