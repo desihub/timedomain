@@ -121,13 +121,13 @@ def add(spectra, cosmics_nsig=0.) :
                             log.debug("masking spec {} wave={}".format(k,spectra.wave[b][bi]))
 
             tivar[i]=np.sum(ivarjj,axis=0)
-            #tflux[i]=np.sum(ivarjj*spectra.flux[b][jj],axis=0)
+            tflux[i]=np.sum(spectra.flux[b][jj],axis=0)
             for r in range(spectra.resolution_data[b].shape[1]) :
                 trdata[i,r]=np.sum((spectra.ivar[b][jj]*spectra.resolution_data[b][jj,r]),axis=0) # not sure applying mask is wise here
             bad=(tivar[i]==0)
             if np.sum(bad)>0 :
                 tivar[i][bad] = np.sum(spectra.ivar[b][jj][:,bad],axis=0) # if all masked, keep original ivar
-                #tflux[i][bad] = np.sum(spectra.ivar[b][jj][:,bad]*spectra.flux[b][jj][:,bad],axis=0)
+                tflux[i][bad] = np.sum(spectra.flux[b][jj][:,bad],axis=0)
             ok=(tivar[i]>0)
             #if np.sum(ok)>0 :
                 #tflux[i][ok] /= tivar[i][ok]
