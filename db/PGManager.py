@@ -736,15 +736,16 @@ class zpix_everest:
     # 
     
     @staticmethod
-    def create_table(prod='everest',overwrite = False, hdu=1):
+    def create_table(prod='everest',overwrite = False, hdu=1,group='zpix',cumulative=''):
  
         if hdu==1:
-            tablename=f'{prod}.zpix_redshifts'
+            tablename=f'{prod}.{group}{cumulative}_redshifts'
             schema = zpix_everest.schema1
         elif hdu==2:
-            tablename=f'{prod}.zpix_fibermap'
+            tablename=f'{prod}.{group}{cumulative}_fibermap'
             schema = zpix_everest.schema2
             
+        print(tablename)
         with engine.connect() as conn:
             if overwrite:
                 cmd = f'DROP TABLE IF EXISTS {tablename};'
@@ -808,7 +809,457 @@ class zpix_everest:
         if schema:
             dfs = pandas.concat(dfs, ignore_index=True, sort=False)
             dtypesToSchema(dfs.dtypes)
-                
+
+class ztile_everest:
+    
+    @staticmethod
+    def tablename(prod='everest',coadd='pernight',hdu=1,short=False):
+        if hdu==1:
+            tag='redshifts'
+        elif hdu==2:
+            tag='fibermap'
+        if not short:    
+            return f"{prod}.ztile_{coadd}_{tag}"
+        else:
+            return f"ztile_{coadd}_{tag}"
+    
+    
+    @staticmethod
+    def create_table(prod='everest',overwrite = False, hdu=1,coadd='pernight'):
+        tablename = ztile_everest.tablename(prod=prod,coadd=coadd,hdu=hdu)
+        if hdu==1 and coadd=='pernight':
+            schema="""
+                CREATE TABLE IF NOT EXISTS {} (
+                    targetid  BIGINT,
+                    chi2  DOUBLE PRECISION,
+                    z  DOUBLE PRECISION,
+                    zerr  DOUBLE PRECISION,
+                    zwarn  BIGINT,
+                    npixels  BIGINT,
+                    spectype  TEXT,
+                    subtype  TEXT,
+                    ncoeff  BIGINT,
+                    deltachi2  DOUBLE PRECISION,
+                    petal_loc  SMALLINT,
+                    device_loc  INTEGER,
+                    location  BIGINT,
+                    fiber  INTEGER,
+                    coadd_fiberstatus  INTEGER,
+                    target_ra  DOUBLE PRECISION,
+                    target_dec  DOUBLE PRECISION,
+                    pmra  REAL,
+                    pmdec  REAL,
+                    ref_epoch  REAL,
+                    lambda_ref  REAL,
+                    fa_target  BIGINT,
+                    fa_type  SMALLINT,
+                    objtype  TEXT,
+                    fiberassign_x  REAL,
+                    fiberassign_y  REAL,
+                    priority  INTEGER,
+                    subpriority  DOUBLE PRECISION,
+                    obsconditions  INTEGER,
+                    release  INTEGER,
+                    brickid  INTEGER,
+                    brick_objid  INTEGER,
+                    morphtype  TEXT,
+                    flux_g  REAL,
+                    flux_r  REAL,
+                    flux_z  REAL,
+                    flux_ivar_g  REAL,
+                    flux_ivar_r  REAL,
+                    flux_ivar_z  REAL,
+                    maskbits  SMALLINT,
+                    ref_id  BIGINT,
+                    ref_cat  TEXT,
+                    gaia_phot_g_mean_mag  REAL,
+                    gaia_phot_bp_mean_mag  REAL,
+                    gaia_phot_rp_mean_mag  REAL,
+                    parallax  REAL,
+                    brickname  TEXT,
+                    ebv  REAL,
+                    flux_w1  REAL,
+                    flux_w2  REAL,
+                    flux_ivar_w1  REAL,
+                    flux_ivar_w2  REAL,
+                    fiberflux_g  REAL,
+                    fiberflux_r  REAL,
+                    fiberflux_z  REAL,
+                    fibertotflux_g  REAL,
+                    fibertotflux_r  REAL,
+                    fibertotflux_z  REAL,
+                    sersic  REAL,
+                    shape_r  REAL,
+                    shape_e1  REAL,
+                    shape_e2  REAL,
+                    photsys  TEXT,
+                    priority_init  BIGINT,
+                    numobs_init  BIGINT,
+                    desi_target  BIGINT,
+                    bgs_target  BIGINT,
+                    mws_target  BIGINT,
+                    scnd_target  DOUBLE PRECISION,
+                    plate_ra  DOUBLE PRECISION,
+                    plate_dec  DOUBLE PRECISION,
+                    tileid  INTEGER,
+                    coadd_numexp  SMALLINT,
+                    coadd_exptime  REAL,
+                    coadd_numnight  SMALLINT,
+                    coadd_numtile  SMALLINT,
+                    mean_delta_x  REAL,
+                    rms_delta_x  REAL,
+                    mean_delta_y  REAL,
+                    rms_delta_y  REAL,
+                    mean_fiber_ra  DOUBLE PRECISION,
+                    std_fiber_ra  REAL,
+                    mean_fiber_dec  DOUBLE PRECISION,
+                    std_fiber_dec  REAL,
+                    mean_psf_to_fiber_specflux  REAL,
+                    mean_fiber_x  REAL,
+                    mean_fiber_y  REAL,
+                    tsnr2_gpbdark_b  REAL,
+                    tsnr2_elg_b  REAL,
+                    tsnr2_gpbbright_b  REAL,
+                    tsnr2_lya_b  REAL,
+                    tsnr2_bgs_b  REAL,
+                    tsnr2_gpbbackup_b  REAL,
+                    tsnr2_qso_b  REAL,
+                    tsnr2_lrg_b  REAL,
+                    tsnr2_gpbdark_r  REAL,
+                    tsnr2_elg_r  REAL,
+                    tsnr2_gpbbright_r  REAL,
+                    tsnr2_lya_r  REAL,
+                    tsnr2_bgs_r  REAL,
+                    tsnr2_gpbbackup_r  REAL,
+                    tsnr2_qso_r  REAL,
+                    tsnr2_lrg_r  REAL,
+                    tsnr2_gpbdark_z  REAL,
+                    tsnr2_elg_z  REAL,
+                    tsnr2_gpbbright_z  REAL,
+                    tsnr2_lya_z  REAL,
+                    tsnr2_bgs_z  REAL,
+                    tsnr2_gpbbackup_z  REAL,
+                    tsnr2_qso_z  REAL,
+                    tsnr2_lrg_z  REAL,
+                    tsnr2_gpbdark  REAL,
+                    tsnr2_elg  REAL,
+                    tsnr2_gpbbright  REAL,
+                    tsnr2_lya  REAL,
+                    tsnr2_bgs  REAL,
+                    tsnr2_gpbbackup  REAL,
+                    tsnr2_qso  REAL,
+                    tsnr2_lrg  REAL,
+                    coeff_0  DOUBLE PRECISION,
+                    coeff_1  DOUBLE PRECISION,
+                    coeff_2  DOUBLE PRECISION,
+                    coeff_3  DOUBLE PRECISION,
+                    coeff_4  DOUBLE PRECISION,
+                    coeff_5  DOUBLE PRECISION,
+                    coeff_6  DOUBLE PRECISION,
+                    coeff_7  DOUBLE PRECISION,
+                    coeff_8  DOUBLE PRECISION,
+                    coeff_9  DOUBLE PRECISION,
+                    run  TEXT,
+                    program  TEXT,
+                    sv1_desi_target  DOUBLE PRECISION,
+                    sv1_bgs_target  DOUBLE PRECISION,
+                    sv1_mws_target  DOUBLE PRECISION,
+                    sv1_scnd_target  DOUBLE PRECISION,
+                    numtarget  DOUBLE PRECISION,
+                    blobdist  REAL,
+                    fiberflux_ivar_g  REAL,
+                    fiberflux_ivar_r  REAL,
+                    fiberflux_ivar_z  REAL,
+                    hpxpixel  DOUBLE PRECISION,
+                    sv2_desi_target  DOUBLE PRECISION,
+                    sv2_bgs_target  DOUBLE PRECISION,
+                    sv2_mws_target  DOUBLE PRECISION,
+                    sv2_scnd_target  DOUBLE PRECISION,
+                    sv3_desi_target  DOUBLE PRECISION,
+                    sv3_bgs_target  DOUBLE PRECISION,
+                    sv3_mws_target  DOUBLE PRECISION,
+                    sv3_scnd_target  DOUBLE PRECISION
+                );
+                """.format(tablename)
+        elif hdu==2 and coadd=='pernight':
+            schema="""
+                CREATE TABLE IF NOT EXISTS {} (    
+                    targetid  BIGINT,
+                    priority  INTEGER,
+                    subpriority  DOUBLE PRECISION,
+                    night  INTEGER,
+                    expid  INTEGER,
+                    mjd  DOUBLE PRECISION,
+                    tileid  INTEGER,
+                    exptime  DOUBLE PRECISION,
+                    petal_loc  SMALLINT,
+                    device_loc  INTEGER,
+                    location  BIGINT,
+                    fiber  INTEGER,
+                    fiberstatus  INTEGER,
+                    fiberassign_x  REAL,
+                    fiberassign_y  REAL,
+                    lambda_ref  REAL,
+                    plate_ra  DOUBLE PRECISION,
+                    plate_dec  DOUBLE PRECISION,
+                    num_iter  BIGINT,
+                    fiber_x  DOUBLE PRECISION,
+                    fiber_y  DOUBLE PRECISION,
+                    delta_x  DOUBLE PRECISION,
+                    delta_y  DOUBLE PRECISION,
+                    fiber_ra  DOUBLE PRECISION,
+                    fiber_dec  DOUBLE PRECISION,
+                    psf_to_fiber_specflux  DOUBLE PRECISION,
+                    run  TEXT,
+                    program  TEXT
+                );
+                """.format(tablename)
+        elif hdu==1 and coadd=='cumulative':
+            schema="""
+                CREATE TABLE IF NOT EXISTS {} (    
+                targetid  BIGINT,
+                chi2  DOUBLE PRECISION,
+                z  DOUBLE PRECISION,
+                zerr  DOUBLE PRECISION,
+                zwarn  BIGINT,
+                npixels  BIGINT,
+                spectype  TEXT,
+                subtype  TEXT,
+                ncoeff  BIGINT,
+                deltachi2  DOUBLE PRECISION,
+                petal_loc  SMALLINT,
+                device_loc  INTEGER,
+                location  BIGINT,
+                fiber  INTEGER,
+                coadd_fiberstatus  INTEGER,
+                target_ra  DOUBLE PRECISION,
+                target_dec  DOUBLE PRECISION,
+                pmra  REAL,
+                pmdec  REAL,
+                ref_epoch  REAL,
+                lambda_ref  REAL,
+                fa_target  BIGINT,
+                fa_type  SMALLINT,
+                objtype  TEXT,
+                fiberassign_x  REAL,
+                fiberassign_y  REAL,
+                priority  INTEGER,
+                subpriority  DOUBLE PRECISION,
+                obsconditions  INTEGER,
+                release  INTEGER,
+                brickid  INTEGER,
+                brick_objid  INTEGER,
+                morphtype  TEXT,
+                flux_g  REAL,
+                flux_r  REAL,
+                flux_z  REAL,
+                flux_ivar_g  REAL,
+                flux_ivar_r  REAL,
+                flux_ivar_z  REAL,
+                maskbits  SMALLINT,
+                ref_id  BIGINT,
+                ref_cat  TEXT,
+                gaia_phot_g_mean_mag  REAL,
+                gaia_phot_bp_mean_mag  REAL,
+                gaia_phot_rp_mean_mag  REAL,
+                parallax  REAL,
+                brickname  TEXT,
+                ebv  REAL,
+                flux_w1  REAL,
+                flux_w2  REAL,
+                flux_ivar_w1  REAL,
+                flux_ivar_w2  REAL,
+                fiberflux_g  REAL,
+                fiberflux_r  REAL,
+                fiberflux_z  REAL,
+                fibertotflux_g  REAL,
+                fibertotflux_r  REAL,
+                fibertotflux_z  REAL,
+                sersic  REAL,
+                shape_r  REAL,
+                shape_e1  REAL,
+                shape_e2  REAL,
+                photsys  TEXT,
+                priority_init  BIGINT,
+                numobs_init  BIGINT,
+                desi_target  BIGINT,
+                bgs_target  BIGINT,
+                mws_target  BIGINT,
+                scnd_target  DOUBLE PRECISION,
+                plate_ra  DOUBLE PRECISION,
+                plate_dec  DOUBLE PRECISION,
+                tileid  INTEGER,
+                coadd_numexp  SMALLINT,
+                coadd_exptime  REAL,
+                coadd_numnight  SMALLINT,
+                coadd_numtile  SMALLINT,
+                mean_delta_x  REAL,
+                rms_delta_x  REAL,
+                mean_delta_y  REAL,
+                rms_delta_y  REAL,
+                mean_fiber_ra  DOUBLE PRECISION,
+                std_fiber_ra  REAL,
+                mean_fiber_dec  DOUBLE PRECISION,
+                std_fiber_dec  REAL,
+                mean_psf_to_fiber_specflux  REAL,
+                mean_fiber_x  REAL,
+                mean_fiber_y  REAL,
+                tsnr2_gpbdark_b  REAL,
+                tsnr2_elg_b  REAL,
+                tsnr2_gpbbright_b  REAL,
+                tsnr2_lya_b  REAL,
+                tsnr2_bgs_b  REAL,
+                tsnr2_gpbbackup_b  REAL,
+                tsnr2_qso_b  REAL,
+                tsnr2_lrg_b  REAL,
+                tsnr2_gpbdark_r  REAL,
+                tsnr2_elg_r  REAL,
+                tsnr2_gpbbright_r  REAL,
+                tsnr2_lya_r  REAL,
+                tsnr2_bgs_r  REAL,
+                tsnr2_gpbbackup_r  REAL,
+                tsnr2_qso_r  REAL,
+                tsnr2_lrg_r  REAL,
+                tsnr2_gpbdark_z  REAL,
+                tsnr2_elg_z  REAL,
+                tsnr2_gpbbright_z  REAL,
+                tsnr2_lya_z  REAL,
+                tsnr2_bgs_z  REAL,
+                tsnr2_gpbbackup_z  REAL,
+                tsnr2_qso_z  REAL,
+                tsnr2_lrg_z  REAL,
+                tsnr2_gpbdark  REAL,
+                tsnr2_elg  REAL,
+                tsnr2_gpbbright  REAL,
+                tsnr2_lya  REAL,
+                tsnr2_bgs  REAL,
+                tsnr2_gpbbackup  REAL,
+                tsnr2_qso  REAL,
+                tsnr2_lrg  REAL,
+                coeff_0  DOUBLE PRECISION,
+                coeff_1  DOUBLE PRECISION,
+                coeff_2  DOUBLE PRECISION,
+                coeff_3  DOUBLE PRECISION,
+                coeff_4  DOUBLE PRECISION,
+                coeff_5  DOUBLE PRECISION,
+                coeff_6  DOUBLE PRECISION,
+                coeff_7  DOUBLE PRECISION,
+                coeff_8  DOUBLE PRECISION,
+                coeff_9  DOUBLE PRECISION,
+                run  TEXT,
+                program  TEXT,
+                sv1_desi_target  DOUBLE PRECISION,
+                sv1_bgs_target  DOUBLE PRECISION,
+                sv1_mws_target  DOUBLE PRECISION,
+                sv1_scnd_target  DOUBLE PRECISION,
+                numtarget  DOUBLE PRECISION,
+                blobdist  REAL,
+                fiberflux_ivar_g  REAL,
+                fiberflux_ivar_r  REAL,
+                fiberflux_ivar_z  REAL,
+                hpxpixel  DOUBLE PRECISION,
+                sv2_desi_target  DOUBLE PRECISION,
+                sv2_bgs_target  DOUBLE PRECISION,
+                sv2_mws_target  DOUBLE PRECISION,
+                sv2_scnd_target  DOUBLE PRECISION,
+                sv3_desi_target  DOUBLE PRECISION,
+                sv3_bgs_target  DOUBLE PRECISION,
+                sv3_mws_target  DOUBLE PRECISION,
+                sv3_scnd_target  DOUBLE PRECISION
+                );
+                """.format(tablename)
+        elif hdu==2 and coadd=='cumulative':
+            schema="""
+                CREATE TABLE IF NOT EXISTS {} (    
+                targetid  BIGINT,
+                priority  INTEGER,
+                subpriority  DOUBLE PRECISION,
+                night  INTEGER,
+                expid  INTEGER,
+                mjd  DOUBLE PRECISION,
+                tileid  INTEGER,
+                exptime  DOUBLE PRECISION,
+                petal_loc  SMALLINT,
+                device_loc  INTEGER,
+                location  BIGINT,
+                fiber  INTEGER,
+                fiberstatus  INTEGER,
+                fiberassign_x  REAL,
+                fiberassign_y  REAL,
+                lambda_ref  REAL,
+                plate_ra  DOUBLE PRECISION,
+                plate_dec  DOUBLE PRECISION,
+                num_iter  BIGINT,
+                fiber_x  DOUBLE PRECISION,
+                fiber_y  DOUBLE PRECISION,
+                delta_x  DOUBLE PRECISION,
+                delta_y  DOUBLE PRECISION,
+                fiber_ra  DOUBLE PRECISION,
+                fiber_dec  DOUBLE PRECISION,
+                psf_to_fiber_specflux  DOUBLE PRECISION,
+                run  TEXT,
+                program  TEXT
+                );
+                """.format(tablename)
+            
+            
+        with engine.connect() as conn:
+            if overwrite:
+                cmd = f'DROP TABLE IF EXISTS {tablename};'
+                conn.execute(text(cmd))                            
+            conn.execute(text(schema))
+            conn.close()
+
+    @staticmethod
+    def fill_table(prod='everest',hdu=1,coadd='pernight',schema=False):
+        tablename = ztile_everest.tablename(prod=prod,coadd=coadd,hdu=hdu,short=True)
+            
+        print(tablename)
+        root = f"/global/project/projectdirs/desi/spectro/redux/{prod}/zcatalog/"
+        runs=['main','sv1','sv2','sv3']
+        programs = ['bright','dark','backup','other']
+        
+        dfs=[]
+        for run in runs:
+            for program in programs:
+                filename = os.path.join(root,f"ztile-{run}-{program}-{coadd}.fits")
+                print(filename)
+                try:
+                    dat = Table.read(filename, format='fits',hdu=hdu)
+                except:
+                    continue
+
+                print(filename)
+
+                # There is a multidimensional column that needs to be broken up
+                if hdu==1:
+                    for icoeff in range(0,10):
+                        dat[f'COEFF_{icoeff}']= dat['COEFF'][0:len(dat),icoeff]
+                    dat.remove_column('COEFF')
+
+                dat.convert_bytestring_to_unicode()
+
+                df = dat.to_pandas()
+                df['run']=numpy.full(df.shape[0],run)
+                df['program']=numpy.full(df.shape[0],program)
+                df.columns= df.columns.str.lower()
+#                     dtypesToSchema(df.dtypes)
+
+                if schema:
+                    dfs.append(df[0:1])
+
+                if not schema:
+                    try:
+                        df.to_sql(tablename,engine,index=False,if_exists='append',schema=prod) 
+                    except:
+                        dtypesToSchema(df.dtypes)
+                        print(df[0])
+                        sys.exit()
+        if schema:
+            dfs = pandas.concat(dfs, ignore_index=True, sort=False)
+            dtypesToSchema(dfs.dtypes)
+            
+            
 class mtl:
 
     schema=f"""
