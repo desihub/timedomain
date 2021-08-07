@@ -1675,7 +1675,8 @@ class fibermap_daily:
                 print(date)
                 # Do things in terms of dates
                 dfs=[]
-                if date<=magicdate:
+                
+                if date<=magicdate or date != 20210213 or date != 20210315: # include dates that have missing daily reductions
                     use_root = dir_root
                 else:
                     use_root = dir_root+'/cumulative/'
@@ -1685,7 +1686,7 @@ class fibermap_daily:
                     if tile.isnumeric():
                         print(date,tile)
                         for i in range(10):
-                            if date<=magicdate:
+                            if date<=magicdate or date != 20210213 or date != 20210315:
                                 filename = f'{use_root}/{tile}/{date}/zbest-{i}-{tile}-{date}.fits'
                             else:
                                 filename = f'{use_root}/{tile}/{date}/zbest-{i}-{tile}-thru{date}.fits'
