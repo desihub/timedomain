@@ -58,6 +58,21 @@ from timedomain.filters import *
 #from timedomain.iterators import *
 
 import sqlite3
+import exposure_db
+
+# Add redrock templates to look at residuals 
+
+from scipy.ndimage import gaussian_filter1d
+from desispec.interpolation import resample_flux
+from desispec.resolution import Resolution
+
+
+import redrock.templates
+
+templates = dict()
+for filename in redrock.templates.find_templates():
+    t = redrock.templates.Template(filename)
+    templates[(t.template_type, t.sub_type)] = t
 
 
 #sqlite db path
@@ -236,14 +251,32 @@ if __name__ == '__main__':
 
     # Access redux folder.
     for obsdate,tile_number in obsdates_tilenumbers:
-        redux = '/'.join([os.environ['DESI_SPECTRO_REDUX'], args.redux, 'tiles'])
-        prefix_in = '/'.join([redux, tile_number, obsdate])
-
+        #20210503 is when the directory structure changed, no more daily reductions in the tiles directory
+        redux = '/'.join([os.environ['DESI_SPECTRO_REDUX'], args.redux])
+        if int(obsdate)<20210503:
+            prefix_in = '/'.join([redux, 'tiles', tile_number, obsdate])
+        else:
+            prefix_in = '/'.join([redux, 'tiles/cumulative', tile_number])
+            
+            #Keeping these lines for later - they are useful if we want to use the cframe files in the future
+            #We need to search in the db the expid for that night      
+            #db_filename = '/global/cfs/cdirs/desi/science/td/daily-search/transients_search.db'
+            #db = exposure_db.ReduxDB(db_filename)
+            #conn = sqlite3.connect(db_filename)
+            #c = conn.cursor()    
+            #check_expids_query="select expid from exposures where tileid="+tile_number+" and obsdate="+obsdate+";"
+            #cursor = c.execute(check_expids_query)
+            #expids_list = cursor.fetchall()
+            #Only pick first one if multiple expids
+            #this_expid  = '000'+str(expids_list[0][0])
+            #conn.close()          
+            #prefix_in = '/'.join([redux, 'exposures', obsdate,this_expid])
+            
         if not os.path.isdir(prefix_in):
             print('{} does not exist.'.format(prefix_in))
         else:
             #Since cframe files do not live there anymore, commenting this out
-            # We have al;ready checked in cron_db_clever that this is a bgs tile
+            # We have already checked in cron_db_clever that this is a bgs tile
             
             #cframefiles = sorted(glob('{}/cframe*.fits'.format(prefix_in)))
             #cframe_fibermap = fitsio.read_header(cframefiles[0],'FIBERMAP')
@@ -264,12 +297,18 @@ if __name__ == '__main__':
             else:
                 bgs_mask=bgs_mask_sv2
                 bgs_bits=sv2_bgs_bits
-                
-            #if ('BGS' in cframe_fibermap['PROGRAM']) or ('bgs' in cframe_fibermap['PROGRAM']):
+
             # Access the zbest and coadd files.
             # Files are organized by petal number.
-            zbfiles = sorted(glob('{}/zbest*.fits'.format(prefix_in)))
-            cafiles = sorted(glob('{}/coadd*.fits'.format(prefix_in)))
+            if int(obsdate)<20210503:
+                zbfiles = sorted(glob('{}/zbest*.fits'.format(prefix_in)))
+                cafiles = sorted(glob('{}/coadd*.fits'.format(prefix_in)))
+            else:
+                #Only grabbing stuff from the most recent cumulative directory
+                zb_ca_dir = sorted(glob('{}/*/'.format(prefix_in)))[-1]
+                zbfiles = sorted(glob('{}/zbest*.fits'.format(zb_ca_dir)))
+                cafiles = sorted(glob('{}/spectra*.fits'.format(zb_ca_dir)))
+                #cafiles = sorted(glob('{}/cframe*.fits'.format(prefix_in)))
 
             # Loop through zbest and coadd files for each petal.
             # Extract the fibermaps, ZBEST tables, and spectra.
@@ -290,44 +329,53 @@ if __name__ == '__main__':
                 # Access data per petal.
                 zbest = Table.read(zbfile, 'ZBEST')
                 pspectra = read_spectra(cafile)
-                cspectra = coadd_cameras(pspectra)
-                fibermap = cspectra.fibermap
+                if int(obsdate)>20210503:
+                    select_nite = pspectra.fibermap['NIGHT'] == int(obsdate)
+                    pspectra = pspectra[select_nite]
 
-                # Apply standard event selection.
-                isTGT = fibermap['OBJTYPE'] == 'TGT'
-                isGAL = zbest['SPECTYPE'] == 'GALAXY'
+                #Should we move the coaddition to after the spectra selection?
+                #It would require to only select a single night first though.
+                try:
+                    cspectra = coadd_cameras(pspectra)
+                    fibermap = cspectra.fibermap
 
-                #This is old selection, does not work anymore! BGS target is always 0
-                #isBGS = fibermap['SV1_BGS_TARGET'] & bgs_mask.mask(sv1_bgs_bits) != 0
-                isBGS = bgs_mask.mask(bgs_bits) != 0
-                isGoodFiber = fibermap['FIBERSTATUS'] == 0
-                isGoodZbest = (zbest['DELTACHI2'] > 25.) & (zbest['ZWARN'] == 0)
-                select = isTGT & isGAL & isBGS & isGoodFiber & isGoodZbest
-                fibermap = delta_mag(cspectra, fibermap, select, nsigma=3)
+                    # Apply standard event selection.
+                    isTGT = fibermap['OBJTYPE'] == 'TGT'
+                    isGAL = zbest['SPECTYPE'] == 'GALAXY'
 
-                print('     + selected: {}'.format(np.sum(select)))
+                    #This is old selection, does not work anymore! BGS target is always 0
+                    #isBGS = fibermap['SV1_BGS_TARGET'] & bgs_mask.mask(sv1_bgs_bits) != 0
+                    isBGS = bgs_mask.mask(bgs_bits) != 0
+                    isGoodFiber = fibermap['FIBERSTATUS'] == 0
+                    isGoodZbest = (zbest['DELTACHI2'] > 25.) & (zbest['ZWARN'] == 0)
+                    select = isTGT & isGAL & isBGS & isGoodFiber & isGoodZbest
 
-                # Accumulate spectrum data.
-                if (np.sum(select) > 0):
-                    if allzbest is None:
-                        allzbest = zbest[select]
-                        allfmap = fibermap[select]
-                        allwave = cspectra.wave['brz']
-                        allflux = cspectra.flux['brz'][select]
-                        allivar = cspectra.ivar['brz'][select]
-                        allmask = cspectra.mask['brz'][select]
-                        allres  = cspectra.resolution_data['brz'][select]
-                    else:
-                        allzbest = vstack([allzbest, zbest[select]])
-                        allfmap = vstack([allfmap, fibermap[select]])
-                        allflux = np.vstack([allflux, cspectra.flux['brz'][select]])
-                        allivar = np.vstack([allivar, cspectra.ivar['brz'][select]])
-                        allmask = np.vstack([allmask, cspectra.mask['brz'][select]])
-                        allres  = np.vstack([allres, cspectra.resolution_data['brz'][select]])
+                    fibermap = delta_mag(cspectra, fibermap, select, nsigma=3)
 
-        #                 # Break loop over petals - for now this is the easy way of checking if an exposure is 
-        #                 break
-                #fitsio.read_header(cafile)
+                    print('     + selected: {}'.format(np.sum(select)))
+
+                    # Accumulate spectrum data.
+                    if (np.sum(select) > 0):
+                        if allzbest is None:
+                            allzbest = zbest[select]
+                            allfmap = fibermap[select]
+                            allwave = cspectra.wave['brz']
+                            allflux = cspectra.flux['brz'][select]
+                            allivar = cspectra.ivar['brz'][select]
+                            allmask = cspectra.mask['brz'][select]
+                            allres  = cspectra.resolution_data['brz'][select]
+                        else:
+                            allzbest = vstack([allzbest, zbest[select]])
+                            allfmap = vstack([allfmap, fibermap[select]])
+                            allflux = np.vstack([allflux, cspectra.flux['brz'][select]])
+                            allivar = np.vstack([allivar, cspectra.ivar['brz'][select]])
+                            allmask = np.vstack([allmask, cspectra.mask['brz'][select]])
+                            allres  = np.vstack([allres, cspectra.resolution_data['brz'][select]])
+
+                    # exception over petals - for now this is the easy way of removing problematic petals
+                except:
+                    print("Problems with petal")
+            
 
             if allzbest is None:
                 print("No useful BGS observations in this tile")
@@ -354,18 +402,6 @@ if __name__ == '__main__':
 
                 # Save data to file - we need to add ra dec, and some id
                 if ntr > 0:
-                #    if tr_z is None:
-                #        tr_z = allzbest[idx]['Z']
-                #        tr_label = label_names_arr[labels[idx]]
-                #        tr_tile = np.full(ntr,tile_number)
-                #        tr_date = np.full(ntr,obsdate)
-                #        tr_spectrum = rsflux[idx]
-                #    else:
-                #        tr_z = np.vstack((tr_z,allzbest[idx]['Z']))
-                #        tr_label = np.vstack((tr_label,label_names_arr[labels[idx]]))
-                #        tr_tile = np.vstack((tr_tile,np.full(ntr,tile_number)))
-                #        tr_date = np.vstack((tr_date,np.full(ntr,obsdate)))
-                #        tr_spectrum = np.vstack((tr_spectrum,rsflux[idx]))
 
                     # Save classification info to a table.
                     classification = Table()
@@ -374,14 +410,19 @@ if __name__ == '__main__':
                     classification['CNNLABEL'] = label_names_arr[labels[idx]]
 
                     # Merge the classification and redrock fit to the fibermap.
-                    fmap = join(allfmap[idx], allzbest[idx], keys='TARGETID')
-                    fmap = join(fmap, classification, keys='TARGETID')
+                    #fmap = join(allfmap[idx], allzbest[idx], keys='TARGETID')
+                    #fmap = join(fmap, classification, keys='TARGETID')
+                    #Temporary fix for candidate mismatch
+                    fmap = hstack([allfmap[idx], allzbest[idx], classification])
+                    fmap['TARGETID_1'].name='TARGETID'
+                    fmap.remove_columns(['TARGETID_2','TARGETID_3']) 
 
                     # Pack data into Spectra and write to FITS.
                     cand_spectra = Spectra(bands=['brz'],
                                            wave={'brz' : allwave},
                                            flux={'brz' : allflux[idx]},
                                            ivar={'brz' : allivar[idx]},
+                                           mask={'brz' : allmask[idx]},
                                            resolution_data={'brz' : allres[idx]},
                                            fibermap=fmap
                                        )
@@ -389,6 +430,8 @@ if __name__ == '__main__':
                     outfits = '{}/transient_candidate_spectra_{}_{}.fits'.format(out_path, obsdate, tile_number)
                     write_spectra(outfits, cand_spectra)
                     print('Output file saved in {}'.format(outfits))
+                    
+                    R = Resolution(cand_spectra.resolution_data['brz'][0])
 
                     #DESITRIP_daily - Send the selected fluxes to SkyPortal - Divij Sharma
                     #Modified by AP in Apr 2021 to fix new error
@@ -399,7 +442,7 @@ if __name__ == '__main__':
                         altdata_dict = dict()
                         altdata_dict['classifier']={'CNNLABEL' : fmap['CNNLABEL'].data[i]}
                         data['altdata'] = altdata_dict
-
+                            
                         try:
                             SkyPortal.postCandidate(i, fmap, 'DESITRIP', data_override=data)
                         except UniqueViolationError as err:
@@ -410,9 +453,10 @@ if __name__ == '__main__':
 
                         try:
                             SkyPortal.postSpectra(fmap['TARGETID'][i], cand_spectra)
+                            #Also post the residuals and redrock to skyportal!
+                
                         except Exception as err:
                             print(err)
-#                             sys.exit(1)
 
                     # Make a plot of up to 16 transients
 
@@ -420,6 +464,7 @@ if __name__ == '__main__':
 
                     fig, axes = plt.subplots(4,4, figsize=(15,10), sharex=True, sharey=True,
                                              gridspec_kw={'wspace':0, 'hspace':0})
+                    plt.ylim(-1,1)
 
                     #these lines are to add to the output plot the wavelengths between the arms
                     br_band=[5600,6000]
@@ -440,6 +485,12 @@ if __name__ == '__main__':
                             )
 
                             color='blue'
+                            
+                            #If a candidate has a deltamag>2 sigma away from the mean deltamag distribution
+                            #it's flagged as a deltamag candidate and we plot it in red
+                            if allfmap['DELTAMAG_CANDIDATE'][j]:
+                                print("FOUND A DELTAMAG and DESITRIP CANDIDATE!")
+                                color='red'
                             rewave_nbin_inblock=rewave.shape[0]/float(heatmap.shape[0])
                             first_bin=0
                             for i in range(1,heatmap.shape[0]+1):
@@ -447,7 +498,7 @@ if __name__ == '__main__':
                                 last_bin=int(i*rewave_nbin_inblock)
                                 if (i==1):
                                     ax.plot(rewave[first_bin:last_bin+1], this_flux[0,first_bin:last_bin+1],c=color,alpha=alpha,\
-                                            label=str(allfmap['TARGETID'][i])+'\n'+label_names[labels[j]]+'\nz={:.2f}'.format(allzbest[j]['Z'])\
+                                            label=str(allfmap['TARGETID'][j])+'\n'+label_names[labels[j]]+'\nz={:.2f}'.format(allzbest[j]['Z'])\
                                            +'\n dg={:.2f}'.format(delta_fibermag_g)\
                                             +'\n dr={:.2f}'.format(delta_fibermag_r)\
                                            +'\n dz={:.2f}'.format(delta_fibermag_z)\
@@ -458,16 +509,50 @@ if __name__ == '__main__':
 
                         else:
                             ax.plot(rewave, rsflux[j], alpha=0.7, label='label: '+label_names[labels[j]]+'\nz={:.2f}'.format(allzbest[j]['Z']))
+                            
+                            
                         this_br_band=br_band/(1.+(allzbest[j]['Z']))
                         this_rz_band=rz_band/(1.+(allzbest[j]['Z']))  
                         ax.fill_between(this_br_band,[0,0],[1,1],alpha=0.1,color='k')
                         ax.fill_between(this_rz_band,[0,0],[1,1],alpha=0.1,color='k')                      
-                        ax.legend(fontsize=10)
+                        ax.legend(fontsize=6, loc='lower right')
+                        
+                        spectype = allzbest['SPECTYPE'][j].strip()
+                        subtype = allzbest['SUBTYPE'][j].strip()
+                        fulltype = (spectype, subtype)
+                        ncoeff = templates[fulltype].flux.shape[0]
+                        coeff = allzbest['COEFF'][j][0:ncoeff]
+                        tflux = templates[fulltype].flux.T.dot(coeff)
+                        twave = templates[fulltype].wave * (1+allzbest[j]['Z'])
+                        txflux = R.dot(resample_flux(cand_spectra.wave['brz'], twave, tflux))
+                        res=allflux[j]-txflux
+                        res_smooth = gaussian_filter1d(res, 25)
+                        ax.plot(allwave/(1.+(allzbest[j]['Z'])), res_smooth, 'k-', alpha=0.3)
 
                     fig.tight_layout()
                     outplot = '{}/transient_candidates_{}_{}.png'.format(plot_path, obsdate, tile_number)
                     fig.savefig(outplot, dpi=200)
                     print('Figure saved in {}', outplot)
+                    plt.clf()
+                    
+                    
+                            #maxflux = max(maxflux, np.max(spectra.flux[band][ispec]))
+                            
+                            #res=res.reshape((1,res.shape[0]))  
+                            #res_spectra = Spectra(bands=['brz'],
+                            #               wave={'brz' : allwave},
+                            #               flux={'brz' : res},
+                            #               ivar={'brz' : res},
+                            #               resolution_data={'brz' : cand_spectra.resolution_data['brz'][0]}
+                            #           )
+                            
+                            #try:
+                            #    print("Adding residuals for candidate ",allfmap['TARGETID'][j])
+                            #    SkyPortal.postSpectra(allfmap['TARGETID'][j], res_spectra)
+                            #except Exception as err:
+                            #    print(err)
+
+
 
                 #Now add this tile info to the sqlite db
                 #Maybe expid is important for spectraldiff? Here we coadd
