@@ -14,19 +14,16 @@ def getMatchedTileid(yyyymmdd):
     # read in and store in one place all the fibermap information in the spectra files
     dats=[]
     for filename in glob.glob(f"/global/project/projectdirs/desi/spectro/redux/daily/tiles/cumulative/*/{yyyymmdd}/spectra-*.fits"):
-        t = Table.read(filename, format='fits',hdu=1, memmap=True) \
-            [['TARGETID','TARGET_RA','TARGET_DEC','TILEID','OBJTYPE','PETAL_LOC','FIBERSTATUS','NIGHT']]
-        
-#         ##### DAVE'S ADDITION ##############
-#         targetcols = [i for i in t.colnames if i[-7:] =='_TARGET']
-#         nonzerocheck = [True in k for k in [[j != 0 for j in t[targetcols][i]] for i in range(len(t))]]
-#         #a really ugly line, basically generates a list of bools, 
-#         #True if there is at least one nonzero element in all columns ending in _TARGET
-#         t.remove_rows([i for i, val in enumerate(nonzerocheck) if not val])
-#         #This gets the index of all False values from the previous list and removes those rows
-#         t = t['TARGETID','TARGET_RA','TARGET_DEC','TILEID','OBJTYPE','PETAL_LOC','FIBERSTATUS']
-#         ######## END DAVE'S ADDITION ############
-        
+        t = Table.read(filename, format='fits',hdu=1, memmap=True) 
+        ##### DAVE'S ADDITION ##############
+        targetcols = [i for i in t.colnames if i[-7:] =='_TARGET']
+        nonzerocheck = [True in k for k in [[j != 0 for j in t[targetcols][i]] for i in range(len(t))]]
+        #a really ugly line, basically generates a list of bools, 
+        #True if there is at least one nonzero element in all columns ending in _TARGET
+        t.remove_rows([i for i, val in enumerate(nonzerocheck) if not val])
+        #This gets the index of all False values from the previous list and removes those rows
+        t = t['TARGETID','TARGET_RA','TARGET_DEC','TILEID','OBJTYPE','PETAL_LOC','FIBERSTATUS','NIGHT']
+        ######## END DAVE'S ADDITION ############
         t=t[numpy.logical_and(t['OBJTYPE']=='TGT', t['FIBERSTATUS']==0)]
         dats.append(t)
     dats=vstack(dats, join_type='inner',metadata_conflicts='silent')
