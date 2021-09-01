@@ -5,19 +5,27 @@ def coadd(newSpectra):
         
     first = True
     for s in newSpectra: # why/how would there be multiple spectra in s? 
-        if first: 
-            for b in s.bands:
-                sflux[b]=s.flux[b]*s.ivar[b]
-                sivar[b]=s.ivar[b]
-                smask[b]=s.mask[b]
-                swave[b]=s.wave[b]
-            first=False
-        else:
-            for b in s.bands:
-                sflux[b] += s.flux[b]*s.ivar[b]
-                sivar[b] += s.ivar[b]
-                smask[b] = smask[b]+s.mask[b]
+        for i in range(s.num_spectra()):
+            if first: 
+                for b in s.bands:
+                    sflux[b]=s.flux[b][i,:]*s.ivar[b][i,:]
+                    sivar[b]=s.ivar[b][i,:]
+                    smask[b]=numpy.abs(s.mask[b][i,:])
+                    swave[b]=s.wave[b][:]
+                first=False
+            else:
+                for b in s.bands:
+                    sflux[b] += s.flux[b][i,:]*s.ivar[b][i,:]
+                    sivar[b] += s.ivar[b][i,:]
+                    smask[b] += numpy.abs(s.mask[b][i,:])
+                    
     for b in s.bands:
-        sflux[b] = sflux[b]/sivar[b] 
+        # Mask pixels with no signal-to-noise
+        w=numpy.where(sivar[b]==0)[0]
+        smask[b][w]=1
+        try:
+            sflux[b] = sflux[b]/sivar[b]
+        except:
+            pass
     
     return(sflux, sivar, swave, smask)
