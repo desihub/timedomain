@@ -30,4 +30,15 @@ def getUnprocessedDates():
     print('len(night_arr): ' + str(len(night_arr)))
     print("--- get unprocessed dates took:  %s seconds ---" % (time.time() - start_time))
     
-    return(night_arr) 
+    return(night_arr)
+
+def hasNothingToProcess(tps,group_tid,group_tp,group_night):
+    hasNothing=True
+    for tid, tp, night in zip(group_tid,group_tp,group_night):
+        # if this RA/DEC is not in thie tile_petal combination than skip
+        if tp[0] not in tps:
+            continue
+        if len(night) > 1:
+            hasNothing=False
+            return hasNothing
+    return hasNothing
