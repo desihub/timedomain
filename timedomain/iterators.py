@@ -1,6 +1,10 @@
 from desispec.io import read_spectra, write_spectra
 from desispec.spectra import Spectra
 
+from desiutil.log import get_logger, DEBUG
+log = get_logger(DEBUG)
+
+
 import numpy as np
 import copy
 
@@ -83,14 +87,17 @@ class TileDate_PreDate_Iterator:
     def __next__(self):
         
         if self.it0 is None:
-            predates = fs_utils.tileToDates(self.tile, subdir=self.subdir)
-            predates = np.array(predates,dtype='str')
-            w = np.logical_and(predates < self.date, predates >= config.mindate)
-            predates = predates[w]
-            if len(predates)==0:
-                raise StopIteration
-            self.it0 = predates.flat
-            return self.it0.__next__()
+            try:
+                predates = fs_utils.tileToDates(self.tile, subdir=self.subdir)
+                predates = np.array(predates,dtype='str')
+                w = np.logical_and(predates < self.date, predates >= config.mindate)
+                predates = predates[w]
+                if len(predates)==0:
+                    raise StopIteration
+                self.it0 = predates.flat
+                return self.it0.__next__()
+            except FileNotFoundError:
+                raise StopIteration 
         
         try:
             return self.it0.__next__()
@@ -470,7 +477,7 @@ class TileDate_SpectraPairs_Iterator:
             filename2 = fs_utils.fitsfile(self.tile, self.pdate, self.panel, subdir=self.subdir,trunk=self.trunk)            
         if self.verbose:
             print("Iterator: Tile {}, Panel {}, Date {}, Date 2 {}".format(self.tile, self.panel,self.date,self.pdate))
-
+        log.debug("{} {}".format(filename,filename2))
         return((read_spectra(filename) , read_spectra(filename2)), ({'tile': self.tile, 'date': self.date, 'panel': self.panel},{'tile': self.tile, 'date': self.pdate, 'panel': self.panel}))
 
     # staticmethod

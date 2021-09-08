@@ -56,22 +56,21 @@ def main(args):
 
 #         # For now consider missing zbest files as catastrophic errors
         if (zf is None):
-            log.warning("Missing zbest {} {} {} {}".format(meta[0]['tile'],meta[0]['date'],meta[0]['panel'],args.subdir))
+
             sys.exit(1)
             
         zbest = Table.read(zf, 'ZBEST')
         
         # which of these are real targets
-        triggered, diff = logic.filter(pspectra0,pspectra1, zbest, norm=False ,ston_cut=5)
+        triggered, diff = logic.filter(pspectra0,pspectra1, zbest, ston_cut=5)
 
 #         # plot triggered objects
         if triggered.sum() > 0:
 
             wheretriggered = np.where(triggered)[0]
-
             for sig in wheretriggered.flat:
 
-                targetid = diff.fibermap['TARGETID'].data[sig].astype('str')
+                targetid = pspectra0.fibermap['TARGETID'].data[sig].astype('str')
                 log.info("TARGETID {}".format(targetid))
 #                 SkyPortal.nukeCandidate(targetid, "DESIDIFF {}".format(prunelogic))
                 
@@ -88,45 +87,74 @@ def main(args):
                               'tile':meta[0]['tile'], 'date0':meta[0]['date'],'date1':meta[1]['date'], 'panel':meta[0]['panel'],
                               'fibermap': {'Z':str(zbest['Z'][sig]), 'ZERR':str(zbest['ZERR'][sig]), 'SPECTYPE':zbest['SPECTYPE'][sig]}}
                 }
-
-                SkyPortal.postCandidate(sig, diff.fibermap, "DESIDIFF {}".format(prunelogic),data_override=data_override)
+                try:
+                    SkyPortal.postCandidate(sig, pspectra0.fibermap, "DESIDIFF {}".format(prunelogic),data_override=data_override)
+                except UniqueViolationError as err:
+                    log.info(err.response.json())
+                except Exception as err:
+                    print(err)
+                    sys.exit(1)
    
                 # Annotate
                 data_override = {
                     "group_ids": [SkyPortal.group_id('DESI'), SkyPortal.group_id('Wayne State')],
                     "data": {'Z':str(zbest['Z'][sig]), 'ZERR':str(zbest['ZERR'][sig]), 'SPECTYPE':zbest['SPECTYPE'][sig]}
                 }
-
-                SkyPortal.postAnnotation(sig, diff.fibermap,data_override=data_override)
+                try:
+                    SkyPortal.postAnnotation(sig, pspectra0.fibermap,data_override=data_override)
+                except UniqueViolationError as err:
+                    log.info(err.response.json())
+                except Exception as err:
+                    print(err)
+                    sys.exit(1)            
 
                 data = {
                     "redshift": str(zbest['Z'][sig])
                 }
-                SkyPortal.api('PATCH', '{}/api/sources/DESI{}'.format(SkyPortal.url,targetid),data=data)
+                try:
+                    SkyPortal.api('PATCH', '{}/api/sources/DESI{}'.format(SkyPortal.url,targetid),data=data)
+                except Exception as err:
+                    print(err)
+                    sys.exit(1)
             
                 # save Spectra
-                
-                data_override = {
-                    "origin": "{}-{}".format(meta[0]['date'],meta[1]['date']),
-                    "group_ids": [SkyPortal.group_id('DESI'), SkyPortal.group_id('Wayne State')],
-                    "altdata": {'logic':args.logic, 'iterator':args.iterator, 'subdir':args.subdir, 'trunk':args.trunk,
-                    'tile':meta[0]['tile'], 'date0':meta[0]['date'],'date1':meta[1]['date'], 'panel':meta[0]['panel']}
-                }              
-                SkyPortal.postSpectra(targetid, diff, data_override=data_override,coadd_camera=True)
+                if diff is not None:
+                    data_override = {
+                        "origin": "{}-{}".format(meta[0]['date'],meta[1]['date']),
+                        "group_ids": [SkyPortal.group_id('DESI'), SkyPortal.group_id('Wayne State')],
+                        "altdata": {'logic':args.logic, 'iterator':args.iterator, 'subdir':args.subdir, 'trunk':args.trunk,
+                        'tile':meta[0]['tile'], 'date0':meta[0]['date'],'date1':meta[1]['date'], 'panel':meta[0]['panel']}
+                    }
                     
-                data_override = {
-                    "group_ids": [SkyPortal.group_id('DESI'), SkyPortal.group_id('Wayne State')],
-                    "altdata": {'subdir':args.subdir, 'trunk':args.trunk,
-                              'tile':meta[0]['tile'], 'date':meta[0]['date'], 'panel':meta[0]['panel']}
-                }                   
-                SkyPortal.postSpectra(targetid, pspectra0, data_override=data_override,coadd_camera=True)
+                    #erase old spectrum if exists.  New release spectra assumed better
+                    try:
+                        SkyPortal.deleteSpectra(targetid, data_override['altdata'])
+                        SkyPortal.postSpectra(targetid, diff, data_override=data_override,coadd_camera=True)
+                    except Exception as err:
+                        print(err)
+                        sys.exit(1)
 
-                data_override = {
-                    "group_ids": [SkyPortal.group_id('DESI'), SkyPortal.group_id('Wayne State')],
-                    "altdata": {'subdir':args.subdir, 'trunk':args.trunk,
-                              'tile':meta[1]['tile'], 'date':meta[1]['date'], 'panel':meta[1]['panel']}
-                } 
-                SkyPortal.postSpectra(targetid, pspectra1, data_override=data_override,coadd_camera=True)
+                #spectrum 0 and 1
+                try:
+                    data_override0 = {
+                        "group_ids": [SkyPortal.group_id('DESI'), SkyPortal.group_id('Wayne State')],
+                        "altdata": {'subdir':args.subdir, 'trunk':args.trunk,
+                                  'tile':meta[0]['tile'], 'date':meta[0]['date'], 'panel':meta[0]['panel']}
+                    }
+                    SkyPortal.deleteSpectra(targetid, data_override0['altdata'])
+                    SkyPortal.postSpectra(targetid, pspectra0, data_override=data_override0,coadd_camera=True)
+
+                    #spectrum1                
+                    data_override1 = {
+                        "group_ids": [SkyPortal.group_id('DESI'), SkyPortal.group_id('Wayne State')],
+                        "altdata": {'subdir':args.subdir, 'trunk':args.trunk,
+                                  'tile':meta[1]['tile'], 'date':meta[1]['date'], 'panel':meta[1]['panel']}
+                    } 
+                    SkyPortal.deleteSpectra(targetid, data_override1['altdata'])
+                    SkyPortal.postSpectra(targetid, pspectra1, data_override=data_override1,coadd_camera=True)
+                except Exception as err:
+                    print(err)
+                    sys.exit(1)
                                     
                 # get all photometry associated with this guy.  Note that the altdata is for the 3 filters.
                 # SkyPortal will be fixed so that a scalar will be broadcast to arrays
@@ -144,10 +172,16 @@ def main(args):
                             }
 
                             # Modify this so that it gets all phases, not just the pair
-                            SkyPortal.postPhotometry(targetid, sp,coadd_camera=True, data_override=data_override)
-                logic.plotter(sig,pspectra0, pspectra1, diff, savepdf=spdf)
+                            try:
+                                SkyPortal.putPhotometry(targetid, sp,coadd_camera=True, data_override=data_override)
+                            except UniqueViolationError as err:
+                                log.info(err.response.json())
+                            except Exception as err:
+                                print(err)
+                                sys.exit(1)
 
-    print("End")
+#                 logic.plotter(sig,pspectra0, pspectra1, diff, savepdf=spdf)
+
                 
 if __name__ == "__main__":
     

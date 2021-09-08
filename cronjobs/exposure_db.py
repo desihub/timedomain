@@ -54,6 +54,7 @@ class ReduxDB:
                         moonalt float NOT NULL,
                         moonsep float NOT NULL,
                         moonfrac float NOT NULL,
+                        faflavor float NOT NULL,
                         FOREIGN KEY (tileid) REFERENCES tiles (tileid)
                     ); """
         self.create_table(sql)
@@ -76,7 +77,7 @@ class ReduxDB:
                       VALUES(?,?,?,?) """
         self.insert_row(sql, (tileid, tilera, tiledec, faflavor))
 
-    def add_exposure(self, expid, tileid, program, obsdate, obstime, obsmjd, exptime, airmass, moonalt, moonsep, moonfrac):
+    def add_exposure(self, expid, tileid, program, obsdate, obstime, obsmjd, exptime, airmass, moonalt, moonsep, moonfrac,flav):
         """Add an exposure to the exposures table.
 
         Parameters
@@ -104,9 +105,9 @@ class ReduxDB:
         moonfrac : float
             Moon illumination fraction (phase) in [0,1].
         """
-        sql = """ INSERT OR IGNORE INTO exposures(expid,tileid,program,obsdate,obstime,obsmjd,exptime,airmass,moonalt,moonsep,moonfrac)
-                      VALUES(?,?,?,?,?,?,?,?,?,?,?) """
-        self.insert_row(sql, (expid, tileid, program, obsdate, obstime, obsmjd, exptime, airmass, moonalt, moonsep, moonfrac))
+        sql = """ INSERT OR IGNORE INTO exposures(expid,tileid,program,obsdate,obstime,obsmjd,exptime,airmass,moonalt,moonsep,moonfrac,faflavor)
+                      VALUES(?,?,?,?,?,?,?,?,?,?,?,?) """
+        self.insert_row(sql, (expid, tileid, program, obsdate, obstime, obsmjd, exptime, airmass, moonalt, moonsep, moonfrac,flav))
 
         
     
@@ -174,94 +175,100 @@ if __name__ == '__main__':
     # Observatory object for some astronomical calculations.
     mayall = None
 
-    # Loop through tile folders and identify subfolders with exposures.
-    tilesfolder = os.environ['DESI_SPECTRO_REDUX'] + '/{}/tiles'.format(redux)
-    tiles = sorted(glob('{}/*'.format(tilesfolder)))
+    # Loop through date folders and identify subfolders with exposures.
+    
+    dateexpfolder = os.environ['DESI_SPECTRO_REDUX'] + '/{}/exposures'.format(redux)
+    
+    # Loop through observation date subfolders.
+    dates = sorted(glob('{}/*'.format(dateexpfolder)))
+    
+    for date in dates:
+        # Extract obsdate from the folder name.
+        obsdate = date.split('/')[-1]
 
-    for tile in tiles:
-        # Extract tileid from the folder name.
-        tileid = tile.split('/')[-1]
-
-        # Check that tile ID is a 5-digit integer.
-        if not re.match(r'\d{5}', tileid):
+        # Check that obsdate is of format 20YYMMDD
+        if not re.match(r'20\d{6}', obsdate):
             continue
-        tileid = int(tileid)
-        print(tileid)
+        obsdate = int(obsdate)
+        
+        #Only look from May 1st 2021
+        if obsdate<20210501:
+            continue
+        print('  + {}'.format(date))
+    
+        expfolder = os.environ['DESI_SPECTRO_REDUX'] + '/{}/exposures/{:08d}/'.format(redux,obsdate)
+        exps = sorted(glob('{}/*'.format(expfolder)))
 
-        # Loop through observation date subfolders.
-        dates = sorted(glob('{}/*'.format(tile)))
-        for date in dates:
-            # Extract obsdate from the folder name.
-            obsdate = date.split('/')[-1]
-
-            # Check that obsdate is of format 20YYMMDD
-            if not re.match(r'20\d{6}', obsdate):
-                continue
-            obsdate = int(obsdate)
-            print('  + {}'.format(date))
-
-            cframefiles = sorted(glob('{}/cframe*.fits'.format(date)))
-
-            # Extract unique list of expids from the cframe filenames.
-            expids_all = np.array([int(cframefile.split('-')[-1][:-5]) for cframefile in cframefiles])
+        expnums=[]
+        for exp in exps:
+            # Extract tileid from the folder name.
+            expnum = exp.split('/')[-1]
+            try:
+                expnum = int(expnum)
+                expnums.append(expnum)
+            except:
+                print("Expnum probably not a number")
+            print(expnum)
             
-            # Now check if this expid is already in db
-            # If it is don't bother with opening files
-            expids_arr = np.setdiff1d(expids_all,expids_done)
             
-            expids = set(expids_arr)
-            
-            if (expids_arr.shape[0]>0):
+        expids_all = np.array(expnums)
 
-                spectfiles = sorted(glob('{}/spectra*.fits'.format(date)))
-                coaddfiles = sorted(glob('{}/coadd*.fits'.format(date)))
+        # Now check if this expid is already in db
+        # If it is don't bother with opening files
+        expids_arr = np.setdiff1d(expids_all,expids_done)
+        expids = set(expids_arr)
 
-                # Access fiberassign file and DESI exposure file for each exposure.
-                for expid in expids:
-                    fassign = os.environ['DESI_SPECTRO_DATA'] + '/{}/{:08d}/fiberassign-{:06d}.fits'.format(obsdate, expid, tileid)
-                    desiexp = os.environ['DESI_SPECTRO_DATA'] + '/{}/{:08d}/desi-{:08d}.fits.fz'.format(obsdate, expid, expid)
+        if (expids_arr.shape[0]>0):
+            print('Found new unique expids',expids_arr)
 
-                    if os.path.exists(fassign) and os.path.exists(desiexp):
-                        # Add tile info.
-                        fhdr = fitsio.read_header(fassign, 'PRIMARY')
+            # Access fiberassign file and DESI exposure file for each exposure.
+            for expid in expids:
 
-                        _id, _ra, _dec = [fhdr[_] for _ in ['TILEID', 'TILERA', 'TILEDEC']]
-                        if 'FAFLAVOR' in fhdr:
-                            _flav = fhdr['FAFLAVOR']
-                        elif 'FA_SURV' in fhdr:
-                            _flav = fhdr['FA_SURV']
-                        else:
-                            _flav = 'None'
+                cframe = os.environ['DESI_SPECTRO_REDUX'] + '/{}/exposures/{:08d}/{:08d}/cframe-b0-{:08d}.fits'.format(redux,obsdate,expid, expid)
+                #prefix_in = os.environ['DESI_SPECTRO_REDUX'] + '/{}/exposures/{:08d}/{:08d}'.format(redux,obsdate,expid)
+                #cframe = sorted(glob('{}/cframe*.fits'.format(prefix_in)))[0]
 
-                        db.add_tile(_id, _ra, _dec, _flav)
+                if os.path.exists(cframe):
+                    # Add tile info.
+                    #h=fits.open(cframe)
+                    #cframe_fibermap = h[5].header
+                    cframe_fibermap = fitsio.read_header(cframe,'FIBERMAP')
+                    
+                    _id, _ra, _dec = [cframe_fibermap[_] for _ in ['TILEID', 'TILERA', 'TILEDEC']]
+                    if 'FAFLAVOR' in cframe_fibermap:
+                        _flav = cframe_fibermap['FAFLAVOR']
+                    elif 'FA_SURV' in cframe_fibermap:
+                        _flav = cframe_fibermap['FA_SURV']
+                    else:
+                        _flav = 'None'
 
-                        # Add exposure info.
-                        dhdr = fitsio.read_header(desiexp, 1)
+                    db.add_tile(_id, _ra, _dec, _flav)
 
-                        mra, mdec = dhdr['MOONRA'], dhdr['MOONDEC']
-                        if 'MOONSEP' in dhdr:
-                            msep = dhdr['MOONSEP']
-                        else:
-                            cosA = np.sin(_dec)*np.sin(mdec) + np.cos(_dec)*np.cos(mdec)*np.cos(_ra - mra) 
-                            msep = np.degrees(np.arccos(cosA))
+                    mra, mdec = cframe_fibermap['MOONRA'], cframe_fibermap['MOONDEC']
+                    if 'MOONSEP' in cframe_fibermap:
+                        msep = cframe_fibermap['MOONSEP']
+                    else:
+                        cosA = np.sin(_dec)*np.sin(mdec) + np.cos(_dec)*np.cos(mdec)*np.cos(_ra - mra) 
+                        msep = np.degrees(np.arccos(cosA))
 
-                        mjd, date, time = dhdr['MJD-OBS'], obsdate, dhdr['DATE-OBS']
-                        lat, lon, elev = dhdr['OBS-LAT'], dhdr['OBS-LONG'], dhdr['OBS-ELEV']
+                    mjd, date, time = cframe_fibermap['MJD-OBS'], cframe_fibermap['NIGHT'], cframe_fibermap['DATE-OBS']
+                    lat, lon, elev = cframe_fibermap['OBS-LAT'], cframe_fibermap['OBS-LONG'], cframe_fibermap['OBS-ELEV']
 
-                        if mayall is None:
-                            mayall = ephem.Observer()
-                            mayall.lat = lat
-                            mayall.lon = lon
-                            mayall.elev = elev
-                        mayall.date = Time(mjd, format='mjd', scale='utc').iso
-                        moon = ephem.Moon(mayall)
-                        mfrac = moon.moon_phase
-                        malt = moon.alt * 180/np.pi
+                    if mayall is None:
+                        mayall = ephem.Observer()
+                        mayall.lat = lat
+                        mayall.lon = lon
+                        mayall.elev = elev
+                    mayall.date = Time(mjd, format='mjd', scale='utc').iso
+                    moon = ephem.Moon(mayall)
+                    mfrac = moon.moon_phase
+                    malt = moon.alt * 180/np.pi
+                    
+                    
+                    prog = cframe_fibermap['PROGRAM']
+                    et = cframe_fibermap['EXPTIME']
+                    am = cframe_fibermap['AIRMASS']
 
-                        prog = dhdr['PROGRAM']
-                        et = dhdr['EXPTIME']
-                        am = dhdr['EXPTIME']
-
-                        print('    - {}'.format((expid, tileid, prog, date, time, mjd, et, am, malt, msep, mfrac)))
-                        db.add_exposure(expid.item(), tileid, prog, date, time, mjd, et, am, malt, msep, mfrac)
+                    print('Adding   - {}'.format((expid, _id, prog, date, time, mjd, et, am, malt, msep, mfrac)))
+                    db.add_exposure(expid.item(), _id, prog, date, time, mjd, et, am, malt, msep, mfrac,_flav)
 

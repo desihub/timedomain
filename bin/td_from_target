@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+FILENAME="/global/cfs/cdirs/desi/science/td/db/secondary.db"
+
+sqlite3 $FILENAME "SELECT daily.TILEID,  daily.YYYYMMDD
+        FROM daily
+        INNER JOIN tiles
+            ON daily.TILEID = tiles.TILEID
+        WHERE tiles.TARGETID = $1;"

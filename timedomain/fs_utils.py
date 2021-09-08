@@ -10,36 +10,57 @@ panels = np.arange(10).astype('str')
 # this set of images officially dead to DESI
 bad = [["20210228","80726"],["20210228","80726"],["20210228","80740"],["20210228","80741"]]
 
-def recentRelease(redux,tile, date, panel, trunk):
-    ans = None
-    for testdir in config.releases:
-        name  = os.path.join(redux,testdir,'tiles',tile, date, '{}-{}-{}-{}.fits'.format(trunk,panel,tile,date))
-        if os.path.exists(name):
-            ans = testdir
-    if ans is None:
-#         name  = os.path.join(redux,'daily','tiles',tile, date, '{}-{}-{}-{}.fits'.format(trunk,panel,tile,date))
-#         if os.path.exists(name):
-        ans = 'daily'
-    return ans
-        
+# def recentRelease(redux,tile, date, panel, trunk):
+#     ans = None
+#     name  = os.path.join(redux,config.releases[-1],'tiles',tile, date, '{}-{}-{}-{}.fits'.format(trunk,panel,tile,date))
+#     if os.path.exists(name):
+#         ans = releases[-1]
+#     if ans is None:
+# #         name  = os.path.join(redux,'daily','tiles',tile, date, '{}-{}-{}-{}.fits'.format(trunk,panel,tile,date))
+# #         if os.path.exists(name):
+#         ans = 'daily'
+#     return ans
 
-def fitsfile(tile, date, panel, subdir='recent',trunk='coadd'):
-    
-    if [date,tile] in bad:
-        return None
-    
+def useSubdir(subdir,date="99999999"):
     if subdir == 'recent':
-        subdir = recentRelease(redux,tile,date, panel, trunk)
-    name  = os.path.join(redux,subdir,'tiles',tile, date, '{}-{}-{}-{}.fits'.format(trunk,panel,tile,date))
+        if date <= config.last_release_date:
+            return  config.last_release
+        else:
+            return "daily"   
+    return subdir
+
+# def datadir(release,coadd):
+    
+#     if release == "daily" or release in config.releases[0:3]:
+#         return os.path.join(redux,usesubdir,'tiles')
+#     elif coadd in ["cumulative","pernight","perexp"]
+#         return os.path.join(redux,usesubdir,'tiles',coadd)
+#     else:
+#         raise Exception("bad path")
+        
+def fitsfile(tile, date, panel, subdir='recent',trunk='coadd'):
+#     if [date,tile] in bad:
+#         return None
+    usesubdir=useSubdir(subdir,date)
+    
+#     usesubdir=useSubdir(subdir,date)
+    
+    if usesubdir=='daily':
+        name  = os.path.join(redux,usesubdir,'tiles',tile, date, '{}-{}-{}-{}.fits'.format(trunk,panel,tile,date))
+    else:
+        name  = os.path.join(redux,usesubdir,'tiles/pernight',tile, date, '{}-{}-{}-{}.fits'.format(trunk,panel,tile,date))
     exists = os.path.exists(name)
     if exists:
-        return os.path.join(redux,subdir,'tiles',tile, date, '{}-{}-{}-{}.fits'.format(trunk,panel,tile,date))
+        return name
     else:
         return None
 
 def tiledateToExposures(tile, date, subdir='andes'):
+    
+    usesubdir=useSubdir(subdir,date)
 
-    dirname = os.path.join(redux,subdir,'tiles',tile,date)
+
+    dirname = os.path.join(redux,usesubdir,'tiles',tile,date)
     if not os.path.isdir(dirname):
         print('{} does not exist.'.format(dirname))    
     cafiles =  glob(os.path.join(dirname,'cframe-??-*.fits'))
@@ -58,8 +79,9 @@ def tiledateToExposures(tile, date, subdir='andes'):
 # tn=tiledateToExposures(tile,date)
 
 def dateToTiles(date, subdir='andes'):
+    usesubdir=useSubdir(subdir,date)
 
-    dirname = os.path.join(redux,subdir,'tiles')
+    dirname = os.path.join(redux,usesubdir,'tiles')
     if not os.path.isdir(dirname):
         print('{} does not exist.'.format(dirname))
     cafiles =  glob(dirname+'/*/'+date)
@@ -77,9 +99,11 @@ def dateToTiles(date, subdir='andes'):
 
 def tileToDates(tile, subdir='andes'):
 
-    dirname = os.path.join(redux,subdir,'tiles',tile)
+    usesubdir=useSubdir(subdir)
+
+    dirname = os.path.join(redux,usesubdir,'tiles',tile)
     if not os.path.isdir(dirname):
-        print('{} does not exist.'.format(dirname))
+        raise FileNotFoundError(dirname)
 
     dates = [f.path for f in os.scandir(dirname) if f.is_dir()]
 

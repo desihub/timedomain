@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+FILENAME="/global/cfs/cdirs/desi/science/td/db/secondary.db"
+
+sqlite3 $FILENAME "SELECT targets.PROGRAM, targets.RA, targets.DEC, targets.TARGETID, daily.TILEID,  daily.YYYYMMDD, daily.PETAL
+        FROM daily
+        INNER JOIN targets 
+            ON daily.TARGETID = targets.TARGETID
+        WHERE targets.PROGRAM LIKE '$1%'
+        ORDER BY
+            targets.PROGRAM,
+            daily.TILEID,
+            daily.YYYYMMDD;"

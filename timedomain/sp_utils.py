@@ -9,6 +9,33 @@ import json
 from desiutil.log import get_logger
 log = get_logger()
 
+class Error(Exception):
+    """Base class for exceptions in this module."""
+    pass
+
+class ResponseError(Error):
+    """Exception raised for errors in the input.
+
+    Attributes:
+        expression -- input expression in which the error occurred
+        message -- explanation of the error
+    """
+
+    def __init__(self, response):
+        self.response = response
+        
+class UniqueViolationError(Error):
+    """Exception raised for errors in the input.
+
+    Attributes:
+        expression -- input expression in which the error occurred
+        message -- explanation of the error
+    """
+
+    def __init__(self, response):
+        self.response = response
+        
+        
 class SkyPortal:
 
     #skyportal location and 
@@ -65,9 +92,12 @@ class SkyPortal:
             return SkyPortal.filt_id[filter_name]
         else:
             response = SkyPortal.api('GET', '{}/api/filters'.format(SkyPortal.url))
+#             if response.status_code in (200, 400):
+#                 print(f'JSON response: {response.json()}')
+            if response.status_code ==400:
+                raise Exception('Something wrong')
             data = response.json()['data']
             theOne = list(filter(lambda datum: datum['name']==filter_name,data))
-
             if len(theOne) !=0:
                 SkyPortal.filt_id[filter_name] = theOne[0]['id']
             else:
@@ -104,7 +134,15 @@ class SkyPortal:
         
     @staticmethod
     def api(method, endpoint, data=None):
-        response = requests.request(method, endpoint, json=data, headers=SkyPortal.headers)
+        try:
+            response = requests.request(method, endpoint, json=data, headers=SkyPortal.headers)
+        except:
+            raise
+        if response.status_code == 400:
+            if "psycopg2.errors.UniqueViolation" in response.json()['message']:
+                raise UniqueViolationError(response)
+            else:
+                raise ResponseError(response)
         return response
 
     @staticmethod
@@ -167,11 +205,14 @@ class SkyPortal:
 
             data.update(data_override)
 
-        response = SkyPortal.api('POST', '{}/api/candidates'.format(SkyPortal.url),data=data)
-
-        log.info(f'HTTP code: {response.status_code}, {response.reason}')
-        if response.status_code == 400:
-            log.warning(f'JSON response: {response.json()}')
+        try:
+            response = SkyPortal.api('POST', '{}/api/candidates'.format(SkyPortal.url),data=data)
+        except:
+            raise
+            
+#         log.info(f'HTTP code: {response.status_code}, {response.reason}')
+#         if response.status_code == 400:
+#             log.warning(print(f'JSON response: {response.json()}'))
 
     def postAnnotation(index,fibermap, data_override=None):
 
@@ -197,26 +238,20 @@ class SkyPortal:
                     data_override[k]=data[k]
 
             data.update(data_override)
+
+        try:
+            response = SkyPortal.api('POST', '{}/api/annotation'.format(SkyPortal.url),data=data)
+        except:
+            raise
             
-        response = SkyPortal.api('POST', '{}/api/annotation'.format(SkyPortal.url),data=data)
-        log.info(f'HTTP code: {response.status_code}, {response.reason}')
-        if response.status_code == 400:
-            log.warning(f'JSON response: {response.json()}')
+#         log.info(f'HTTP code: {response.status_code}, {response.reason}')
+#         if response.status_code == 400:
+#             log.warning(print(f'JSON response: {response.json()}'))
 
     
 
     @staticmethod            
     def postSpectra(target_id, spectra_in, data_override=None,coadd_camera=False):
-
-        if data_override is not None:
-            if 'altdata' in data_override.keys():
-                response=SkyPortal.api('GET',  '{}/api/sources/DESI{}/spectra'.format(SkyPortal.url,target_id))
-                if response.status_code == 200:
-                    spec = response.json()['data']['spectra']
-                    for s in spec:
-                        if (data_override['altdata'] == s['altdata']):
-                            log.warning("Spectrum exists not overwriting")
-                            return
             
         # fix to an upstream bug in spectra
         keep = numpy.equal(spectra_in.fibermap['TARGETID'].data, int(target_id))
@@ -273,13 +308,17 @@ class SkyPortal:
 
                 data.update(data_override)
 
-            response = SkyPortal.api('POST', '{}/api/spectrum'.format(SkyPortal.url),data=data)
-            log.info(f'HTTP code: {response.status_code}, {response.reason}')
-            if response.status_code == 400:
-                log.error(f'JSON response: {response.json()}')
+            try:
+                response = SkyPortal.api('POST', '{}/api/spectrum'.format(SkyPortal.url),data=data)
+            except:
+                raise
+                
+#             log.info(f'HTTP code: {response.status_code}, {response.reason}')
+#             if response.status_code == 400:
+#                 log.error(f'JSON response: {response.json()}')
  
     @staticmethod            
-    def postPhotometry(target_id, spectra_in, data_override=None,coadd_camera=False):
+    def putPhotometry(target_id, spectra_in, data_override=None,coadd_camera=False):
         spectra = spectra_in.select(targets=[int(target_id)])
 
         # At this point there should only be one Spectrum
@@ -315,36 +354,47 @@ class SkyPortal:
 #         for index, mjd in enumerate(fibermap.iterrows('MJD')):
         index=0
         fluxes = []
+        fluxerrs = []
         for b in bands:
-            padspec = b.pad_spectrum(spectra.flux[spectra.bands[0]][index,:],spectra.wave[spectra.bands[0]])
+            ok = numpy.logical_and(spectra.mask['brz'][index,:] ==0,spectra.ivar[spectra.bands[0]][index,:])
+            padspec = b.pad_spectrum(spectra.flux[spectra.bands[0]][index,ok],spectra.wave[spectra.bands[0]][ok])
             fluxes.append(b.get_ab_maggies(padspec[0],padspec[1])*1e-17)
-
+            padspec = b.pad_spectrum(spectra.ivar[spectra.bands[0]][index,ok],spectra.wave[spectra.bands[0]][ok])
+            fluxerrs.append(numpy.sqrt(b.get_ab_maggies(1/padspec[0],padspec[1]))*1e-17)
+            
         filters = ['sdssg','sdssr','sdssz']
 
-        data = {
-            "mjd": str(mjd),
-            "obj_id": objID,
-            "instrument_id": SkyPortal.instrument_id(),
-            "origin": "DESI",
-            "magsys": 'ab',
-            "filter": filters,
-            "group_ids": [SkyPortal.group_id('DESI') ],
-            "flux":     fluxes,
-            "fluxerr": (numpy.array(fluxes)/100).tolist(),
-            "zp": 0
-            }
+        w=numpy.where(numpy.isfinite(fluxes))[0]
+        
+        if len(w)!=0:
 
-        if data_override is not None:
-            for k,v in data_override.items():
-                if isinstance(v,dict) and k in data:
-                    data[k].update(v)
-                    data_override[k]=data[k]
-            data.update(data_override)
+            data = {
+                "mjd": str(mjd),
+                "obj_id": objID,
+                "instrument_id": SkyPortal.instrument_id(),
+                "origin": "DESI",
+                "magsys": 'ab',
+                "filter": filters[w[0]],
+                "group_ids": [SkyPortal.group_id('DESI') ],
+                "flux":     fluxes[w[0]],
+                "fluxerr": fluxerrs[w[0]],
+                "zp": 0
+                }
 
-        response = SkyPortal.api('POST', '{}/api/photometry'.format(SkyPortal.url),data=data)
-        log.info(f'HTTP code: {response.status_code}, {response.reason}')                                                                         
-        if response.status_code == 400:
-            log.warning(f'JSON response: {response.json()}')
+            if data_override is not None:
+                for k,v in data_override.items():
+                    if isinstance(v,dict) and k in data:
+                        data[k].update(v)
+                        data_override[k]=data[k]
+                data.update(data_override)
+
+            try:
+                response = SkyPortal.api('PUT', '{}/api/photometry'.format(SkyPortal.url),data=data)
+            except ResponseError as err:
+                raise
+#             log.info(f'HTTP code: {response.status_code}, {response.reason}')                                                                         
+#             if response.status_code == 400:
+#                 log.warning(f'JSON response: {response.json()}')
 
     @staticmethod
     def test():
@@ -364,7 +414,20 @@ class SkyPortal:
         spectra = read_spectra(filename)
 #         SkyPortal.postSpectra("35191288252861933",spectra)
 
-        
+    @staticmethod            
+    def deleteSpectra(target_id, altdata):
+        try:
+            response=SkyPortal.api('GET',  '{}/api/sources/DESI{}/spectra'.format(SkyPortal.url,target_id))
+        except:
+            raise
+
+        spec = response.json()['data']['spectra']
+        for s in spec:
+            if (altdata == s['altdata']):
+                try:
+                    response=SkyPortal.api('DELETE',  '{}/api/spectrum/{}'.format(SkyPortal.url,s['id']))
+                except:
+                    raise
         
 # SkyPortal.instrument_id()
 
