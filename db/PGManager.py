@@ -1,6 +1,7 @@
 import os
 import sys
 import glob
+import argparse
 from astropy.io import ascii
 import pandas
 import psycopg2
@@ -67,16 +68,25 @@ fibermap_daily:
 
 """
 
-try:
-    with open('/global/homes/a/akim/secrets/desi_pg.txt', 'r') as f:
+# try:
+#     with open('/global/homes/a/akim/secrets/desi_pg.txt', 'r') as f:
+#         data = f.read()
+#         uname, passwd = data.split()
+#         engine = create_engine(f'postgresql://{uname}:{passwd}@decatdb.lbl.gov/desi')
+# except:
+#     print("No connection")
+
+# #     conn = sqlite3.connect("/global/cfs/cdirs/desi/science/td/db/desi.db") 
+
+# global variable engine is the engine connection
+
+engine = None
+def create_db_engine( secrets_file, dbhost="decatdb.lbl.gov", dbname="desi" ):
+    global engine
+    with open( secrets_file, 'r' ) as f:
         data = f.read()
         uname, passwd = data.split()
-        engine = create_engine(f'postgresql://{uname}:{passwd}@decatdb.lbl.gov/desi')
-        
-#     conn = sqlite3.connect("/global/cfs/cdirs/desi/science/td/db/desi.db") 
-
-except:
-    print("No connection")
+    engine = create_engine( f'postgresql://{uname}:{passwd}@{dbhost}/{dbname}' )
 
 def dtypesToSchema(dtypes):
     for index,value in dtypes.items():
@@ -98,9 +108,31 @@ def dtypesToSchema(dtypes):
             print ("**unknown** ",value)
 #         print(f'{index}  {nvalue}, {value}')
         print(f'{index.lower()}  {nvalue},') 
+
+
+class tablebaseclass:
+    """A base class for tables that has some methods that are shared by many"""
+
+    tablename = None
+    createstatements = None
+
+    @classmethod
+    def create_table( cls, overwrite=False ):
+        global engine
+        with engine.connect() as conn:
+            if overwrite:
+                sys.stderr.write( f"Dropping {cls.tablename}\n" )
+                conn.execute( "DROP TABLE IF EXISTS %s", (cls.tablename,) )
+            sys.stderr.write( f"Creating {cls.tablename}...\n" )
+            for statement in cls.createstatements:
+                conn.execute( statement )
+            sys.stderr.write( "...done.\n" )
+            conn.close()
     
-class zbest_daily:
-    schema="""
+        
+class zbest_daily(tablebaseclass):
+    tablename = "zbest_daily"
+    createstatements = [ """
         CREATE TABLE IF NOT EXISTS "zbest_daily" (
         targetid  BIGINT,
         chi2  DOUBLE PRECISION,
@@ -130,17 +162,11 @@ class zbest_daily:
         PRIMARY KEY (targetid, tile, yyyymmdd)
     );
     """
+                        ]
   
     @staticmethod
-    def create_table(overwrite = False):
-        with engine.connect() as conn:
-            if overwrite:
-                conn.execute(text("DROP TABLE IF EXISTS zbest_daily;"))                            
-            conn.execute(zbest_daily.schema)
-            conn.close()
-
-    @staticmethod
-    def fill_table():      
+    def fill_table():
+        global engine
         dir_root = "/global/project/projectdirs/desi/spectro/redux/daily/tiles/cumulative"
      
         #find the last date
@@ -191,8 +217,9 @@ class zbest_daily:
                         dtypesToSchema(dfs.dtypes)
                         sys.exit()
 
-class dr9_pv:
-    schema="""
+class dr9_pv(tablebaseclass):
+    tablename = "pv.dr9"
+    createstatements = [ """
         CREATE TABLE IF NOT EXISTS "pv.dr9" (
         objid  BIGINT,
         brickid  INTEGER,
@@ -242,15 +269,8 @@ class dr9_pv:
         pointingid  INTEGER
     );
     """
+                        ]
 
-    @staticmethod
-    def create_table(overwrite = False):
-        with engine.connect() as conn:
-            if overwrite:
-                conn.execute(text("DROP TABLE IF EXISTS pv.dr9;"))                            
-            conn.execute(dr9_pv.schema)
-            conn.close()
-            
     @staticmethod
     def fill_table():      
         dirs=["savepath_dr9","savepath_dr9_corr"]
@@ -277,6 +297,7 @@ class dr9_pv:
                     
     @staticmethod
     def null_sga():
+        global engine
         with engine.connect() as conn:
 #             conn.execute("create table temp as (select * from dr9_pv);")
             query = """
@@ -291,46 +312,42 @@ class dr9_pv:
             """
             conn.execute(query)
     
-class secondary:
-
-    schema=f"""
-    CREATE TABLE IF NOT EXISTS secondary (
-        ra  DOUBLE PRECISION,
-        dec  DOUBLE PRECISION,
-        pmra  REAL,
-        pmdec  REAL,
-        ref_epoch  REAL,
-        override  BOOLEAN,
-        flux_g  REAL,
-        flux_r  REAL,
-        flux_z  REAL,
-        parallax  REAL,
-        gaia_phot_g_mean_mag  REAL,
-        gaia_phot_bp_mean_mag  REAL,
-        gaia_phot_rp_mean_mag  REAL,
-        gaia_astrometric_excess_noise  REAL,
-        targetid  BIGINT,
-        sv3_desi_target  BIGINT,
-        sv3_scnd_target  BIGINT,      
-        scnd_order  INTEGER,
-        desitarget_v  TEXT,
-        run  TEXT,
-        program  TEXT,
-        lunation  TEXT,
-        desi_target  BIGINT,
-        scnd_target  BIGINT
-    );
-    """
+class secondary(tablebaseclass):
+    tablename = "secondary"
+    createstatements = [ """
+        CREATE TABLE IF NOT EXISTS secondary (
+            ra  DOUBLE PRECISION,
+            dec  DOUBLE PRECISION,
+            pmra  REAL,
+            pmdec  REAL,
+            ref_epoch  REAL,
+            override  BOOLEAN,
+            flux_g  REAL,
+            flux_r  REAL,
+            flux_z  REAL,
+            parallax  REAL,
+            gaia_phot_g_mean_mag  REAL,
+            gaia_phot_bp_mean_mag  REAL,
+            gaia_phot_rp_mean_mag  REAL,
+            gaia_astrometric_excess_noise  REAL,
+            targetid  BIGINT,
+            sv3_desi_target  BIGINT,
+            sv3_scnd_target  BIGINT,      
+            scnd_order  INTEGER,
+            desitarget_v  TEXT,
+            run  TEXT,
+            program  TEXT,
+            lunation  TEXT,
+            desi_target  BIGINT,
+            scnd_target  BIGINT
+        )
+    """,
+                         """
+       CREATE INDEX IF NOT EXISTS secondary_q3c_ang2ipix_idx
+          ON secondary USING btree(public.q3c_ang2ipix(ra, "dec"))
+    """,
+                        ]
     runs=['main','sv3']
-    
-    @staticmethod
-    def create_table(overwrite = False):
-        with engine.connect() as conn:
-            if overwrite:
-                conn.execute(text("DROP TABLE IF EXISTS secondary;"))                            
-            conn.execute(secondary.schema)
-            conn.close()
-        
     
     @staticmethod
     def fill_table():
@@ -395,138 +412,128 @@ class secondary:
                                 dtypesToSchema(df.dtypes)
                                 sys.exit()    
     
-class zcatalog_denali:
+class zcatalog_denali(tablebaseclass):
+    tablename = "zcatalog_denali"
+    createstatements = [ """
+        CREATE TABLE IF NOT EXISTS "zcatalog_denali" (
+            targetid  BIGINT,
+            chi2  DOUBLE PRECISION,
+            z  DOUBLE PRECISION,
+            zerr  DOUBLE PRECISION,
+            zwarn  BIGINT,
+            npixels  BIGINT,
+            spectype  TEXT,
+            subtype  TEXT,
+            ncoeff  BIGINT,
+            deltachi2  DOUBLE PRECISION,
+            numexp  INTEGER,
+            numtile  INTEGER,
+            petal_loc  SMALLINT,
+            device_loc  INTEGER,
+            location  BIGINT,
+            fiber  INTEGER,
+            fiberstatus  INTEGER,
+            target_ra  DOUBLE PRECISION,
+            target_dec  DOUBLE PRECISION,
+            pmra  REAL,
+            pmdec  REAL,
+            ref_epoch  REAL,
+            lambda_ref  REAL,
+            fa_target  BIGINT,
+            fa_type  SMALLINT,
+            objtype  TEXT,
+            priority  INTEGER,
+            subpriority  DOUBLE PRECISION,
+            obsconditions  INTEGER,
+            release  SMALLINT,
+            brickid  INTEGER,
+            brick_objid  INTEGER,
+            morphtype  TEXT,
+            flux_g  REAL,
+            flux_r  REAL,
+            flux_z  REAL,
+            flux_ivar_g  REAL,
+            flux_ivar_r  REAL,
+            flux_ivar_z  REAL,
+            maskbits  SMALLINT,
+            ref_id  BIGINT,
+            ref_cat  TEXT,
+            gaia_phot_g_mean_mag  REAL,
+            gaia_phot_bp_mean_mag  REAL,
+            gaia_phot_rp_mean_mag  REAL,
+            parallax  REAL,
+            brickname  TEXT,
+            ebv  REAL,
+            flux_w1  REAL,
+            flux_w2  REAL,
+            fiberflux_g  REAL,
+            fiberflux_r  REAL,
+            fiberflux_z  REAL,
+            fibertotflux_g  REAL,
+            fibertotflux_r  REAL,
+            fibertotflux_z  REAL,
+            sersic  REAL,
+            shape_r  REAL,
+            shape_e1  REAL,
+            shape_e2  REAL,
+            photsys  TEXT,
+            priority_init  BIGINT,
+            numobs_init  BIGINT,
+            sv2_desi_target  BIGINT,
+            sv2_bgs_target  BIGINT,
+            sv2_mws_target  BIGINT,
+            sv2_scnd_target  BIGINT,
+            desi_target  BIGINT,
+            bgs_target  BIGINT,
+            mws_target  BIGINT,
+            tileid  INTEGER,
+            coadd_numexp  SMALLINT,
+            coadd_exptime  REAL,
+            mean_delta_x  REAL,
+            rms_delta_x  REAL,
+            mean_delta_y  REAL,
+            rms_delta_y  REAL,
+            mean_fiber_x  REAL,
+            mean_fiber_y  REAL,
+            mean_fiber_ra  DOUBLE PRECISION,
+            mean_fiber_dec  DOUBLE PRECISION,
+            mean_fiberassign_x  REAL,
+            mean_fiberassign_y  REAL,
+            first_night  INTEGER,
+            last_night  INTEGER,
+            num_night  SMALLINT,
+            first_expid  INTEGER,
+            last_expid  INTEGER,
+            num_expid  SMALLINT,
+            first_tileid  INTEGER,
+            last_tileid  INTEGER,
+            num_tileid  SMALLINT,
+            first_fiber  INTEGER,
+            last_fiber  INTEGER,
+            num_fiber  SMALLINT,
+            first_mjd  REAL,
+            last_mjd  REAL,
+            num_mjd  SMALLINT,
+            sv1_scnd_target  BIGINT,
+            sv1_bgs_target  BIGINT,
+            sv1_desi_target  BIGINT,
+            sv1_mws_target  BIGINT,
+            cmx_target  BIGINT,
+            coeff_0  DOUBLE PRECISION,
+            coeff_1  DOUBLE PRECISION,
+            coeff_2  DOUBLE PRECISION,
+            coeff_3  DOUBLE PRECISION,
+            coeff_4  DOUBLE PRECISION,
+            coeff_5  DOUBLE PRECISION,
+            coeff_6  DOUBLE PRECISION,
+            coeff_7  DOUBLE PRECISION,
+            coeff_8  DOUBLE PRECISION,
+            coeff_9  DOUBLE PRECISION,
+            PRIMARY KEY (targetid, tileid)
+        )
+    """
+                         ]
     
-    schema="""
-    CREATE TABLE IF NOT EXISTS "zcatalog_denali" (
-        targetid  BIGINT,
-        chi2  DOUBLE PRECISION,
-        z  DOUBLE PRECISION,
-        zerr  DOUBLE PRECISION,
-        zwarn  BIGINT,
-        npixels  BIGINT,
-        spectype  TEXT,
-        subtype  TEXT,
-        ncoeff  BIGINT,
-        deltachi2  DOUBLE PRECISION,
-        numexp  INTEGER,
-        numtile  INTEGER,
-        petal_loc  SMALLINT,
-        device_loc  INTEGER,
-        location  BIGINT,
-        fiber  INTEGER,
-        fiberstatus  INTEGER,
-        target_ra  DOUBLE PRECISION,
-        target_dec  DOUBLE PRECISION,
-        pmra  REAL,
-        pmdec  REAL,
-        ref_epoch  REAL,
-        lambda_ref  REAL,
-        fa_target  BIGINT,
-        fa_type  SMALLINT,
-        objtype  TEXT,
-        priority  INTEGER,
-        subpriority  DOUBLE PRECISION,
-        obsconditions  INTEGER,
-        release  SMALLINT,
-        brickid  INTEGER,
-        brick_objid  INTEGER,
-        morphtype  TEXT,
-        flux_g  REAL,
-        flux_r  REAL,
-        flux_z  REAL,
-        flux_ivar_g  REAL,
-        flux_ivar_r  REAL,
-        flux_ivar_z  REAL,
-        maskbits  SMALLINT,
-        ref_id  BIGINT,
-        ref_cat  TEXT,
-        gaia_phot_g_mean_mag  REAL,
-        gaia_phot_bp_mean_mag  REAL,
-        gaia_phot_rp_mean_mag  REAL,
-        parallax  REAL,
-        brickname  TEXT,
-        ebv  REAL,
-        flux_w1  REAL,
-        flux_w2  REAL,
-        fiberflux_g  REAL,
-        fiberflux_r  REAL,
-        fiberflux_z  REAL,
-        fibertotflux_g  REAL,
-        fibertotflux_r  REAL,
-        fibertotflux_z  REAL,
-        sersic  REAL,
-        shape_r  REAL,
-        shape_e1  REAL,
-        shape_e2  REAL,
-        photsys  TEXT,
-        priority_init  BIGINT,
-        numobs_init  BIGINT,
-        sv2_desi_target  BIGINT,
-        sv2_bgs_target  BIGINT,
-        sv2_mws_target  BIGINT,
-        sv2_scnd_target  BIGINT,
-        desi_target  BIGINT,
-        bgs_target  BIGINT,
-        mws_target  BIGINT,
-        tileid  INTEGER,
-        coadd_numexp  SMALLINT,
-        coadd_exptime  REAL,
-        mean_delta_x  REAL,
-        rms_delta_x  REAL,
-        mean_delta_y  REAL,
-        rms_delta_y  REAL,
-        mean_fiber_x  REAL,
-        mean_fiber_y  REAL,
-        mean_fiber_ra  DOUBLE PRECISION,
-        mean_fiber_dec  DOUBLE PRECISION,
-        mean_fiberassign_x  REAL,
-        mean_fiberassign_y  REAL,
-        first_night  INTEGER,
-        last_night  INTEGER,
-        num_night  SMALLINT,
-        first_expid  INTEGER,
-        last_expid  INTEGER,
-        num_expid  SMALLINT,
-        first_tileid  INTEGER,
-        last_tileid  INTEGER,
-        num_tileid  SMALLINT,
-        first_fiber  INTEGER,
-        last_fiber  INTEGER,
-        num_fiber  SMALLINT,
-        first_mjd  REAL,
-        last_mjd  REAL,
-        num_mjd  SMALLINT,
-        sv1_scnd_target  BIGINT,
-        sv1_bgs_target  BIGINT,
-        sv1_desi_target  BIGINT,
-        sv1_mws_target  BIGINT,
-        cmx_target  BIGINT,
-        coeff_0  DOUBLE PRECISION,
-        coeff_1  DOUBLE PRECISION,
-        coeff_2  DOUBLE PRECISION,
-        coeff_3  DOUBLE PRECISION,
-        coeff_4  DOUBLE PRECISION,
-        coeff_5  DOUBLE PRECISION,
-        coeff_6  DOUBLE PRECISION,
-        coeff_7  DOUBLE PRECISION,
-        coeff_8  DOUBLE PRECISION,
-        coeff_9  DOUBLE PRECISION,
-        PRIMARY KEY (targetid, tileid)
-    );
-    """    
-    
-    # 
-    
-    @staticmethod
-    def create_table(overwrite = False):
-        
-        with engine.connect() as conn:
-            if overwrite:
-                conn.execute(text("DROP TABLE IF EXISTS zcatalog_denali;"))                            
-            conn.execute(text(zcatalog_denali.schema))
-            conn.close()
-
     @staticmethod
     def fill_table(prod='denali'):
         root = f"/global/project/projectdirs/desi/spectro/redux/{prod}"
@@ -553,215 +560,16 @@ class zcatalog_denali:
                 print(df[0])
                 sys.exit()
                 
-class zpix_everest:
-    
-    prod='everest'
-    
-    schema1="""
-    CREATE TABLE IF NOT EXISTS everest.zpix_redshifts (
-        targetid  BIGINT,
-        chi2  DOUBLE PRECISION,
-        z  DOUBLE PRECISION,
-        zerr  DOUBLE PRECISION,
-        zwarn  BIGINT,
-        npixels  BIGINT,
-        spectype  TEXT,
-        subtype  TEXT,
-        ncoeff  BIGINT,
-        deltachi2  DOUBLE PRECISION,
-        coadd_fiberstatus  INTEGER,
-        target_ra  DOUBLE PRECISION,
-        target_dec  DOUBLE PRECISION,
-        pmra  REAL,
-        pmdec  REAL,
-        ref_epoch  REAL,
-        fa_target  BIGINT,
-        fa_type  SMALLINT,
-        objtype  TEXT,
-        subpriority  DOUBLE PRECISION,
-        obsconditions  INTEGER,
-        release  INTEGER,
-        brickid  INTEGER,
-        brick_objid  INTEGER,
-        morphtype  TEXT,
-        flux_g  REAL,
-        flux_r  REAL,
-        flux_z  REAL,
-        flux_ivar_g  REAL,
-        flux_ivar_r  REAL,
-        flux_ivar_z  REAL,
-        maskbits  SMALLINT,
-        ref_id  BIGINT,
-        ref_cat  TEXT,
-        gaia_phot_g_mean_mag  REAL,
-        gaia_phot_bp_mean_mag  REAL,
-        gaia_phot_rp_mean_mag  REAL,
-        parallax  REAL,
-        brickname  TEXT,
-        ebv  REAL,
-        flux_w1  REAL,
-        flux_w2  REAL,
-        flux_ivar_w1  REAL,
-        flux_ivar_w2  REAL,
-        fiberflux_g  REAL,
-        fiberflux_r  REAL,
-        fiberflux_z  REAL,
-        fibertotflux_g  REAL,
-        fibertotflux_r  REAL,
-        fibertotflux_z  REAL,
-        sersic  REAL,
-        shape_r  REAL,
-        shape_e1  REAL,
-        shape_e2  REAL,
-        photsys  TEXT,
-        priority_init  BIGINT,
-        numobs_init  BIGINT,
-        desi_target  BIGINT,
-        bgs_target  BIGINT,
-        mws_target  BIGINT,
-        scnd_target  DOUBLE PRECISION,
-        plate_ra  DOUBLE PRECISION,
-        plate_dec  DOUBLE PRECISION,
-        coadd_numexp  SMALLINT,
-        coadd_exptime  REAL,
-        coadd_numnight  SMALLINT,
-        coadd_numtile  SMALLINT,
-        mean_delta_x  REAL,
-        rms_delta_x  REAL,
-        mean_delta_y  REAL,
-        rms_delta_y  REAL,
-        mean_fiber_ra  DOUBLE PRECISION,
-        std_fiber_ra  REAL,
-        mean_fiber_dec  DOUBLE PRECISION,
-        std_fiber_dec  REAL,
-        mean_psf_to_fiber_specflux  REAL,
-        tsnr2_gpbdark_b  REAL,
-        tsnr2_elg_b  REAL,
-        tsnr2_gpbbright_b  REAL,
-        tsnr2_lya_b  REAL,
-        tsnr2_bgs_b  REAL,
-        tsnr2_gpbbackup_b  REAL,
-        tsnr2_qso_b  REAL,
-        tsnr2_lrg_b  REAL,
-        tsnr2_gpbdark_r  REAL,
-        tsnr2_elg_r  REAL,
-        tsnr2_gpbbright_r  REAL,
-        tsnr2_lya_r  REAL,
-        tsnr2_bgs_r  REAL,
-        tsnr2_gpbbackup_r  REAL,
-        tsnr2_qso_r  REAL,
-        tsnr2_lrg_r  REAL,
-        tsnr2_gpbdark_z  REAL,
-        tsnr2_elg_z  REAL,
-        tsnr2_gpbbright_z  REAL,
-        tsnr2_lya_z  REAL,
-        tsnr2_bgs_z  REAL,
-        tsnr2_gpbbackup_z  REAL,
-        tsnr2_qso_z  REAL,
-        tsnr2_lrg_z  REAL,
-        tsnr2_gpbdark  REAL,
-        tsnr2_elg  REAL,
-        tsnr2_gpbbright  REAL,
-        tsnr2_lya  REAL,
-        tsnr2_bgs  REAL,
-        tsnr2_gpbbackup  REAL,
-        tsnr2_qso  REAL,
-        tsnr2_lrg  REAL,
-        coeff_0  DOUBLE PRECISION,
-        coeff_1  DOUBLE PRECISION,
-        coeff_2  DOUBLE PRECISION,
-        coeff_3  DOUBLE PRECISION,
-        coeff_4  DOUBLE PRECISION,
-        coeff_5  DOUBLE PRECISION,
-        coeff_6  DOUBLE PRECISION,
-        coeff_7  DOUBLE PRECISION,
-        coeff_8  DOUBLE PRECISION,
-        coeff_9  DOUBLE PRECISION,
-        run  TEXT,
-        program  TEXT,
-        sv1_desi_target  DOUBLE PRECISION,
-        sv1_bgs_target  DOUBLE PRECISION,
-        sv1_mws_target  DOUBLE PRECISION,
-        sv1_scnd_target  DOUBLE PRECISION,
-        numtarget  DOUBLE PRECISION,
-        blobdist  REAL,
-        fiberflux_ivar_g  REAL,
-        fiberflux_ivar_r  REAL,
-        fiberflux_ivar_z  REAL,
-        hpxpixel  DOUBLE PRECISION,
-        sv2_desi_target  DOUBLE PRECISION,
-        sv2_bgs_target  DOUBLE PRECISION,
-        sv2_mws_target  DOUBLE PRECISION,
-        sv2_scnd_target  DOUBLE PRECISION,
-        sv3_desi_target  DOUBLE PRECISION,
-        sv3_bgs_target  DOUBLE PRECISION,
-        sv3_mws_target  DOUBLE PRECISION,
-        sv3_scnd_target  DOUBLE PRECISION
-    );
-    """
-    
-    schema2="""
-    CREATE TABLE IF NOT EXISTS everest.zpix_fibermap (    
-        targetid  BIGINT,
-        priority  INTEGER,
-        subpriority  DOUBLE PRECISION,
-        night  INTEGER,
-        expid  INTEGER,
-        mjd  DOUBLE PRECISION,
-        tileid  INTEGER,
-        exptime  DOUBLE PRECISION,
-        petal_loc  SMALLINT,
-        device_loc  INTEGER,
-        location  BIGINT,
-        fiber  INTEGER,
-        fiberstatus  INTEGER,
-        fiberassign_x  REAL,
-        fiberassign_y  REAL,
-        lambda_ref  REAL,
-        plate_ra  DOUBLE PRECISION,
-        plate_dec  DOUBLE PRECISION,
-        num_iter  BIGINT,
-        fiber_x  DOUBLE PRECISION,
-        fiber_y  DOUBLE PRECISION,
-        delta_x  DOUBLE PRECISION,
-        delta_y  DOUBLE PRECISION,
-        fiber_ra  DOUBLE PRECISION,
-        fiber_dec  DOUBLE PRECISION,
-        psf_to_fiber_specflux  DOUBLE PRECISION,
-        run  TEXT,
-        program  TEXT
-    );
-    """
-    
-    # 
-    
-    @staticmethod
-    def create_table(prod='everest',overwrite = False, hdu=1,group='zpix',cumulative=''):
- 
-        if hdu==1:
-            tablename=f'{prod}.{group}{cumulative}_redshifts'
-            schema = zpix_everest.schema1
-        elif hdu==2:
-            tablename=f'{prod}.{group}{cumulative}_fibermap'
-            schema = zpix_everest.schema2
-            
-        print(tablename)
-        with engine.connect() as conn:
-            if overwrite:
-                cmd = f'DROP TABLE IF EXISTS {tablename};'
-                conn.execute(text(cmd))                            
-            conn.execute(text(schema))
-            conn.close()
+class zpix_everest(tablebaseclass):
+    """Superclass for everest_zpix_redshifts and everest_zpix_fiberman
 
-    @staticmethod
-    def fill_table(prod='everest',hdu=1,schema=False):
-        
-        if hdu==1:
-            tablename='zpix_redshifts'
-        elif hdu==2:
-            tablename='zpix_fibermap'
-            
-        print(tablename)
+    This class doesn't represent a table itself.
+    """
+
+    @classmethod
+    def fill_table(cls, prod='everest', schema=False):
+
+        print(cls.tablename)
 
         root = f"/global/project/projectdirs/desi/spectro/redux/{prod}/zcatalog/"
         coadds = ["cumulative"]
@@ -776,17 +584,14 @@ class zpix_everest:
                     filename = os.path.join(root,f"zpix-{run}-{program}.fits")
                     print(filename)
                     try:
-                        dat = Table.read(filename, format='fits',hdu=hdu)
+                        dat = Table.read(filename, format='fits',hdu=cls.hdu)
                     except:
                         continue
                         
                     print(filename)
                     
                     # There is a multidimensional column that needs to be broken up
-                    if hdu==1:
-                        for icoeff in range(0,10):
-                            dat[f'COEFF_{icoeff}']= dat['COEFF'][0:len(dat),icoeff]
-                        dat.remove_column('COEFF')
+                    self.handle_coef( dat )
 
                     dat.convert_bytestring_to_unicode()
 
@@ -801,7 +606,7 @@ class zpix_everest:
             
                     if not schema:
                         try:
-                            df.to_sql(tablename,engine,index=False,if_exists='append',schema=prod) 
+                            df.to_sql(cls.tablename,engine,index=False,if_exists='append',schema=prod) 
                         except:
                             dtypesToSchema(df.dtypes)
                             print(df[0])
@@ -809,6 +614,221 @@ class zpix_everest:
         if schema:
             dfs = pandas.concat(dfs, ignore_index=True, sort=False)
             dtypesToSchema(dfs.dtypes)
+
+
+    def handle_coef( dat ):
+        pass
+            
+class everest_zpix_redshifts(zpix_everest):
+    tablename = "everest.zpix_redshifts"
+    hdu = 1
+    prod='everest'
+    
+    createstatements = [ """
+        CREATE TABLE IF NOT EXISTS everest.zpix_redshifts (
+            targetid  BIGINT,
+            chi2  DOUBLE PRECISION,
+            z  DOUBLE PRECISION,
+            zerr  DOUBLE PRECISION,
+            zwarn  BIGINT,
+            npixels  BIGINT,
+            spectype  TEXT,
+            subtype  TEXT,
+            ncoeff  BIGINT,
+            deltachi2  DOUBLE PRECISION,
+            coadd_fiberstatus  INTEGER,
+            target_ra  DOUBLE PRECISION,
+            target_dec  DOUBLE PRECISION,
+            pmra  REAL,
+            pmdec  REAL,
+            ref_epoch  REAL,
+            fa_target  BIGINT,
+            fa_type  SMALLINT,
+            objtype  TEXT,
+            subpriority  DOUBLE PRECISION,
+            obsconditions  INTEGER,
+            release  INTEGER,
+            brickid  INTEGER,
+            brick_objid  INTEGER,
+            morphtype  TEXT,
+            flux_g  REAL,
+            flux_r  REAL,
+            flux_z  REAL,
+            flux_ivar_g  REAL,
+            flux_ivar_r  REAL,
+            flux_ivar_z  REAL,
+            maskbits  SMALLINT,
+            ref_id  BIGINT,
+            ref_cat  TEXT,
+            gaia_phot_g_mean_mag  REAL,
+            gaia_phot_bp_mean_mag  REAL,
+            gaia_phot_rp_mean_mag  REAL,
+            parallax  REAL,
+            brickname  TEXT,
+            ebv  REAL,
+            flux_w1  REAL,
+            flux_w2  REAL,
+            flux_ivar_w1  REAL,
+            flux_ivar_w2  REAL,
+            fiberflux_g  REAL,
+            fiberflux_r  REAL,
+            fiberflux_z  REAL,
+            fibertotflux_g  REAL,
+            fibertotflux_r  REAL,
+            fibertotflux_z  REAL,
+            sersic  REAL,
+            shape_r  REAL,
+            shape_e1  REAL,
+            shape_e2  REAL,
+            photsys  TEXT,
+            priority_init  BIGINT,
+            numobs_init  BIGINT,
+            desi_target  BIGINT,
+            bgs_target  BIGINT,
+            mws_target  BIGINT,
+            scnd_target  DOUBLE PRECISION,
+            plate_ra  DOUBLE PRECISION,
+            plate_dec  DOUBLE PRECISION,
+            coadd_numexp  SMALLINT,
+            coadd_exptime  REAL,
+            coadd_numnight  SMALLINT,
+            coadd_numtile  SMALLINT,
+            mean_delta_x  REAL,
+            rms_delta_x  REAL,
+            mean_delta_y  REAL,
+            rms_delta_y  REAL,
+            mean_fiber_ra  DOUBLE PRECISION,
+            std_fiber_ra  REAL,
+            mean_fiber_dec  DOUBLE PRECISION,
+            std_fiber_dec  REAL,
+            mean_psf_to_fiber_specflux  REAL,
+            tsnr2_gpbdark_b  REAL,
+            tsnr2_elg_b  REAL,
+            tsnr2_gpbbright_b  REAL,
+            tsnr2_lya_b  REAL,
+            tsnr2_bgs_b  REAL,
+            tsnr2_gpbbackup_b  REAL,
+            tsnr2_qso_b  REAL,
+            tsnr2_lrg_b  REAL,
+            tsnr2_gpbdark_r  REAL,
+            tsnr2_elg_r  REAL,
+            tsnr2_gpbbright_r  REAL,
+            tsnr2_lya_r  REAL,
+            tsnr2_bgs_r  REAL,
+            tsnr2_gpbbackup_r  REAL,
+            tsnr2_qso_r  REAL,
+            tsnr2_lrg_r  REAL,
+            tsnr2_gpbdark_z  REAL,
+            tsnr2_elg_z  REAL,
+            tsnr2_gpbbright_z  REAL,
+            tsnr2_lya_z  REAL,
+            tsnr2_bgs_z  REAL,
+            tsnr2_gpbbackup_z  REAL,
+            tsnr2_qso_z  REAL,
+            tsnr2_lrg_z  REAL,
+            tsnr2_gpbdark  REAL,
+            tsnr2_elg  REAL,
+            tsnr2_gpbbright  REAL,
+            tsnr2_lya  REAL,
+            tsnr2_bgs  REAL,
+            tsnr2_gpbbackup  REAL,
+            tsnr2_qso  REAL,
+            tsnr2_lrg  REAL,
+            coeff_0  DOUBLE PRECISION,
+            coeff_1  DOUBLE PRECISION,
+            coeff_2  DOUBLE PRECISION,
+            coeff_3  DOUBLE PRECISION,
+            coeff_4  DOUBLE PRECISION,
+            coeff_5  DOUBLE PRECISION,
+            coeff_6  DOUBLE PRECISION,
+            coeff_7  DOUBLE PRECISION,
+            coeff_8  DOUBLE PRECISION,
+            coeff_9  DOUBLE PRECISION,
+            run  TEXT,
+            program  TEXT,
+            sv1_desi_target  DOUBLE PRECISION,
+            sv1_bgs_target  DOUBLE PRECISION,
+            sv1_mws_target  DOUBLE PRECISION,
+            sv1_scnd_target  DOUBLE PRECISION,
+            numtarget  DOUBLE PRECISION,
+            blobdist  REAL,
+            fiberflux_ivar_g  REAL,
+            fiberflux_ivar_r  REAL,
+            fiberflux_ivar_z  REAL,
+            hpxpixel  DOUBLE PRECISION,
+            sv2_desi_target  DOUBLE PRECISION,
+            sv2_bgs_target  DOUBLE PRECISION,
+            sv2_mws_target  DOUBLE PRECISION,
+            sv2_scnd_target  DOUBLE PRECISION,
+            sv3_desi_target  DOUBLE PRECISION,
+            sv3_bgs_target  DOUBLE PRECISION,
+            sv3_mws_target  DOUBLE PRECISION,
+            sv3_scnd_target  DOUBLE PRECISION
+        )
+    """,
+                         """
+        CREATE INDEX IF NOT EXISTS zpix_redshifts_idx_targetid
+            ON everest.zpix_redshifts USING btree (targetid)
+    """,
+                         """
+        CREATE INDEX IF NOT EXISTS zpix_redshifts_q3c_ang2ipix_idx
+            ON everest.zpix_redshifts USING btree(public.q3c_ang2ipix(target_ra, target_dec))
+    """,
+                        ]
+
+    def handle_coef( self, dat ):
+        for icoeff in range(0,10):
+            dat[f'COEFF_{icoeff}']= dat['COEFF'][0:len(dat),icoeff]
+        dat.remove_column('COEFF')
+        
+
+class everest_zpix_fibermap(zpix_everest):
+    tablename = "everest.zpix_fibermap"
+    hdu = 2
+    prod = 'everest'
+    
+    createstatements = [ """
+        CREATE TABLE IF NOT EXISTS everest.zpix_fibermap (    
+            targetid  BIGINT,
+            priority  INTEGER,
+            subpriority  DOUBLE PRECISION,
+            night  INTEGER,
+            expid  INTEGER,
+            mjd  DOUBLE PRECISION,
+            tileid  INTEGER,
+            exptime  DOUBLE PRECISION,
+            petal_loc  SMALLINT,
+            device_loc  INTEGER,
+            location  BIGINT,
+            fiber  INTEGER,
+            fiberstatus  INTEGER,
+            fiberassign_x  REAL,
+            fiberassign_y  REAL,
+            lambda_ref  REAL,
+            plate_ra  DOUBLE PRECISION,
+            plate_dec  DOUBLE PRECISION,
+            num_iter  BIGINT,
+            fiber_x  DOUBLE PRECISION,
+            fiber_y  DOUBLE PRECISION,
+            delta_x  DOUBLE PRECISION,
+            delta_y  DOUBLE PRECISION,
+            fiber_ra  DOUBLE PRECISION,
+            fiber_dec  DOUBLE PRECISION,
+            psf_to_fiber_specflux  DOUBLE PRECISION,
+            run  TEXT,
+            program  TEXT
+        )
+    """,
+                         """
+        CREATE INDEX IF NOT EXISTS zpix_fibermap_idx_targetid
+            ON everest.zpix_fibermap USING btree (targetid)
+    """,
+                         """
+        CREATE INDEX IF NOT EXISTS zpix_fibermap_q3c_ang2ipix_idx
+            ON everest.zpix_fibermap USING btree(public.q3c_ang2ipix(fiber_ra, fiber_dec))
+    """,
+                         ]
+                         
 
 class ztile_everest:
     
@@ -826,6 +846,7 @@ class ztile_everest:
     
     @staticmethod
     def create_table(prod='everest',overwrite = False, hdu=1,coadd='pernight'):
+        global engine
         tablename = ztile_everest.tablename(prod=prod,coadd=coadd,hdu=hdu)
         if hdu==1 and coadd=='pernight':
             schema="""
@@ -1260,9 +1281,9 @@ class ztile_everest:
             dtypesToSchema(dfs.dtypes)
             
             
-class mtl:
-
-    schema=f"""
+class mtl(tablebaseclass):
+    tablename = "mtl"
+    createstatements = [ """
         CREATE TABLE IF NOT EXISTS "mtl" (
             ra  DOUBLE PRECISION,
             dec  DOUBLE PRECISION,
@@ -1306,22 +1327,14 @@ class mtl:
             mjd_begin  DOUBLE PRECISION,
             mjd_end  DOUBLE PRECISION,
             tooid  BIGINT
-        );
+        )
         """
-
+                        ]
     root = "/global/cfs/cdirs/desi/survey/ops/surveyops/trunk/mtl/"
     runs = ["main","sv3","sv2"]
     runs=["sv3"]
     programs = ["ToO","","secondary"]
     lunations = ["bright","dark",""] 
-
-    @staticmethod
-    def create_table(overwrite = False):
-        with engine.connect() as conn:
-            if overwrite:
-                conn.execute(f"DROP TABLE IF EXISTS mtl;")
-            conn.execute(mtl.schema)
-            conn.close()
 
     @staticmethod    
     def fill_table():
@@ -1354,8 +1367,9 @@ class mtl:
 
       
 
-class exposure_tables_daily:
-    schema="""
+class exposure_tables_daily(tablebaseclass):
+    tablename = "exposure_tables_daily"
+    createstatements = [ """
         CREATE TABLE IF NOT EXISTS "exposure_tables_daily" (
         expid  BIGINT PRIMARY KEY,
         exptime  DOUBLE PRECISION,
@@ -1389,19 +1403,13 @@ class exposure_tables_daily:
         ebvfac  DOUBLE PRECISION,
         airfac  DOUBLE PRECISION,
         speed  DOUBLE PRECISION
-    );
+    )
     """
+                         ]
 
     @staticmethod
-    def create_table(overwrite = False):
-        with engine.connect() as conn:
-            if overwrite:
-                conn.execute(f"DROP TABLE IF EXISTS exposure_tables_daily;")
-            conn.execute(exposure_tables_daily.schema)
-            conn.close()
-
-    @staticmethod
-    def fill_table():      
+    def fill_table():
+        global engine
         dir_root='/global/cfs/cdirs/desi/spectro/redux/daily/exposure_tables/'
 
         #find the last date
@@ -1446,8 +1454,9 @@ class exposure_tables_daily:
                 dtypesToSchema(dfs.dtypes)
                 sys.exit()                 
 
-class proposals_pv:
-    schema="""
+class proposals_pv(tablebaseclass):
+    tablename = "proposals_pv"
+    createstatements = [ """
         CREATE TABLE IF NOT EXISTS "proposals_pv" (
             objid  BIGINT,
             brickid  INTEGER,
@@ -1465,19 +1474,10 @@ class proposals_pv:
             priority  TEXT,
             lunation  TEXT,
             run       TEXT
-    );
+    )
     """
-  
+                         ]
     
-    @staticmethod
-    def create_table(overwrite = False):
-        with engine.connect() as conn:
-            if overwrite:
-                conn.execute(text("DROP TABLE IF EXISTS proposals_pv;"))                            
-            conn.execute(proposals_pv.schema)
-            conn.close()
-            
-            
     @staticmethod
     def fill_table():      
         runs = ["main_year1","sv3","sv1"]
@@ -1507,6 +1507,7 @@ class proposals_pv:
         
     @staticmethod
     def fill_sga():
+        global engine
         with engine.connect() as conn:
 #             conn.execute("create table temp as (select * from proposals_pv);")
             query = """
@@ -1530,8 +1531,9 @@ class proposals_pv:
 
                         
                         
-class fibermap_daily:
-    schema="""
+class fibermap_daily(tablebaseclass):
+    tablename = "fibermap_daily"
+    createstatements = [ """
         CREATE TABLE IF NOT EXISTS "fibermap_daily" (
             targetid  BIGINT,
             petal_loc  SMALLINT,
@@ -1629,22 +1631,15 @@ class fibermap_daily:
             sv3_mws_target  DOUBLE PRECISION,
             sv3_scnd_target  DOUBLE PRECISION,
             PRIMARY KEY (targetid, expid)
-    );
+    )
     """
+                         ]
   
     @staticmethod
-    def create_table(overwrite = False):
-        with engine.connect() as conn:
-            if overwrite:
-                conn.execute(text("DROP TABLE IF EXISTS fibermap_daily;"))                            
-            conn.execute(fibermap_daily.schema)
-            conn.close()
-
-
-    @staticmethod
     def fill_table(): 
-        
+        global engine
         magicdate='20210503'  # the last date that daily directory was created
+
 #         dir_root = "/global/project/projectdirs/desi/spectro/redux/daily/tiles/cumulative"
         dir_root = "/global/project/projectdirs/desi/spectro/redux/daily/tiles/"
         
@@ -1713,10 +1708,146 @@ class fibermap_daily:
                         dtypesToSchema(dfs.dtypes)
                         sys.exit()
 
+class mosthosts(tablebaseclass):
+    """Maayane's collection of information for the mosthosts project.
 
+    Added by rknop 2021-09-16
+
+    This table is not very dynamic, so it's not part of regular loading;
+    it should be run as a one-off.  The input is the csv file from
+    Maayane Soumagnac.
+
+    NOTE: For purposes of this loading, I edited the first line of the
+    csv file.  I removed the leading #, and ai removed the spaces after
+    the commas.
+
+    """
+
+    expected_columns = set( ['RA', 'DEC', 'PMRA', 'PMDEC', 'REF_EPOCH',
+                             'OVERRIDE', 'snname', 'index', 'hemisphere',
+                             'sn_ra', 'sn_dec', 'sn_z', 'program',
+                             'priority', 'tns_name', 'iau_name', 'ptfiptf_name' ] )
+    
+    # hemisphere should be turned into an ENUM type
+
+    tablename = "mosthosts.mosthosts"
+    createstatements = ["""
+      CREATE TABLE IF NOT EXISTS mosthosts.mosthosts (
+          ra            DOUBLE PRECISION,
+          dec           DOUBLE PRECISION,
+          pmra          DOUBLE PRECISION,
+          pmdec         DOUBLE PRECISION,
+          ref_epoch     DOUBLE PRECISION,
+          override      BOOLEAN,
+          snname        TEXT,
+          index         DOUBLE PRECISION,
+          hemisphere    TEXT,
+          sn_ra         DOUBLE PRECISION,
+          sn_dec        DOUBLE PRECISION,
+          sn_z          DOUBLE PRECISION,
+          program       TEXT,
+          priority      DOUBLE PRECISION,
+          tns_name      TEXT,
+          iau_name      TEXT,
+          ptfiptf_name  TEXT
+      )
+    """,
+              """
+      CREATE INDEX mosthosts_q3c_idx ON mosthosts.mosthosts
+         USING btree (public.q3c_ang2ipix(ra, dec));
+    """,
+              ]
+              
+              
+    @staticmethod
+    def fill_table( filename=None ):
+        global engine
+        if filename is None:
+            raise ValueError( "Must pass a filename to mosthosts.fill_table" )
+        sys.stderr.write( f'Reading {filename}\n' )
+        tab = pandas.read_csv( filename )
+        csvcolumns = set( tab.columns )
+        if csvcolumns != mosthosts.expected_columns:
+            raise ValueError( f'Columns in CSV file {csvcolumns} don\'t match what\'s expected.' )
+        renames = {}
+        for col in csvcolumns:
+            if col != col.lower():
+                renames[col] = col.lower()
+        tab = tab.rename( renames, axis='columns' )
+        sys.stderr.write( 'Loading database...\n' )
+        tab.to_sql( 'mosthosts', con=engine, schema='mosthosts', index=False, if_exists="append" )
+        sys.stderr.write( '...done.\n' )
+        sys.stderr.write( 'Clustering q3c...\n' )
+        with engine.connect() as conn:
+            conn.execute( text( "CLUSTER mosthosts_q3c_idx ON mosthosts.mosthosts" ) )
+            conn.execute( text( "ANALYZE mosthosts.mosthosts" ) )
+        sys.stderr.write( '...done\n' )
         
+            
+# ======================================================================
+
 if __name__ == "__main__":
-    # running as a cron job on cori10
-    zbest_daily.fill_table()
-    fibermap_daily.fill_table()
-    exposure_tables_daily.fill_table()
+    parser = argparse.ArgumentParser( description="DESI database loader" )
+    parser.add_argument( "-s", "--secrets-file", default="/global/homes/a/akim/secrets/desi_pg.txt",
+                         help=( "File with \"username password\" for database "
+                                "(default: /global/homes/a/akim/secrets/desi_pg.txt" ) )
+    # parser.add_argument( "-a", "--action", default="daily-fill",
+    #                      help=( "What to do (default: daily-fill) "
+    #                             "Possibilities: daily-fill load-mosthosts create-all-missing-tables" ) )
+    parser.add_argument( "-a", "--action", default=None,
+                         help=( "What to do (default: None) "
+                                "Possibilities: daily-fill load-mosthosts create-all-missing-tables" ) )
+    parser.add_argument( "--really-do", default=False, action='store_true',
+                         help=argparse.SUPPRESS )
+    parser.add_argument( "-m", "--mosthosts-file", default="DESI_transients_w_tns.txt",
+                         help="Name of CSV file for use with load-mosthosts (default: DESI_transients_w_tns.txt)" )
+    parser.add_argument( "--dbhost", default="decatdb.lbl.gov",
+                         help="Host machine of database (default: decatdb.lbl.gov)" )
+    parser.add_argument( "--db", default="desi",
+                         help="Name of database (default: desi)" )
+    
+    args = parser.parse_args()
+
+    create_db_engine( args.secrets_file, dbhost=args.dbhost, dbname=args.db )
+
+    if args.action == "daily-fill":
+        # running as a cron job on cori10
+        zbest_daily.fill_table()
+        fibermap_daily.fill_table()
+        exposure_tables_daily.fill_table()
+
+    elif args.action == "load-mosthosts":
+        if not args.really_do:
+            print( "Running this will delete the current mosthosts.mosthosts\n"
+                   "table and make a new one from the specified file.\n"
+                   "If this is in fact what you want to do, rerun with --really-do" )
+        else:
+            mosthosts.create_table( overwrite=True )
+            mosthosts.fill_table( args.mosthosts_file )
+
+    elif args.action == "create-all-missing-tables":
+        # TODO : a better place to list all the classes with tables
+        #  that need to be called here
+        zbest_daily.create_table()
+        dr9_pv.create_table()
+        secondary.create_table()
+        zcatalog_denali.create_table()
+        everest_zpix_redshifts.create_table()
+        everest_zpix_fibermap.create_table()
+        # TODO : different values of hdu, coadd for ztile_everest
+        ztile_everest.create_table()
+        mtl.create_table()
+        exposure_tables_daily.create_table()
+        proposals_pv.create_table()
+        fibermap_daily.create_table()
+        mosthosts.create_table()
+        
+    else:
+        raise ValueError( f'Unknown action {args.action}' )
+
+else:
+    # I put this here for backwards compatibility just in case Alex runs
+    # this as a module inside other python scripts he has -- RKNOP
+    # 2021-09-16
+    create_db_engine( "/global/homes/a/akim/secrets/desi_pg.txt" )
+    
