@@ -21,11 +21,10 @@ def coadd(newSpectra):
                     
     for b in s.bands:
         # Mask pixels with no signal-to-noise
-        w=numpy.where(sivar[b]==0)[0]
+        dum = sivar[b]==0
+        w=numpy.where(dum)[0]
         smask[b][w]=1
-        try:
-            sflux[b] = sflux[b]/sivar[b]
-        except:
-            pass
+        w=numpy.where(~dum)[0]    
+        sflux[b][w] = sflux[b][w]/sivar[b][w]
     
     return(sflux, sivar, swave, smask)
