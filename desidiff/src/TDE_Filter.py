@@ -1,5 +1,3 @@
-%matplotlib inline
-
 from abc import ABC
 import numpy as np
 
@@ -24,7 +22,9 @@ import redrock.templates
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-
+import warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning)
+#warnings.filterwarnings("ignore", category=OptimizeWarning)
 mpl.rc('font', size=14)
 
 class SpectralLine(ABC):
