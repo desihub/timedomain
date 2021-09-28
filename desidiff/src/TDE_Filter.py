@@ -1,5 +1,3 @@
-%matplotlib inline
-
 from abc import ABC
 import numpy as np
 
@@ -24,7 +22,9 @@ import redrock.templates
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-
+import warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning)
+#warnings.filterwarnings("ignore", category=OptimizeWarning)
 mpl.rc('font', size=14)
 
 class SpectralLine(ABC):
@@ -237,7 +237,22 @@ def is_TDE(Ha,HB,HeII,OIII,NIII, flux):
         TDE_score -= 1.1
     
     return TDE_score
-def TDE_Check(wave,flux, redshift, scale = 3.,cont_width = 10):
+
+def Combine_multifilt(wave,flux):
+        difwave_single = []
+        difflux_single = []
+        for band in wave:
+            difwave_single += list(wave[band]) 
+            difflux_single += list(flux[band])
+        diftable = Table([difwave_single, difflux_single], names = ('wave','flux'))
+        diftable.sort('wave')
+        difwave_single = list(diftable['wave'])
+        difflux_single = list(diftable['flux'])
+
+        return difwave_single,difflux_single
+
+    
+def TDE_Check(wave,flux, redshift, scale = 3.,cont_width = 10,multifilt = False, spectype = 'GALAXY'):
     '''
     Creates a scaled flux (assumed to be roughly gaussian) for each line of interest. Then fits this scaled flux to a
     Gaussian, pulling the $\sigma$. Recalculates pEW using an ROI of the line $\pm$ scale*sigma. Appends this pEW to
@@ -249,45 +264,51 @@ def TDE_Check(wave,flux, redshift, scale = 3.,cont_width = 10):
     cont_width: width of region to sample cont_blue and cont_red, default 5 grabs area 2.5 angstroms on either side of 
         bound determined by scale*sigma
     '''
-    wave = wave/(1+redshift)
-    flux = gaussian_filter1d(flux, sigma = 3)
-    half_cont = cont_width/2
-    lines = {'Halpha':[6562.79],'Hbeta':[4861.4], 'HeII4686':[4686],'OIII':[5007],'NIII':[4100]}
-    for line in lines:
-        pass1 = SpectralLine_pEW(line,lines[line][0])
-        try:
-            peqw_pass1 = pass1.get_linewidth(wave, flux)
-            #plt.plot(pass1.roi_wave, pass1.roi_flux)
-            #plt.show()
-            #print(line)
-            #print(peqw_pass1)
+    if spectype == 'GALAXY':
 
+        if multifilt:
+            wave,flux = Combine_multifilt(wave, flux)
+        wave = wave/(1+redshift)
+        flux = gaussian_filter1d(flux, sigma = 3)
+        half_cont = cont_width/2
+        lines = {'Halpha':[6562.79],'Hbeta':[4861.4], 'HeII4686':[4686],'OIII':[5007],'NIII':[4100]}
+        for line in lines:
+            pass1 = SpectralLine_pEW(line,lines[line][0])
             try:
-                popt = curve_fit(gaus, pass1.roi_wave, pass1.roi_flux_scaled, p0 = [10.,pass1.line,max(pass1.roi_flux_scaled),1],check_finite = False)[0]
-                std = popt[0]
-                #print(std)
-                if scale*std <= half_cont: #Fit failed, line probably not present enough for measurement. 
-                    peqw_specline = 0
-                    #print('Failed')
+                peqw_pass1 = pass1.get_linewidth(wave, flux)
+                #plt.plot(pass1.roi_wave, pass1.roi_flux)
+                #plt.show()
+                #print(line)
+                #print(peqw_pass1)
 
-                else:
-                    cont_blue=[pass1.line - scale*std-half_cont, pass1.line - scale*std+half_cont]
-                    cont_red=[pass1.line + scale*std-half_cont, pass1.line + scale*std+half_cont]
-                    specline = SpectralLine_pEW(line, lines[line][0], cont_blue=cont_blue, \
-                                cont_red=cont_red)
-                    try:
-                        peqw_specline = specline.get_linewidth(wave, flux)
-                        #print(cont_blue,cont_red)
-                        #print(peqw_specline)
-                        #plt.plot(specline.roi_wave, specline.roi_flux)
-                        #plt.show()
-                    except IndexError:
+                try:
+                    popt = curve_fit(gaus, pass1.roi_wave, pass1.roi_flux_scaled, p0 = [10.,pass1.line,max(pass1.roi_flux_scaled),1],check_finite = False)[0]
+                    std = popt[0]
+                    #print(std)
+                    if scale*std <= half_cont: #Fit failed, line probably not present enough for measurement. 
                         peqw_specline = 0
-            #print('###########')
-            except RuntimeError:
+                        #print('Failed')
+
+                    else:
+                        cont_blue=[pass1.line - scale*std-half_cont, pass1.line - scale*std+half_cont]
+                        cont_red=[pass1.line + scale*std-half_cont, pass1.line + scale*std+half_cont]
+                        specline = SpectralLine_pEW(line, lines[line][0], cont_blue=cont_blue, \
+                                    cont_red=cont_red)
+                        try:
+                            peqw_specline = specline.get_linewidth(wave, flux)
+                            #print(cont_blue,cont_red)
+                            #print(peqw_specline)
+                            #plt.plot(specline.roi_wave, specline.roi_flux)
+                            #plt.show()
+                        except IndexError:
+                            peqw_specline = 0
+                #print('###########')
+                except RuntimeError:
+                    peqw_specline = 0
+            except:
                 peqw_specline = 0
-        except:
-            peqw_specline = 0
-        lines[line].append(peqw_specline)
-    return is_TDE(lines['Halpha'][-1],lines['Hbeta'][-1],lines['HeII4686'][-1],lines['OIII'][-1],\
-                  lines['NIII'][-1], flux)
+            lines[line].append(peqw_specline)
+        return is_TDE(lines['Halpha'][-1],lines['Hbeta'][-1],lines['HeII4686'][-1],lines['OIII'][-1],\
+                      lines['NIII'][-1], flux)
+    else:
+        return 0

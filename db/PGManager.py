@@ -188,12 +188,18 @@ class zbest_daily(tablebaseclass):
                 # Do things in terms of dates
                 dfs=[]
                 print(date)
+                    
+                if date < '20210901':
+                    base='zbest'
+                else:
+                    base='redrock'
+                
                 for path in glob.glob(f'{dir_root}/*/{date}'):
                     split = path.split('/')
                     tile = split[-2]
                     if tile.isnumeric():
                         for i in range(10):                            
-                            filename = f'{dir_root}/{tile}/{date}/zbest-{i}-{tile}-thru{date}.fits'
+                            filename = f'{dir_root}/{tile}/{date}/{base}-{i}-{tile}-thru{date}.fits'
                             try:
                                 dat = Table.read(filename, format='fits',hdu=1)
                             except:
@@ -1664,6 +1670,7 @@ class fibermap_daily(tablebaseclass):
             
         dates = numpy.unique(dates)
         dates=dates[dates >= '20201214']
+        dates=dates[dates != '20210213']    # there is something wrong with this date
         
         for date in dates:
             if int(date) not in dates_db:
@@ -1671,22 +1678,28 @@ class fibermap_daily(tablebaseclass):
                 # Do things in terms of dates
                 dfs=[]
                 
-                if date<=magicdate or date != 20210213 or date != 20210315: # include dates that have missing daily reductions
+                if date<=magicdate and date != '20210315':  # include dates that have missing daily reductions
                     use_root = dir_root
                 else:
                     use_root = dir_root+'/cumulative/'
+                    
+                if date < '20210901':
+                    base='zbest'
+                else:
+                    base='redrock'
+                    
                 for path in glob.glob(f'{use_root}/*/{date}'):
                     split = path.split('/')
                     tile = split[-2]
                     if tile.isnumeric():
                         print(date,tile)
                         for i in range(10):
-                            if date<=magicdate or date != 20210213 or date != 20210315:
+                            if date<=magicdate and date != '20210315':
                                 filename = f'{use_root}/{tile}/{date}/zbest-{i}-{tile}-{date}.fits'
                             else:
-                                filename = f'{use_root}/{tile}/{date}/zbest-{i}-{tile}-thru{date}.fits'
+                                filename = f'{use_root}/{tile}/{date}/{base}-{i}-{tile}-thru{date}.fits'
                             try:
-                                dat = Table.read(filename, format='fits',hdu=2)
+                                dat = Table.read(filename, format='fits',hdu=3)
                             except:
                                 print(f"{filename} not found")
                                 continue
