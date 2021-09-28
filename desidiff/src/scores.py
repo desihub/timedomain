@@ -65,3 +65,28 @@ def perconv_SN(y,ivar,mask,ncon=3,nsig=10):
         newmask=numpy.convolve(mask[b],ncon,mode='valid')
         
     return perres_SN(y,ivar,mask,nsig=nsig)
+
+def Hlines(wave, y,ivar,mask, z):
+    target_wave = (6562.79, 4861.35, 4340.472, 4101.734, 3970.075)
+    R=1000.
+    
+    target_wave = numpy.array(target_wave)*(1+z)
+    
+    signal=0.
+    var=0.
+    
+    for dindex in diff.bands:
+        #mask containing lines of interest
+        lmask = numpy.zeros(len(wave[dindex]))
+
+        for wa in target_wave:
+            wmin = wa * np.exp(-1/R/2.)
+            wmax = wa * np.exp(1/R/2.)
+            lmask = numpy.logical_or(lmask, np.logical_and.reduce((wave[dindex] >= wmin, wave[dindex] < wmax)))
+
+        # only include unmasked
+        lmask = np.logical_and(lmask, mask[dindex]==0)
+        signal += y[dindex][lmask].sum()
+        var += (1/ivar[dindex][lmask]).sum()
+
+    ston = numpy.abs(signal)/ma.sqrt(var)
