@@ -276,6 +276,7 @@ class SkyPortal:
         elif 'LAST_MJD' in fibermap.keys():
             mjd = fibermap['LAST_MJD'][0]
         else:
+            mjd=-999
             log.error('we are screwed')
         t = Time(mjd, format='mjd')
             
