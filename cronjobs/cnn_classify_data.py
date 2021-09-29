@@ -257,6 +257,13 @@ if __name__ == '__main__':
             prefix_in = '/'.join([redux, 'tiles', tile_number, obsdate])
         else:
             prefix_in = '/'.join([redux, 'tiles/cumulative', tile_number])
+        
+        if int(obsdate)<20210903:
+            fiberstatus_key = 'FIBERSTATUS'
+            ztable = 'ZBEST'
+        else:
+            fiberstatus_key = 'COADD_FIBERSTATUS'
+            ztable = 'redshifts'
             
             #Keeping these lines for later - they are useful if we want to use the cframe files in the future
             #We need to search in the db the expid for that night      
@@ -303,13 +310,17 @@ if __name__ == '__main__':
             if int(obsdate)<20210503:
                 zbfiles = sorted(glob('{}/zbest*.fits'.format(prefix_in)))
                 cafiles = sorted(glob('{}/coadd*.fits'.format(prefix_in)))
-            else:
+            elif int(obsdate)<20210903:
                 #Only grabbing stuff from the most recent cumulative directory
                 zb_ca_dir = sorted(glob('{}/*/'.format(prefix_in)))[-1]
                 zbfiles = sorted(glob('{}/zbest*.fits'.format(zb_ca_dir)))
                 cafiles = sorted(glob('{}/spectra*.fits'.format(zb_ca_dir)))
-                #cafiles = sorted(glob('{}/cframe*.fits'.format(prefix_in)))
-
+            else:
+                zb_ca_dir = sorted(glob('{}/*/'.format(prefix_in)))[-1]
+                zbfiles = sorted(glob('{}/redrock*.fits'.format(zb_ca_dir)))
+                cafiles = sorted(glob('{}/spectra*.fits'.format(zb_ca_dir)))
+                
+                
             # Loop through zbest and coadd files for each petal.
             # Extract the fibermaps, ZBEST tables, and spectra.
             # Keep only BGS targets passing basic event selection.
@@ -327,7 +338,7 @@ if __name__ == '__main__':
                 print('  - Petal {}'.format(get_petal_id(cafile)))
 
                 # Access data per petal.
-                zbest = Table.read(zbfile, 'ZBEST')
+                zbest = Table.read(zbfile, ztable)
                 pspectra = read_spectra(cafile)
                 if int(obsdate)>20210503:
                     select_nite = pspectra.fibermap['NIGHT'] == int(obsdate)
@@ -335,7 +346,8 @@ if __name__ == '__main__':
 
                 #Should we move the coaddition to after the spectra selection?
                 #It would require to only select a single night first though.
-                try:
+                #try:
+                if 0==0:
                     cspectra = coadd_cameras(pspectra)
                     fibermap = cspectra.fibermap
 
@@ -345,8 +357,8 @@ if __name__ == '__main__':
 
                     #This is old selection, does not work anymore! BGS target is always 0
                     #isBGS = fibermap['SV1_BGS_TARGET'] & bgs_mask.mask(sv1_bgs_bits) != 0
-                    isBGS = bgs_mask.mask(bgs_bits) != 0
-                    isGoodFiber = fibermap['FIBERSTATUS'] == 0
+                    isBGS = bgs_mask.mask(bgs_bits) != 0                    
+                    isGoodFiber = fibermap[fiberstatus_key] == 0                    
                     isGoodZbest = (zbest['DELTACHI2'] > 25.) & (zbest['ZWARN'] == 0)
                     select = isTGT & isGAL & isBGS & isGoodFiber & isGoodZbest
 
@@ -373,8 +385,8 @@ if __name__ == '__main__':
                             allres  = np.vstack([allres, cspectra.resolution_data['brz'][select]])
 
                     # exception over petals - for now this is the easy way of removing problematic petals
-                except:
-                    print("Problems with petal")
+                #except:
+                #    print("Problems with petal")
             
 
             if allzbest is None:
