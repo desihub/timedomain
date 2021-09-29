@@ -1440,7 +1440,7 @@ class exposure_tables_daily(tablebaseclass):
         for date in dates:
             if int(date) not in dates_db:
                 file = f'/global/cfs/cdirs/desi/spectro/redux/daily/exposure_tables/{date[0:6]}/exposure_table_{date}.csv'
-                data = ascii.read(file)
+                data = ascii.read(file, fill_exclude_names=['BADCAMWORD', 'BADAMPS'])
                 df = data.to_pandas()
                 df['YYYYMMDD']=numpy.full(df.shape[0],int(date))
                 df.columns= df.columns.str.lower()
