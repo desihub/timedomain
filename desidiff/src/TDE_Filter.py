@@ -238,21 +238,31 @@ def is_TDE(Ha,HB,HeII,OIII,NIII, flux):
     
     return TDE_score
 
-def Combine_multifilt(wave,flux):
+def Combine_multifilt(wave,flux, mask = False):
         difwave_single = []
         difflux_single = []
+        difmask_single = []
         for band in wave:
             difwave_single += list(wave[band]) 
             difflux_single += list(flux[band])
-        diftable = Table([difwave_single, difflux_single], names = ('wave','flux'))
+            if mask:
+                difmask_single += list(mask[band])
+                
+        if mask:
+            diftable = Table([difwave_single, difflux_single,difmask_single], names = ('wave','flux', 'mask'))
+        else:
+            diftable = Table([difwave_single, difflux_single], names = ('wave','flux'))
         diftable.sort('wave')
         difwave_single = list(diftable['wave'])
         difflux_single = list(diftable['flux'])
-
-        return difwave_single,difflux_single
+        if mask:
+            difmask_single = list(diftable['mask'])
+            return difwave_single,difflux_single,difmask_single
+        else:
+            return difwave_single,difflux_single
 
     
-def TDE_Check(wave,flux, redshift, scale = 3.,cont_width = 10,multifilt = False, spectype = 'GALAXY'):
+def TDE_Check(wave,flux, redshift, scale = 3.,cont_width = 10,multifilt = False, spectype = 'GALAXY', mask = False):
     '''
     Creates a scaled flux (assumed to be roughly gaussian) for each line of interest. Then fits this scaled flux to a
     Gaussian, pulling the $\sigma$. Recalculates pEW using an ROI of the line $\pm$ scale*sigma. Appends this pEW to
@@ -267,7 +277,10 @@ def TDE_Check(wave,flux, redshift, scale = 3.,cont_width = 10,multifilt = False,
     if spectype == 'GALAXY':
 
         if multifilt:
-            wave,flux = Combine_multifilt(wave, flux)
+            if mask:
+                wave,flux, mask = Combine_multifilt(wave, flux,mask)
+            else:
+                wave,flux= Combine_multifilt(wave, flux)
         wave = wave/(1+redshift)
         flux = gaussian_filter1d(flux, sigma = 3)
         half_cont = cont_width/2
@@ -294,14 +307,21 @@ def TDE_Check(wave,flux, redshift, scale = 3.,cont_width = 10,multifilt = False,
                         cont_red=[pass1.line + scale*std-half_cont, pass1.line + scale*std+half_cont]
                         specline = SpectralLine_pEW(line, lines[line][0], cont_blue=cont_blue, \
                                     cont_red=cont_red)
-                        try:
-                            peqw_specline = specline.get_linewidth(wave, flux)
-                            #print(cont_blue,cont_red)
-                            #print(peqw_specline)
-                            #plt.plot(specline.roi_wave, specline.roi_flux)
-                            #plt.show()
-                        except IndexError:
-                            peqw_specline = 0
+                        if mask:
+                            roistart_ind = wave.index(specline.roi_wave[0])
+                            roiend_ind = wave.index(specline.roi_wave[-1]) + 1
+                            if 1 in mask[roistart_ind:roiend_ind]:
+                                peqw_specline = 0
+                                
+                            else:
+                                try:
+                                    peqw_specline = specline.get_linewidth(wave, flux)
+                                    #print(cont_blue,cont_red)
+                                    #print(peqw_specline)
+                                    #plt.plot(specline.roi_wave, specline.roi_flux)
+                                    #plt.show()
+                                except IndexError:
+                                    peqw_specline = 0
                 #print('###########')
                 except RuntimeError:
                     peqw_specline = 0
