@@ -833,6 +833,11 @@ class everest_zpix_fibermap(zpix_everest):
         CREATE INDEX IF NOT EXISTS zpix_fibermap_q3c_ang2ipix_idx
             ON everest.zpix_fibermap USING btree(public.q3c_ang2ipix(fiber_ra, fiber_dec))
     """,
+                        
+                        """
+        CREATE INDEX IF NOT EXISTS zpix_redshifts_q3c_ang2ipix_mean_fiber_idx
+             ON everest.zpix_redshifts USING btree(public.q3c_ang2ipix(mean_fiber_ra, mean_fiber_dec))
+    """,
                          ]
                          
 
@@ -1638,6 +1643,10 @@ class fibermap_daily(tablebaseclass):
             sv3_scnd_target  DOUBLE PRECISION,
             PRIMARY KEY (targetid, expid)
     )
+    """,
+                        """
+        CREATE INDEX IF NOT EXISTS fibermap_daily_q3c_ang2ipix_idx
+            ON fibermap_daily USING btree(public.q3c_ang2ipix(fiber_ra, fiber_dec))
     """
                          ]
   

@@ -53,18 +53,25 @@ def perres_SN(y,ivar,mask,nsig=10):
         ans[k]=(ston>10).sum()
     return ans
 
-def perconv_SN(y,ivar,mask,ncon=3,nsig=10):
+def perconv_SN(wave, y,ivar,mask,ncon=3,nsig=10):
+#     maskregions = [(5760,5780)]
+    maskregions=[]
     newy=dict(y)
     newivar=dict(ivar)
     newmask=dict(mask)
+    for b in newmask.keys():
+        for m in maskregions:
+            newmask[b][numpy.logical_and(wave[b]>m[0], wave[b]<m[1])]=1        
+    
+    
     ncon = numpy.zeros(ncon)+1.
     for b in newy.keys():
-        newivar=numpy.convolve(ivar[b],ncon,mode='valid')
-        newy = numpy.convolve(y[b]*ivar[b],ncon,mode='valid')
-        newy = newy/newivar
-        newmask=numpy.convolve(mask[b],ncon,mode='valid')
-        
-    return perres_SN(y,ivar,mask,nsig=nsig)
+        newivar[b]=numpy.convolve(ivar[b],ncon,mode='valid')
+        newy[b] = numpy.convolve(y[b]*ivar[b],ncon,mode='valid')
+        newy[b] = newy[b]/newivar[b]
+        newmask[b]=numpy.convolve(mask[b],ncon,mode='valid')
+
+    return perres_SN(newy,newivar, newmask,nsig=nsig)
 
 def Hlines(wave, y,ivar,mask, z):
     target_wave = (6562.79, 4861.35, 4340.472, 4101.734, 3970.075)
