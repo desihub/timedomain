@@ -207,36 +207,45 @@ class SpectralLine_pEW(SpectralLine):
             self.cont_red[0], self.cont_red[1])
         return s
     
+
 def is_TDE(Ha,HB,HeII,OIII,NIII, flux):
     '''
     Ha,HB, HeII, and OIII should be pEW for each of those lines respectively.
     '''
     TDE_score = 0 
+    featurelist = []
     blue_end = np.nanmean(flux[1000:3000])
     red_end = np.nanmean(flux[5000:7000])
     mean_flux = np.nanmean(flux)
     try:
-        if OIII/Ha > 0.1:
+        if OIII/Ha > 0.05 or OIII > 1:
             TDE_score -= 1.1 #if OIII is present, will be marked by an index with a noninteger part
     except ZeroDivisionError:
-        pass
-    if Ha > 4: #Just looks for generally wide Ha lines
+        if OIII > 0.5:
+            TDE_score -= 1.1
+    if Ha > 25: #Just looks for generally wide Ha lines
         TDE_score += 1
-    if HB > 4:
+        featurelist.append('Ha')
+    if HB > 20:
         TDE_score += 1
+        featurelist.append('HB')
+                        
     try:
-        if HeII/Ha >0.75: #looks for comparable He and Ha lines
+        if HeII/Ha >0.75 and HeII > 15: #looks for comparable He and Ha lines
             TDE_score += 1
+            featurelist.append('HeII')
     except ZeroDivisionError:
         pass
-    if NIII > 4: #looks for NIII sometimes seen in TDE-bowen 
+    if NIII > 15: #looks for NIII sometimes seen in TDE-bowen 
         TDE_score += 1
-    if blue_end/red_end >= 1.25:
+        featurelist.append('NIII')
+    if blue_end/red_end >= 1.5:
         TDE_score += 1
-    if mean_flux < 1:
+        featurelist.append('Blue')
+    if mean_flux < 1.5:
         TDE_score -= 1.1
     
-    return TDE_score
+    return TDE_score, featurelist
 
 def Combine_multifilt(wave,flux, mask = False):
         difwave_single = []
@@ -262,6 +271,34 @@ def Combine_multifilt(wave,flux, mask = False):
             return difwave_single,difflux_single
 
     
+def Get_Spectra(tilepath):
+    specdict = {}
+    specs= sorted(glob('{}/spectra*.fits'.format(tilepath)))
+    for spec in specs:
+        spectra = read_spectra(spec)
+
+        zname = spec.replace('spectra','redrock')
+        rrdata = Table.read(zname)['TARGETID','Z','ZWARN','SPECTYPE','DELTACHI2']
+        select = (rrdata['SPECTYPE'] == 'GALAXY') & (rrdata['ZWARN'] == 0) & \
+        (rrdata['DELTACHI2'] >= 25) & (rrdata['TARGETID'] > 0  & (rrdata['Z'] > 0))
+        spectra = coadd_cameras(spectra)
+        rrdata = rrdata[select]
+#         select2 = (spectra.fibermap['TARGETID'] in rrdata['TARGETID']) & (spectra.fibermap['OBJTYPE'] == 'TGT')
+#         spectra = spectra[select2]
+        for i in range(len(spectra.fibermap)):
+            tid = spectra.exp_fibermap[i]['TARGETID']
+            if  tid in rrdata['TARGETID'] and spectra.fibermap[i]['OBJTYPE'] == 'TGT':
+                z_ind = list(rrdata['TARGETID']).index(tid)
+                specdict[tid] = {'Z':rrdata['Z'][z_ind]}
+                for band in spectra.bands:
+                    specdict[tid]['wave'] = spectra.wave[band]
+                    specdict[tid]['flux'] = spectra.flux[band][i]
+                specdict[tid]['FILEINFO'] = spec #Format= petal-tile-date
+                specdict[tid]['RA'] = spectra.fibermap[i]['TARGET_RA']
+                specdict[tid]['DEC'] = spectra.fibermap[i]['TARGET_DEC']
+                specdict[tid]['PETAL'] = spectra.exp_fibermap[i]['PETAL_LOC']
+                specdict[tid]['TILE'] = spectra.exp_fibermap[i]['TILEID']
+    return(specdict)
 def TDE_Check(wave,flux, redshift, scale = 3.,cont_width = 10,multifilt = False, spectype = 'GALAXY', mask = False):
     '''
     Creates a scaled flux (assumed to be roughly gaussian) for each line of interest. Then fits this scaled flux to a
@@ -313,15 +350,15 @@ def TDE_Check(wave,flux, redshift, scale = 3.,cont_width = 10,multifilt = False,
                             if 1 in mask[roistart_ind:roiend_ind]:
                                 peqw_specline = 0
                                 
-                            else:
-                                try:
-                                    peqw_specline = specline.get_linewidth(wave, flux)
-                                    #print(cont_blue,cont_red)
-                                    #print(peqw_specline)
-                                    #plt.plot(specline.roi_wave, specline.roi_flux)
-                                    #plt.show()
-                                except IndexError:
-                                    peqw_specline = 0
+                        else:
+                            try:
+                                peqw_specline = specline.get_linewidth(wave, flux)
+                                #print(cont_blue,cont_red)
+                                #print(peqw_specline)
+                                #plt.plot(specline.roi_wave, specline.roi_flux)
+                                #plt.show()
+                            except IndexError:
+                                peqw_specline = 0
                 #print('###########')
                 except RuntimeError:
                     peqw_specline = 0
