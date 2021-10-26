@@ -1804,7 +1804,159 @@ class mosthosts(tablebaseclass):
             conn.execute( text( "CLUSTER mosthosts_q3c_idx ON mosthosts.mosthosts" ) )
             conn.execute( text( "ANALYZE mosthosts.mosthosts" ) )
         sys.stderr.write( '...done\n' )
+
+class everest_daily_fibermap(tablebaseclass):
+    tablename = "everest.daily_fibermap"
+    createstatements = [ """
+        CREATE TABLE IF NOT EXISTS everest.daily_fibermap (
+        targetid  BIGINT,
+        petal_loc  SMALLINT,
+        device_loc  INTEGER,
+        location  BIGINT,
+        fiber  INTEGER,
+        coadd_fiberstatus  INTEGER,
+        target_ra  DOUBLE PRECISION,
+        target_dec  DOUBLE PRECISION,
+        pmra  REAL,
+        pmdec  REAL,
+        ref_epoch  REAL,
+        lambda_ref  REAL,
+        fa_target  BIGINT,
+        fa_type  SMALLINT,
+        objtype  TEXT,
+        fiberassign_x  REAL,
+        fiberassign_y  REAL,
+        priority  INTEGER,
+        subpriority  DOUBLE PRECISION,
+        obsconditions  INTEGER,
+        release  SMALLINT,
+        brickname  TEXT,
+        brickid  INTEGER,
+        brick_objid  INTEGER,
+        morphtype  TEXT,
+        ebv  REAL,
+        flux_g  REAL,
+        flux_r  REAL,
+        flux_z  REAL,
+        flux_w1  REAL,
+        flux_w2  REAL,
+        flux_ivar_g  REAL,
+        flux_ivar_r  REAL,
+        flux_ivar_z  REAL,
+        flux_ivar_w1  REAL,
+        flux_ivar_w2  REAL,
+        fiberflux_g  REAL,
+        fiberflux_r  REAL,
+        fiberflux_z  REAL,
+        fibertotflux_g  REAL,
+        fibertotflux_r  REAL,
+        fibertotflux_z  REAL,
+        maskbits  SMALLINT,
+        sersic  REAL,
+        shape_r  REAL,
+        shape_e1  REAL,
+        shape_e2  REAL,
+        ref_id  BIGINT,
+        ref_cat  TEXT,
+        gaia_phot_g_mean_mag  REAL,
+        gaia_phot_bp_mean_mag  REAL,
+        gaia_phot_rp_mean_mag  REAL,
+        parallax  REAL,
+        photsys  TEXT,
+        priority_init  BIGINT,
+        numobs_init  BIGINT,
+        desi_target  BIGINT,
+        bgs_target  BIGINT,
+        mws_target  BIGINT,
+        scnd_target  BIGINT,
+        plate_ra  DOUBLE PRECISION,
+        plate_dec  DOUBLE PRECISION,
+        tileid  INTEGER,
+        coadd_numexp  SMALLINT,
+        coadd_exptime  REAL,
+        coadd_numnight  SMALLINT,
+        coadd_numtile  SMALLINT,
+        mean_delta_x  REAL,
+        rms_delta_x  REAL,
+        mean_delta_y  REAL,
+        rms_delta_y  REAL,
+        mean_fiber_ra  DOUBLE PRECISION,
+        std_fiber_ra  REAL,
+        mean_fiber_dec  DOUBLE PRECISION,
+        std_fiber_dec  REAL,
+        mean_psf_to_fiber_specflux  REAL,
+        mean_fiber_x  REAL,
+        mean_fiber_y  REAL,
+        yyyymmdd  BIGINT
+        PRIMARY KEY (targetid, yyyymmdd)
+    )
+    """,
+                        """
+        CREATE INDEX IF NOT EXISTS everest.daily_fibermap_q3c_ang2ipix_idx
+            ON everst.daily_fibermap USING btree(public.q3c_ang2ipix(fiber_ra, fiber_dec))
+    """
+                         ]
+  
+    @staticmethod
+    def fill_table(): 
+        global engine
+        firstdate='20210901'  # the last date that daily directory was created
+
+        dir_root = "/global/project/projectdirs/desi/spectro/redux/daily/tiles/cumulative"
+        # dir_root = "/global/project/projectdirs/desi/spectro/redux/daily/tiles/"
         
+        
+        
+        #find the last date
+        dates_db=[]
+        try:
+            with engine.connect() as conn:
+                for row in conn.execute(f"SELECT DISTINCT YYYYMMDD FROM everest.daily_fibermap"):
+                    dates_db.append(row[0])
+        except:
+            pass
+            
+        dates = []
+        for path in glob.glob(f'{dir_root}/*/202?????'):
+            split = path.split('/')
+            dates.append(split[-1])
+            
+        dates = numpy.unique(dates)
+        dates=dates[dates >= firstdate]
+        
+        for date in dates:
+            if int(date) not in dates_db:
+                print(date)
+                # Do things in terms of dates
+                dfs=[]
+                base='redrock'
+                    
+                for path in glob.glob(f'{dir_root}/*/{date}'):
+                    split = path.split('/')
+                    tile = split[-2]
+                    if tile.isnumeric():
+                        print(date,tile)
+                        for i in range(10):
+                            filename = f'{dir_root}/{tile}/{date}/{base}-{i}-{tile}-thru{date}.fits'
+                            try:
+                                dat = Table.read(filename, format='fits',hdu=2)
+                            except:
+                                print(f"{filename} not found")
+                                continue
+
+                            dat.convert_bytestring_to_unicode()
+                            df = dat.to_pandas()
+                            df['YYYYMMDD']=numpy.full(df.shape[0],int(date))
+                            
+                            df.columns= df.columns.str.lower()
+                            dfs.append(df)
+                if len(dfs)>0:
+                    try:
+                        dfs = pandas.concat(dfs, ignore_index=True, sort=False)
+                        dfs.to_sql(f'daily_fibermap',engine,index=False,if_exists='append',schema='everest')
+                    except:
+                        dtypesToSchema(dfs.dtypes)
+                        sys.exit()
 
 class mosthosts(tablebaseclass):
     """Maayane's collection of information for the mosthosts project.
