@@ -1,5 +1,5 @@
 import numpy
-
+import numpy.ma as ma
 import copy
 def clipmean_one(y,ivar,mask,nsig=3):
 
@@ -107,3 +107,21 @@ def Hlines(wave, y,ivar,mask, z):
 
     ston = numpy.abs(signal)/numpy.sqrt(var)
     return ston
+
+
+# renormalize two spectra
+# for now the two spectra are assumed to be single night coadd of matching tile
+
+def normalization(newflux, newmask, refflux, refmask):
+
+    common = list(set(newflux.keys()).intersection(refflux.keys()))
+    norms=[]
+    for dindex in common:
+        norm = ma.array(data=newflux[dindex],mask=newmask[dindex])/ ma.array(data=refflux[dindex],mask=refmask[dindex])
+        norm.filled(numpy.nan)
+        norms.append(norm)
+        
+    norms=numpy.concatenate(norms)  
+    norm = numpy.nanpercentile(norms,(50))
+
+    return norm
