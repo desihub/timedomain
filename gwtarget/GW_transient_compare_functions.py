@@ -651,59 +651,60 @@ def inner_matching(exposure_ras_in = np.array([]), exposure_decs_in = np.array([
 
 # Function to read in fits table info, RA, DEC, MJD and targetid if so desired
 # Uses control parameter tile to determine if opening tile exposure file or not since headers are different
-
-def read_fits_info(filepath: str, tile = True):
+def read_fits_info(filepath: str, tile = False):
     
-    # Disabling INFO logging temporarily to suppress INFO level output/print from read_spectra
-    logging.disable(logging.INFO)
+    if not tile:
+        hdu_num = 5
+    else:
+        hdu_num = 2 # For Zbest?
     
     try:
-        spec_info = read_spectra(filepath).fibermap
+        with fits.open(filepath) as hdu1:
+    
+            data_table = Table(hdu1[hdu_num].data) #columns
         
-        targ_id = spec_info['TARGETID'].data
-        targ_ra = spec_info['TARGET_RA'].data # Now it's a numpy array
-        targ_dec = spec_info['TARGET_DEC'].data
-        targ_mjd = spec_info['LAST_MJD'] #.data
-        
-        targ_mjd = Time(targ_mjd[0], format = 'mjd')
-        #targ_mjd = spec_info['FIRST_MJD'].data[0]
+            targ_ID = data_table['TARGETID']
+            targ_ra = data_table['TARGET_RA'].data # Now it's a numpy array
+            targ_dec = data_table['TARGET_DEC'].data
+            
+            # Not needed... kept for posterity
+            # if not tile: 
+            #     targ_mjd = hdu1[hdu_num].header['MJD-OBS'] # This is a string
+            # else:
+            #     targ_mjd = data_table['MJD'].data
+            #     targ_mjd = Time(targ_mjd[0], format = 'mjd')
             
     except:
         filename = filepath.split("/")[-1]
         print("Could not open or use:", filename)
         #print("In path:", filepath)
         #print("Trying the next file...")
-        return np.array([]), np.array([]), 0, 0
+        return np.array([]), np.array([]), np.array([])
     
-    if not tile and not np.all(targ_mjd):
-        print("Unable to grab mjd from spectra, taking it from the filename...")
-        targ_mjd = filepath.split("/")[-1].split("_")[-2] #to grab the date
-        #targ_mjd = targ_mjd[:4]+"-"+targ_mjd[4:6]+"-"+targ_mjd[6:] # Adding dashes for Time
-        targ_mjd = Time(targ_mjd, format = 'mjd') #.mjd
-        
-    # Re-enabling logging for future calls if necessary
-    logging.disable(logging.NOTSET)    
-    
-    return targ_ra, targ_dec, targ_mjd, targ_id
+    return targ_ra, targ_dec, targ_ID
 
 # Grabbing the frame fits files
 def glob_frames(exp_d: str):   
     
     # This function grabs the names of all input files in the transient directory and does some python string manipulation
     # to grab the names of the input files with full path and the filenames themselves.
-
     try:
         filenames_read = glob(exp_d + "/cframe-" + color_band + "*.fits") # Only need one of b, r, z
         # sframes not flux calibrated
         # May want to use tiles... coadd (will need later, but not now)
-    
     except:
-        print("Could not grab/find any fits in the exposure directory:")
-        print(exp_d)
-        filenames_read = [] # Just in case
-        #filenames_out = [] # Just in case
-        raise SystemExit("Exitting.")
-        
+        try:
+            # Unsure if this is necessary but in looking in some directories, there are no cframes...
+            # Put this here but the issue may have been somewhere else
+            # TODO: Ask Antonella
+            filenames_read = glob(exp_d + "/frame-" + color_band + "*.fits") # Only need one of b, r, z
+        except:
+            print("Could not grab/find any fits in the exposure directory:")
+            print(exp_d)
+            filenames_read = [] # Just in case
+            #raise SystemExit("Exitting.")
+            print("Continuing...")
+
     #else:
         #filenames_out = [s.split(".")[0] for s in filenames_read]
         #filenames_out = [s.split("/")[-1] for s in filenames_read]
@@ -756,7 +757,7 @@ def closer_check(matches_dict = {}, catalog2_ras = [], catalog2_decs = [], exclu
             # It should start making sense why we go date by date now... :)
             for path in glob_frames(exp_paths):
                 #print(path)
-                targ_ras, targ_decs, _, _ = read_fits_info(path, True)
+                targ_ras, targ_decs, _ = read_fits_info(path, False)
 
                 # For comparing to data tables in original file/sanity checking
                 all_len = len(all_targ_ras)
@@ -874,7 +875,7 @@ def grab_desi_targetid(matches_dict = {}, targlist_table = Table(), exclusion_li
             #all_exp_fits[date].extend()
             for path in glob_frames(exp_paths):
                 #print(path)
-                _, _, _, target_ids = read_fits_info(path, True)
+                _, _, target_ids = read_fits_info(path, False)
 
                 target_ids_date.extend(target_ids)
 

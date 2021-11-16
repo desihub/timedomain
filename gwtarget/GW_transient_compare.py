@@ -390,6 +390,13 @@ if __name__ == "__main__":
 #
 # *************************************************************************
 
+    # Use our matching algorithm within 2 degrees to match DESI pointings to skymap
+    # Retaining this for documentation (to avoid future confusion)
+    # desi_matches, _ = initial_check(ra_map, dec_map)
+    
+    # Match targetlist RAs and DECs to DESI pointings
+    # Since targetlist is already found *wrt* the skymap
+    # we should see the same results here.
     m_dict, _ = initial_check(np.array(targlist['RA']), np.array(targlist['DEC']))
     
     if not m_dict:
@@ -398,7 +405,7 @@ if __name__ == "__main__":
         sys.exit()
     
     # As a reminder, uses original targlist data to find 1 arcsecond matches to individual targets via fibers
-    desi_target_matches, targlist_target_matches = closer_check(matches_dict = m_dict, catalog2_ras = np.array(targlist['RA']),     catalog2_decs =  np.array(targlist['DEC']))
+    desi_target_matches, targlist_target_matches = closer_check(matches_dict = m_dict, catalog2_ras = np.array(targlist['RA']), catalog2_decs = np.array(targlist['DEC']))
     if not targlist_target_matches:
         print("No matches found in closer matching (1 arcsecond).")
         print("Quitting.")
@@ -422,11 +429,11 @@ if __name__ == "__main__":
 
     # Generating lists of ras, decs, and program info for later graphing
     # ************** Need to ask about the below ***************
-    """
-    bd_tile_ras = []
-    bd_tile_decs = []
-    bd_program_info = []
-    bd_tileids = []
+    
+    # bd_tile_ras = []
+    # bd_tile_decs = []
+    # bd_program_info = []
+    # bd_tileids = []
     
     targetlist_tile_ras = []
     targetlist_tile_decs = []
@@ -436,33 +443,27 @@ if __name__ == "__main__":
     program_list = ['BRIGHT', 'DARK', 'BGS', 'ELG', 'QSO', 'LRG']
 
     # Iterate through intial_check dictionary outputs
-    # I do both at the same time to be a little more efficient
-    # .values()[i] is the sqlite3 row info for each 2 degree matched tile
+    # Second loop, j is the sqlite3 row info(s) for each 2 degree matched tile
     # the keys are the dates which we don't need here
-    for i in range(np.max((len(desi_matches), len(m_dict)))):
-        try:
-            for j in list(desi_matches.values())[i]:
-                p_name = j['program']
-                # We check against tileids now instead of taking them out later so that
-                # everything is retained in order
-                if any(substring in p_name.upper() for substring in program_list) and j['tileid'] not in bd_tileids:
-                    bd_tile_ras.append(j['tilera'])
-                    bd_tile_decs.append(j['tiledec']) 
-                    bd_program_info.append(p_name)
-                    bd_tileids.append(j['tileid'])
-        except:
-            pass
-        try:
-            for j in list(m_dict.values())[i]:
-                p_name = j['program']
-                if any(substring in p_name.upper() for substring in program_list) and j['tileid'] not in targetlist_tileids:
-                    targetlist_tile_ras.append(j['tilera'])
-                    targetlist_tile_decs.append(j['tiledec']) 
-                    targetlist_program_info.append(p_name)
-                    targetlist_tileids.append(j['tileid'])
-        except:
-            pass
-    """
+    
+    for i in m_dict.values():
+        # for j in list(desi_target_matches.values())[i]:
+        #     p_name = j['program']
+        #     # We check against tileids now instead of taking them out later so that
+        #     # everything is retained in order
+        #     if any(substring in p_name.upper() for substring in program_list) and j['tileid'] not in bd_tileids:
+        #         bd_tile_ras.append(j['tilera'])
+        #         bd_tile_decs.append(j['tiledec']) 
+        #         bd_program_info.append(p_name)
+        #         bd_tileids.append(j['tileid'])
+        for j in i:
+            p_name = j['program']
+            if any(substring in p_name.upper() for substring in program_list) and j['tileid'] not in targetlist_tileids:
+                targetlist_tile_ras.append(j['tilera'])
+                targetlist_tile_decs.append(j['tiledec']) 
+                targetlist_program_info.append(p_name)
+                targetlist_tileids.append(j['tileid'])
+    
     # ************** Need to ask about the above ***************
 
 # *************************************************************************
@@ -518,7 +519,7 @@ if __name__ == "__main__":
 #
 # *************************************************************************
 
-    # fig = plot_cartmap_tiles(gwfile, tile_ra = [218.9,217.5], tile_dec = [36.6,35.8], targ_ra = bd_tile_ras, targ_dec = bd_tile_decs, angsize = 5, program_names = program_info)
+    # fig = plot_cartmap_tiles(gwfile, tile_ra = [218.9,217.5], tile_dec = [36.6,35.8], targ_ra = bd_tile_ras, targ_dec = bd_tile_decs, angsize = 5, program_names = bd_program_info)
     # ax = fig.gca()
     # ax.set(xlim=(222, 213), ylim=(33,40))
     # #ax.scatter(exp_ras, exp_decs)
@@ -526,6 +527,7 @@ if __name__ == "__main__":
     # plt.savefig(user_home + '/' + gw_name + '_desi_tile-matches.png', dpi=120)
     
     # Plot targetlist tile matches and DESI FOV, just in case 
+    # TODO don't hardcode the tile_ra and dec
     fig = plot_cartmap_tiles(gwfile, tile_ra = [218.9,217.5], tile_dec = [36.6,35.8], \
                              targ_ra = targetlist_tile_ras, targ_dec = targetlist_tile_decs, angsize = 5, program_names = [])
     ax = fig.gca()
