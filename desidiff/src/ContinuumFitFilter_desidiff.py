@@ -97,13 +97,14 @@ def line_finder(wave, flux,ivar,mask,z):
     
     
     HBopt, HBcov = curve_fit(triplegaus, HBroi[HBroi.mask], HBflux[HBflux.mask], \
-                             p0 = [1,4686,3,1,4861,5,5,5007,0.125],sigma = HBsigma, bounds = (0,np.inf))
+                             p0 = [1,4686,3,1,4861,5,5,5007,0.125],sigma = HBsigma, bounds = (0,np.inf),\
+                            maxfev = 3000)
     
     Haopt, Hacov = curve_fit(singlegaus, Haroi[Haroi.mask], Haflux[Haflux.mask], \
-                         p0 = [3,6562,5],sigma = Hasigma, bounds = (0,np.inf))
+                         p0 = [3,6562,5],sigma = Hasigma, bounds = (0,np.inf),maxfev = 3000)
    
     NIIIopt, NIIIcov = curve_fit(doublegaus, NIIIroi[NIIIroi.mask], NIIIflux[NIIIflux.mask], \
-                     p0 = [1,4100,2,1,4340,3],sigma = NIIIsigma, bounds = (0,np.inf))
+                     p0 = [1,4100,2,1,4340,3],sigma = NIIIsigma, bounds = (0,np.inf),maxfev = 3000)
     
     
     heights = []
@@ -195,7 +196,7 @@ def TDE_filter(linetable, flux):
     i = lines.index('Halpha')
     if linetable['e_Height'][i]/linetable['Height'][i] < 0.05 and \
             linetable['Height'][i]> 3*linetable['Variance'][i] and \
-            linetable['e_Sigma'][i]/linetable['Sigma'][i] < 0.05 and linetable['Velocity'][i] > 800\
+            linetable['e_Sigma'][i]/linetable['Sigma'][i] < 0.05 and linetable['Velocity'][i] > 700\
             and abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 20 and \
             linetable['e_Mean'][i] < 30:
         score +=1
@@ -205,7 +206,7 @@ def TDE_filter(linetable, flux):
     i = lines.index('Hbeta')
     if linetable['e_Height'][i]/linetable['Height'][i] < 0.05 and \
             linetable['Height'][i]> 3*linetable['Variance'][i] and \
-            linetable['e_Sigma'][i]/linetable['Sigma'][i] < 0.05 and linetable['Velocity'][i] > 650\
+            linetable['e_Sigma'][i]/linetable['Sigma'][i] < 0.05 and linetable['Velocity'][i] > 500\
             and abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 20 and \
             linetable['e_Mean'][i] < 30:
         score +=1
@@ -215,7 +216,7 @@ def TDE_filter(linetable, flux):
     i = lines.index('Hgamma')
     if linetable['e_Height'][i]/linetable['Height'][i] < 0.05 and \
             linetable['Height'][i]> 3*linetable['Variance'][i] and \
-            linetable['e_Sigma'][i]/linetable['Sigma'][i] < 0.05 and linetable['Velocity'][i] > 450\
+            linetable['e_Sigma'][i]/linetable['Sigma'][i] < 0.05 and linetable['Velocity'][i] > 400\
             and abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 20 and \
             linetable['e_Mean'][i] < 30:
         score +=1
@@ -233,7 +234,7 @@ def TDE_filter(linetable, flux):
     i = lines.index('NIII')
     if linetable['e_Height'][i]/linetable['Height'][i] < 0.05 and \
             linetable['Height'][i]> 3*linetable['Variance'][i] and \
-            linetable['e_Sigma'][i]/linetable['Sigma'][i] < 0.05 and linetable['Velocity'][i] > 350\
+            linetable['e_Sigma'][i]/linetable['Sigma'][i] < 0.05 and linetable['Velocity'][i] > 400\
             and abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 20 and \
             linetable['e_Mean'][i] < 30:
         score +=1
