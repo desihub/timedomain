@@ -81,30 +81,48 @@ def line_finder(wave, flux,ivar,mask,z):
     HBmask = mask[HB_center - 500:HB_center + 500]
     HBroi = ma.masked_array(wave[HB_center - 500:HB_center + 500], HBmask)
     HBflux = ma.masked_array(flux[HB_center - 500:HB_center + 500], HBmask)
-    HBsigma = np.sqrt(1/ivar[HB_center - 500:HB_center + 500])
+    HBivar = ivar[HB_center - 500:HB_center + 500]
+    HBsigma = 1/np.sqrt(HBivar)
+    HBsigma = ma.masked_array(HBsigma, HBmask)
+    
     
     Ha_center = list(abs(wave-6562.79)).index(min(abs(wave - 6562.79)))
     Hamask = mask[Ha_center - 300:Ha_center + 300]
     Haroi = ma.masked_array(wave[Ha_center - 300:Ha_center + 300], Hamask)
     Haflux = ma.masked_array(flux[Ha_center - 300:Ha_center + 300], Hamask)
-    Hasigma = np.sqrt(1/ivar[Ha_center - 300:Ha_center + 300])
+    Haivar = ivar[Ha_center - 300:Ha_center + 300]
+    Hasigma = 1/np.sqrt(Haivar)
+    Hasigma = ma.masked_array(Hasigma, Hamask)
     
     NIII_center = list(abs(wave-4200)).index(min(abs(wave - 4200)))
     NIIImask = mask[NIII_center - 200:NIII_center + 200]
     NIIIroi = ma.masked_array(wave[NIII_center- 200:NIII_center+200], NIIImask)
     NIIIflux = ma.masked_array(flux[NIII_center- 200:NIII_center+200], NIIImask)    
-    NIIIsigma = np.sqrt(1/ivar[NIII_center - 200:NIII_center + 200])
+    NIIIivar = ivar[NIII_center - 200:NIII_center + 200]
+    NIIIsigma = 1/np.sqrt(NIIIivar)
+    NIIIsigma = ma.masked_array(NIIIsigma, NIIImask)
+
+    try:
+        HBopt, HBcov = curve_fit(triplegaus, HBroi[~HBroi.mask], HBflux[~HBflux.mask], \
+                             p0 = [1,4686,3,1,4861,5,5,5007,0.125],sigma = HBsigma[~HBsigma.mask], \
+                             bounds = (0,np.inf), maxfev = 3000)
+    except ValueError: 
+        HBopt = [1,1,1,1,1,1,1,1,1]
+        HBcov = np.ones((9,9))
+    try:
+        Haopt, Hacov = curve_fit(singlegaus, Haroi[~Haroi.mask], Haflux[~Haflux.mask], \
+                         p0 = [3,6562,5],sigma = Hasigma[~Hasigma.mask], bounds = (0,np.inf),maxfev = 3000)
+    except ValueError:
+        Haopt = [1,1,1]
+        Hacov = np.ones((3,3))
     
-    
-    HBopt, HBcov = curve_fit(triplegaus, HBroi[HBroi.mask], HBflux[HBflux.mask], \
-                             p0 = [1,4686,3,1,4861,5,5,5007,0.125],sigma = HBsigma, bounds = (0,np.inf),\
-                            maxfev = 3000)
-    
-    Haopt, Hacov = curve_fit(singlegaus, Haroi[Haroi.mask], Haflux[Haflux.mask], \
-                         p0 = [3,6562,5],sigma = Hasigma, bounds = (0,np.inf),maxfev = 3000)
-   
-    NIIIopt, NIIIcov = curve_fit(doublegaus, NIIIroi[NIIIroi.mask], NIIIflux[NIIIflux.mask], \
-                     p0 = [1,4100,2,1,4340,3],sigma = NIIIsigma, bounds = (0,np.inf),maxfev = 3000)
+    try:
+        NIIIopt, NIIIcov = curve_fit(doublegaus, NIIIroi[~NIIIroi.mask], NIIIflux[~NIIIflux.mask], \
+                     p0 = [1,4100,2,1,4340,3],sigma = NIIIsigma[~NIIIsigma.mask], \
+                                     bounds = (0,np.inf),maxfev = 3000)
+    except ValueError:
+        NIIIopt = [1,1,1,1,1,1]
+        NIIIcov = np.ones((6,6))
     
     
     heights = []
