@@ -14,6 +14,9 @@
 # 3. Compares previous observations with dr9 targets in the CI contour to find the dr9 targets not already observed. Can perform this comparison by matching the targetids or by matching the RA's and DEC's which we feel is slightly more robust.
 # 4. A bit of plotting but it takes awhile to produce a proper cartesian map, be forewarned.
 
+# Importing all functions here
+from GW_transient_compare_functions import *
+"""
 import sys
 import os
 user_home = os.environ['HOME']
@@ -50,9 +53,7 @@ import argparse
 import logging # to disable output when reading in FITS info
 
 import sqlite3
-
-# Importing all functions here
-from GW_transient_compare_functions import *
+"""
 
 if __name__ == "__main__":
 # *************************************************************************
@@ -98,6 +99,11 @@ if __name__ == "__main__":
                         type     = str, 
                         help     = 'The input GW file')
     
+    parser.add_argument(dest     = 'pointings',
+                        type     = int,
+                        help     = 'Specify number of pointings'
+                          )
+    
     c_intervals.add_argument('--confidence_interval=90', '-CI90', 
                         dest      = 'CI_val',
                         action    = 'store_const', 
@@ -122,6 +128,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args() # Using vars(args) will call produce the args as a dict
     gwfile = args.gwfile
+    num_pointings = args.pointings
     
     try:
         CI_val = args.CI_val
@@ -149,7 +156,10 @@ if __name__ == "__main__":
     gw_map = hp.read_map(gwfile, nest = gw_properties["nest"])
     
     # Grab pixel locations for probabilities in x% CI
-    pixmap = prob_pixel_locs(gw_properties, percentile = CI_val)
+    # prob_pixel_locs is written to return a list of n pixel maps
+    # corresponding to CI (for checking multiple CI maps at once), hence the [0].
+    # This no longer applies but I'd like to keep the functionality in
+    pixmap = prob_pixel_locs(gw_properties, percentile = CI_val)[0]
     
     # Converting skymap to pixelmap
     ra_map, dec_map = hp.pix2ang(gw_properties["nside"], pixmap, nest = gw_properties["nest"], lonlat = True)
@@ -381,7 +391,7 @@ if __name__ == "__main__":
         targlist = Table.read(trg_file)
     except FileNotFoundError:
         targlist = build_targlist_table(gw_properties["nside"], pixmap)
-        targlist_write(targlist, trg_file, overwrite)
+        targlist_write(targlist, trg_file, overwrite = True)
         
         
 # *************************************************************************
@@ -493,7 +503,7 @@ if __name__ == "__main__":
     #targlist_write(targlist_radec_reduced, "dr9_targlist" + CI_val + "_reduced_radec.ecsv", overwrite = True)
 
     # Write dr9 targets to ecsv
-    write_too_ledger(filename = user_home + '/testing_ToO-bgs.ecsv', too_table = targlist_radec_reduced.to_pandas(), checker='MP/AP', overwrite=True, verbose=False, tabformat='LEGACY')
+    write_too_ledger(filename = targetlists_path + '/testing_ToO-bgs.ecsv', too_table = targlist_radec_reduced.to_pandas(), checker='MP/AP', overwrite=True, verbose=False, tabformat='LEGACY')
 
 # *************************************************************************
 #
