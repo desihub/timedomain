@@ -214,7 +214,7 @@ def TDE_filter(linetable, flux):
     i = lines.index('Halpha')
     if linetable['e_Height'][i]/linetable['Height'][i] < 0.05 and \
             linetable['Height'][i]> 3*linetable['Variance'][i] and \
-            linetable['e_Sigma'][i]/linetable['Sigma'][i] < 0.05 and linetable['Velocity'][i] > 700\
+            linetable['e_Sigma'][i]/linetable['Sigma'][i] < 0.05 and linetable['Velocity'][i] > 500\
             and abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 20 and \
             linetable['e_Mean'][i] < 30:
         score +=1
@@ -224,7 +224,7 @@ def TDE_filter(linetable, flux):
     i = lines.index('Hbeta')
     if linetable['e_Height'][i]/linetable['Height'][i] < 0.05 and \
             linetable['Height'][i]> 3*linetable['Variance'][i] and \
-            linetable['e_Sigma'][i]/linetable['Sigma'][i] < 0.05 and linetable['Velocity'][i] > 500\
+            linetable['e_Sigma'][i]/linetable['Sigma'][i] < 0.05 and linetable['Velocity'][i] > 400\
             and abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 20 and \
             linetable['e_Mean'][i] < 30:
         score +=1
@@ -234,7 +234,7 @@ def TDE_filter(linetable, flux):
     i = lines.index('Hgamma')
     if linetable['e_Height'][i]/linetable['Height'][i] < 0.05 and \
             linetable['Height'][i]> 3*linetable['Variance'][i] and \
-            linetable['e_Sigma'][i]/linetable['Sigma'][i] < 0.05 and linetable['Velocity'][i] > 400\
+            linetable['e_Sigma'][i]/linetable['Sigma'][i] < 0.05 and linetable['Velocity'][i] > 300\
             and abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 20 and \
             linetable['e_Mean'][i] < 30:
         score +=1
@@ -243,7 +243,7 @@ def TDE_filter(linetable, flux):
     i = lines.index('HeII4686')
     if linetable['e_Height'][i]/linetable['Height'][i] < 0.05 and \
             linetable['Height'][i]> 3*linetable['Variance'][i] and \
-            linetable['e_Sigma'][i]/linetable['Sigma'][i] < 0.05 and linetable['Velocity'][i] > 500\
+            linetable['e_Sigma'][i]/linetable['Sigma'][i] < 0.05 and linetable['Velocity'][i] > 400\
             and abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 20 and \
             linetable['e_Mean'][i] < 30:
         score +=1
@@ -252,7 +252,7 @@ def TDE_filter(linetable, flux):
     i = lines.index('NIII')
     if linetable['e_Height'][i]/linetable['Height'][i] < 0.05 and \
             linetable['Height'][i]> 3*linetable['Variance'][i] and \
-            linetable['e_Sigma'][i]/linetable['Sigma'][i] < 0.05 and linetable['Velocity'][i] > 400\
+            linetable['e_Sigma'][i]/linetable['Sigma'][i] < 0.05 and linetable['Velocity'][i] > 300\
             and abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 20 and \
             linetable['e_Mean'][i] < 30:
         score +=1
@@ -284,31 +284,28 @@ def Hline_filter(linetable):
     #Halpha
     i = lines.index('Halpha')
     if linetable['e_Height'][i]/linetable['Height'][i] < 0.05 and \
-            linetable['Height'][i]> 5*linetable['Variance'][i] and \
             linetable['e_Sigma'][i]/linetable['Sigma'][i] < 0.05 and linetable['Velocity'][i] > 75\
             and abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 20 and \
             linetable['e_Mean'][i] < 30:
-        score +=1
+        score += linetable['Height'][i]/linetable['Variance'][i]
         filter_pass.append('Halpha')
     
     #HBeta
     i = lines.index('Hbeta')
     if linetable['e_Height'][i]/linetable['Height'][i] < 0.05 and \
-            linetable['Height'][i]> 5*linetable['Variance'][i] and \
             linetable['e_Sigma'][i]/linetable['Sigma'][i] < 0.05 and linetable['Velocity'][i] > 75\
             and abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 20 and \
             linetable['e_Mean'][i] < 30:
-        score +=1
+        score += linetable['Height'][i]/linetable['Variance'][i]
         filter_pass.append('Hbeta')
         
     #Hgamma
     i = lines.index('Hgamma')
     if linetable['e_Height'][i]/linetable['Height'][i] < 0.05 and \
-            linetable['Height'][i]> 5*linetable['Variance'][i] and \
             linetable['e_Sigma'][i]/linetable['Sigma'][i] < 0.05 and linetable['Velocity'][i] > 50\
             and abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 20 and \
             linetable['e_Mean'][i] < 30:
-        score +=1
+        score += linetable['Height'][i]/linetable['Variance'][i]
         filter_pass.append('Hgamma')
   
     return(score)
