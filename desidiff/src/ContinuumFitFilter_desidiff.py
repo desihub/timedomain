@@ -258,7 +258,7 @@ def TDE_filter(linetable, flux):
     i = lines.index('OIII')
     if linetable['Chi Square'][i] < 2 and linetable['Chi Square'][i] > 0.5: # check for decent fit
         if abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 5 and linetable['e_Height'][i] > 0\
-        and linetable['Height'][i]/linetable['e_Height'][i] > 10 and linetable['Velocity'][i] > 10:
+        and linetable['Height'][i]/linetable['e_Height'][i] > 10 and linetable['Velocity'][i] > 50:
             score -= 1.1
 
     #Blueness
