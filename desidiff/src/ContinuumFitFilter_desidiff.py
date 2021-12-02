@@ -68,7 +68,7 @@ def Combine_multifilt(wave,flux, mask,ivar):
         return difwave_single,difflux_single,difmask_single,difivar_single
        
 
-def line_finder(wave, flux,ivar,z):
+def line_finder(wave, flux,ivar,mask,z):
     c = 2.99e5 #km/s
 
     lines = ['Halpha','Hbeta', 'Hgamma','HeII4686','OIII','NIII','SII']
@@ -77,19 +77,29 @@ def line_finder(wave, flux,ivar,z):
     
     
     HB_center = list(abs(wave-4861.4)).index(min(abs(wave - 4861.4)))
-    HBroi = wave[HB_center - 500:HB_center + 500]
-    HBflux = flux[HB_center - 500:HB_center + 500]
-    HBsigma = np.sqrt(1/ivar[HB_center - 500:HB_center + 500])
+    HBmask = mask[HB_center - 500:HB_center + 500]
+    HBroi = ma.masked_array(wave[HB_center - 500:HB_center + 500], HBmask)
+    HBflux = ma.masked_array(flux[HB_center - 500:HB_center + 500], HBmask)
+    HBivar = ivar[HB_center - 500:HB_center + 500]
+    HBsigma = 1/np.sqrt(HBivar)
+    HBsigma = ma.masked_array(HBsigma, HBmask)
+    
     
     Ha_center = list(abs(wave-6562.79)).index(min(abs(wave - 6562.79)))
-    Haroi = wave[Ha_center - 300:Ha_center + 300]
-    Haflux = flux[Ha_center - 300:Ha_center + 300]
-    Hasigma = np.sqrt(1/ivar[Ha_center - 300:Ha_center + 300])
+    Hamask = mask[Ha_center - 300:Ha_center + 300]
+    Haroi = ma.masked_array(wave[Ha_center - 300:Ha_center + 300], Hamask)
+    Haflux = ma.masked_array(flux[Ha_center - 300:Ha_center + 300], Hamask)
+    Haivar = ivar[Ha_center - 300:Ha_center + 300]
+    Hasigma = 1/np.sqrt(Haivar)
+    Hasigma = ma.masked_array(Hasigma, Hamask)
     
     NIII_center = list(abs(wave-4200)).index(min(abs(wave - 4200)))
-    NIIIroi = wave[NIII_center- 200:NIII_center+200]
-    NIIIflux = flux[NIII_center- 200:NIII_center+200]
-    NIIIsigma = np.sqrt(1/ivar[NIII_center - 200:NIII_center + 200])
+    NIIImask = mask[NIII_center - 200:NIII_center + 200]
+    NIIIroi = ma.masked_array(wave[NIII_center- 200:NIII_center+200], NIIImask)
+    NIIIflux = ma.masked_array(flux[NIII_center- 200:NIII_center+200], NIIImask)    
+    NIIIivar = ivar[NIII_center - 200:NIII_center + 200]
+    NIIIsigma = 1/np.sqrt(NIIIivar)
+    NIIIsigma = ma.masked_array(NIIIsigma, NIIImask)
     
     
     HBopt, HBcov = curve_fit(triplegaus, HBroi[~HBroi.mask], HBflux[~HBlux.mask], \
@@ -258,7 +268,7 @@ def TDE_filter(linetable, flux):
     i = lines.index('OIII')
     if linetable['Chi Square'][i] < 2 and linetable['Chi Square'][i] > 0.5: # check for decent fit
         if abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 5 and linetable['e_Height'][i] > 0\
-        and linetable['Height'][i]/linetable['e_Height'][i] > 10 and linetable['Velocity'][i] > 50:
+        and linetable['Height'][i]/linetable['e_Height'][i] > 10 and linetable['Velocity'][i] > 10:
             score -= 1.1
 
     #Blueness
