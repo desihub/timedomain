@@ -1,0 +1,132 @@
+trigger_path  : './OUTPUT/O3REAL/'
+real_or_sim: 'real' #must switch between 'sim' and 'real'
+debug : False
+
+BBH_propid : 2019A-0235
+BNS_propid : 2019A-0205
+propid_Rem : propidREM
+propid_BH : propideBH
+
+# camera
+camera : 'decam'
+
+#resolution
+resolution : 64 # default, resolution element on order of ccd area size
+gif_resolution : 0.1 #with jims updated code 3=publication,1=website,0.1=8bit
+#resolution : 128 # roughly 4 ccds
+#resolution : 64 # very fast, debuging, roughly 1/4 of the camera size
+
+do_make_maps: True
+do_make_hexes: True
+do_make_jsons: True
+do_make_gifs: True
+
+allSky: True
+
+
+start_of_season : 57444.
+end_of_season : 57996.
+
+sendEmailsToEveryone : True
+primaryemails : ['djbrout@gmail.com', 'alyssag94@brandeis.edu','annis@fnal.gov','marcelle@brandeis.edu']
+sendtexts : True
+
+ishalfnight: False
+isfirsthalf: False
+issecondhalf: False
+
+skipjson: False
+
+probHasNS_threshold: .5
+
+
+days_since_burst: 0.
+
+
+forceProbHasNS: False
+probHasNS: 0.
+
+events_observed : ['GW150914' , 'GW151226']
+
+# Static observing params
+area_per_hex : 3.0 # sq deg
+overhead : 30. #sec
+
+# Optimization params
+resolution: 128 #for map making
+
+
+distance : 1.
+force_distance : True
+
+skipAll : False
+skipPlots: False
+
+default_map_name : bayestar.fits
+
+# economics analysis
+time_budget_for_NS : 20. # hours, assuming 5 nights and 10hrs/night, 3/5 for NS
+time_budget_for_BH : 20. # hours, assuming 5 nights and 10hrs/night, 2/5 for BH
+hours_lost_to_weather_for_NS : 0
+hours_lost_to_weather_for_BH : 0
+rate_of_bh_in_O2: 20.0  # n/yr, BH merger triggers per year in observing run 2
+rate_of_ns_in_O2:  20.0  # n/yr, NS merger triggers per year in observing run 2
+
+# epoch structures. For each epoch the begin date must be set
+# NS strategy
+nepochs_NS : 4
+epoch1_NS  : 0 # start of epoch 1 in days since burst
+epoch2_NS  : 2 # start of epoch 2 in days since burst
+epoch3_NS  : 4 # start of epoch 3 in days since burst
+enddate_NS : 10 # termination time of observations in days since burst
+
+# BH strategy
+nepochs_BH : 3
+epoch1_BH  : 0 # start of epoch 1 in days since burst
+epoch2_BH  : 1 # start of epoch 2 in days since burst
+epoch3_BH  : 14 # start of epoch 3 in days since burst
+enddate_BH : 18 # termination time of observations in days since burst
+
+## NS strategy
+#exposure_length_NS : [ 90., 90. ] #sec
+#exposure_filter_NS : [ 'g', 'z' ]
+#maxHexesPerSlot_NS : 6
+#exposure_tiling_NS : [ 9, 9 ]
+## BH strategy
+#exposure_length_BH : [ 90., ] #sec
+#exposure_filter_BH : [ 'i', ]
+#exposure_tiling_BH : [ 10, ]
+#maxHexesPerSlot_BH : 18  # related to maxHexesPerSlot_NS by x3 for x3 less images/hex, so same amount of time
+
+# Remnant strategy
+exposure_length_Rem : [ 60., 90. ] #sec
+exposure_filter_Rem : [ 'i', 'z']
+maxHexesPerSlot_Rem : 6
+exposure_tiling_Rem : [ 0, 5 ]
+# BH strategy
+exposure_length_BH : [ 90., ] #sec
+exposure_filter_BH : [ 'r', ]
+exposure_tiling_BH : [ 10, ]
+maxHexesPerSlot_BH : 18  # related to maxHexesPerSlot_NS by x3 for x3 less images/hex, so same amount of time
+max_number_of_hexes_to_do : 10000
+
+
+
+
+
+
+
+
+####Only used for running recycler.py standalone!####
+
+trigger_id : "S190630ag"
+wrap_all_triggers : False
+
+mjd : 57974.3530295
+force_mjd : False
+
+recycler_mjd : 57979.5
+force_recycler_mjd : False
+
+skymap_filename : './OUTPUT/O3REAL/S190630ag/bayestar/bayestar.fits.gz'
+

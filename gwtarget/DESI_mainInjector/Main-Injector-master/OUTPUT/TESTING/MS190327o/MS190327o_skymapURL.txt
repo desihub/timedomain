@@ -1,0 +1,1 @@
+https://gracedb.ligo.org/api/superevents/MS190327o/files/bayestar.fits.gz

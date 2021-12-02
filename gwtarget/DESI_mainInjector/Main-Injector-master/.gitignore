@@ -1,0 +1,4 @@
+*.pyc
+*~
+python/*.pyc
+python/*~
