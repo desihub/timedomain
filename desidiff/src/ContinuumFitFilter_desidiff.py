@@ -68,61 +68,58 @@ def Combine_multifilt(wave,flux, mask,ivar):
         return difwave_single,difflux_single,difmask_single,difivar_single
        
 
-def line_finder(wave, flux,ivar,mask,z):
+def line_finder(wave, flux,ivar,z):
     c = 2.99e5 #km/s
 
-    lines = ['Halpha','Hbeta', 'Hgamma','HeII4686','OIII','NIII']
-    restwavelengths = [6562,4861,4340,4686,5007,4100]
+    lines = ['Halpha','Hbeta', 'Hgamma','HeII4686','OIII','NIII','SII']
+    restwavelengths = [6562,4861,4340,4686,5007,4100, 6732]
     
-    wave,flux,mask,ivar = Combine_multifilt(wave,flux,mask,ivar)
-    wave = wave/(1+z)
-
+    
+    
     HB_center = list(abs(wave-4861.4)).index(min(abs(wave - 4861.4)))
-    HBmask = mask[HB_center - 500:HB_center + 500]
-    HBroi = ma.masked_array(wave[HB_center - 500:HB_center + 500], HBmask)
-    HBflux = ma.masked_array(flux[HB_center - 500:HB_center + 500], HBmask)
-    HBivar = ivar[HB_center - 500:HB_center + 500]
-    HBsigma = 1/np.sqrt(HBivar)
-    HBsigma = ma.masked_array(HBsigma, HBmask)
-    
+    HBroi = wave[HB_center - 500:HB_center + 500]
+    HBflux = flux[HB_center - 500:HB_center + 500]
+    HBsigma = np.sqrt(1/ivar[HB_center - 500:HB_center + 500])
     
     Ha_center = list(abs(wave-6562.79)).index(min(abs(wave - 6562.79)))
-    Hamask = mask[Ha_center - 300:Ha_center + 300]
-    Haroi = ma.masked_array(wave[Ha_center - 300:Ha_center + 300], Hamask)
-    Haflux = ma.masked_array(flux[Ha_center - 300:Ha_center + 300], Hamask)
-    Haivar = ivar[Ha_center - 300:Ha_center + 300]
-    Hasigma = 1/np.sqrt(Haivar)
-    Hasigma = ma.masked_array(Hasigma, Hamask)
+    Haroi = wave[Ha_center - 300:Ha_center + 300]
+    Haflux = flux[Ha_center - 300:Ha_center + 300]
+    Hasigma = np.sqrt(1/ivar[Ha_center - 300:Ha_center + 300])
     
     NIII_center = list(abs(wave-4200)).index(min(abs(wave - 4200)))
-    NIIImask = mask[NIII_center - 200:NIII_center + 200]
-    NIIIroi = ma.masked_array(wave[NIII_center- 200:NIII_center+200], NIIImask)
-    NIIIflux = ma.masked_array(flux[NIII_center- 200:NIII_center+200], NIIImask)    
-    NIIIivar = ivar[NIII_center - 200:NIII_center + 200]
-    NIIIsigma = 1/np.sqrt(NIIIivar)
-    NIIIsigma = ma.masked_array(NIIIsigma, NIIImask)
-
-    try:
-        HBopt, HBcov = curve_fit(triplegaus, HBroi[~HBroi.mask], HBflux[~HBflux.mask], \
-                             p0 = [1,4686,3,1,4861,5,5,5007,0.125],sigma = HBsigma[~HBsigma.mask], \
-                             bounds = (0,np.inf), maxfev = 3000)
-    except ValueError: 
-        HBopt = [1,1,1,1,1,1,1,1,1]
-        HBcov = np.ones((9,9))
-    try:
-        Haopt, Hacov = curve_fit(singlegaus, Haroi[~Haroi.mask], Haflux[~Haflux.mask], \
-                         p0 = [3,6562,5],sigma = Hasigma[~Hasigma.mask], bounds = (0,np.inf),maxfev = 3000)
-    except ValueError:
-        Haopt = [1,1,1]
-        Hacov = np.ones((3,3))
+    NIIIroi = wave[NIII_center- 200:NIII_center+200]
+    NIIIflux = flux[NIII_center- 200:NIII_center+200]
+    NIIIsigma = np.sqrt(1/ivar[NIII_center - 200:NIII_center + 200])
     
-    try:
-        NIIIopt, NIIIcov = curve_fit(doublegaus, NIIIroi[~NIIIroi.mask], NIIIflux[~NIIIflux.mask], \
-                     p0 = [1,4100,2,1,4340,3],sigma = NIIIsigma[~NIIIsigma.mask], \
-                                     bounds = (0,np.inf),maxfev = 3000)
-    except ValueError:
-        NIIIopt = [1,1,1,1,1,1]
-        NIIIcov = np.ones((6,6))
+    
+    HBopt, HBcov = curve_fit(triplegaus, HBroi[~HBroi.mask], HBflux[~HBlux.mask], \
+                             p0 = [1,4686,3,1,4861,5,5,5007,0.125],sigma = HBsigma[~HBsigma.mask], \
+                             bounds = (0,np.inf), maxfev = 3000, absolute_sigma = True)
+    
+    Haopt, Hacov = curve_fit(doublegaus, Haroi[~Haroi.mask], Haflux[~Haflux.mask], \
+                         p0 = [3,6562,5,1,6732,1],sigma = Hasigma[~Hasigma.mask], bounds = (0,np.inf), \
+                             maxfev = 3000, absolute_sigma = True)
+   
+    NIIIopt, NIIIcov = curve_fit(doublegaus, NIIIroi[~NIIIroi.mask], NIIIflux[~NIIIflux.mask], \
+                     p0 = [1,4100,2,1,4340,3],sigma = NIIIsigma[~NIIIsigma.mask], bounds = (0,np.inf), \
+                                 maxfev = 3000,absolute_sigma = True)
+    
+    
+    Haexp = doublegaus(Haroi, *Haopt)
+    rHa = Haflux - Haexp
+    Hachisq = np.sum(rHa**2/Hasigma**2)
+    Hachisq = Hachisq/(len(Haroi)-len(Haopt))
+    
+    HBexp = triplegaus(HBroi, *HBopt)
+    rHB = HBflux - HBexp
+    HBchisq = np.sum(rHB**2/HBsigma**2)
+    HBchisq = HBchisq/(len(HBroi)-len(HBopt))
+    
+    
+    NIIIexp = doublegaus(NIIIroi, *NIIIopt)
+    rNIII = NIIIflux - NIIIexp
+    NIIIchisq = np.sum(rNIII**2/NIIIsigma**2)
+    NIIIchisq = NIIIchisq/(len(NIIIroi)-len(NIIIopt))
     
     
     heights = []
@@ -132,69 +129,76 @@ def line_finder(wave, flux,ivar,mask,z):
     sigmas = []
     sigmas_err = []
     vs = []
-    variance = []
+    chi2s = []
     
     heights.append(Haopt[0]) #Ha data
     means.append(Haopt[1])
     sigmas.append(Haopt[2])
     vs.append((Haopt[2]*2.355/Haopt[1])*c)
-    heights_err.append((Hacov[0][0])**2)
-    means_err.append((Hacov[1][1])**2)
-    sigmas_err.append((Hacov[2][2])**2)
-    variance.append(np.mean(1/ivar[Ha_center - 300:Ha_center + 300]))
-    
+    heights_err.append(np.sqrt(Hacov[0][0]))
+    means_err.append(np.sqrt(Hacov[1][1]))
+    sigmas_err.append(np.sqrt(Hacov[2][2]))
+    chi2s.append(Hachisq)
     
     heights.append(HBopt[3]) #HB data
     means.append(HBopt[4])
     sigmas.append(HBopt[5])
     vs.append((HBopt[5]*2.355/HBopt[4])*c)
-    heights_err.append((HBcov[3][3])**2)
-    means_err.append((HBcov[4][4])**2)
-    sigmas_err.append((HBcov[5][5])**2)
-    variance.append(np.mean(1/ivar[HB_center - 500:HB_center + 500]))
+    heights_err.append(np.sqrt(HBcov[3][3]))
+    means_err.append(np.sqrt(HBcov[4][4]))
+    sigmas_err.append(np.sqrt(HBcov[5][5]))
+    chi2s.append(HBchisq)
     
     heights.append(NIIIopt[3]) #Hgamma data
     means.append(NIIIopt[4])
     sigmas.append(NIIIopt[5])
     vs.append((NIIIopt[5]*2.355/NIIIopt[4])*c)
-    heights_err.append((NIIIcov[3][3])**2)
-    means_err.append((NIIIcov[4][4])**2)
-    sigmas_err.append((NIIIcov[5][5])**2)
-    variance.append(np.mean(1/ivar[NIII_center - 200:NIII_center + 200]))     
+    heights_err.append(np.sqrt(NIIIcov[3][3]))
+    means_err.append(np.sqrt(NIIIcov[4][4]))
+    sigmas_err.append(np.sqrt(NIIIcov[5][5]))
+    chi2s.append(NIIIchisq)
          
     heights.append(HBopt[0]) #HeII data
     means.append(HBopt[1])
     sigmas.append(HBopt[2])
     vs.append((HBopt[2]*2.355/HBopt[1])*c)
-    heights_err.append((HBcov[0][0])**2)
-    means_err.append((HBcov[1][1])**2)
-    sigmas_err.append((HBcov[2][2])**2)
-    variance.append(np.mean(1/ivar[HB_center - 500:HB_center + 500]))
+    heights_err.append(np.sqrt(HBcov[0][0]))
+    means_err.append(np.sqrt(HBcov[1][1]))
+    sigmas_err.append(np.sqrt(HBcov[2][2]))
+    chi2s.append(HBchisq)
     
     heights.append(HBopt[6]) #OIII data
     means.append(HBopt[7])
     sigmas.append(HBopt[8])
     vs.append((HBopt[8]*2.355/HBopt[7])*c)
-    heights_err.append((HBcov[6][6])**2)
-    means_err.append((HBcov[7][7])**2)
-    sigmas_err.append((HBcov[8][8])**2)   
-    variance.append(np.mean(1/ivar[HB_center - 500:HB_center + 500]))
+    heights_err.append(np.sqrt(HBcov[6][6]))
+    means_err.append(np.sqrt(HBcov[7][7]))
+    sigmas_err.append(np.sqrt(HBcov[8][8]))   
+    chi2s.append(HBchisq)
 
     heights.append(NIIIopt[0])#NIII data
     means.append(NIIIopt[1])
     sigmas.append(NIIIopt[2])
     vs.append((NIIIopt[2]*2.355/NIIIopt[1])*c)
-    heights_err.append((NIIIcov[0][0])**2)
-    means_err.append((NIIIcov[1][1])**2)
-    sigmas_err.append((NIIIcov[2][2])**2)
-    variance.append(np.mean(1/ivar[NIII_center - 200:NIII_center + 200]))
+    heights_err.append(np.sqrt(NIIIcov[0][0]))
+    means_err.append(np.sqrt(NIIIcov[1][1]))
+    sigmas_err.append(np.sqrt(NIIIcov[2][2]))
+    chi2s.append(NIIIchisq)
     
-
+    heights.append(Haopt[3]) #SII data
+    means.append(Haopt[4])
+    sigmas.append(Haopt[5])
+    vs.append((Haopt[5]*2.355/Haopt[4])*c)
+    heights_err.append(np.sqrt(Hacov[1][1]))
+    means_err.append(np.sqrt(Hacov[2][2]))
+    sigmas_err.append(np.sqrt(Hacov[3][3]))
+    chi2s.append(Hachisq)
+    
     
     
     linetable = Table([lines,restwavelengths,heights,heights_err,means,means_err,sigmas,sigmas_err,\
-                      vs,variance],names = ('Line','Wavelength','Height','e_Height','Mean','e_Mean','Sigma',\
-                                   'e_Sigma','Velocity','Variance'))
+                      vs,chi2s],names = ('Line','Wavelength','Height','e_Height','Mean','e_Mean','Sigma',\
+                                   'e_Sigma','Velocity','Chi Square'))
     linetable = linetable.to_pandas()
     return linetable
 
@@ -212,62 +216,51 @@ def TDE_filter(linetable, flux):
     
     #Halpha
     i = lines.index('Halpha')
-    if linetable['e_Height'][i]/linetable['Height'][i] < 0.05 and \
-            linetable['Height'][i]> 3*linetable['Variance'][i] and \
-            linetable['e_Sigma'][i]/linetable['Sigma'][i] < 0.05 and linetable['Velocity'][i] > 500\
-            and abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 20 and \
-            linetable['e_Mean'][i] < 30:
-        score +=1
-        filter_pass.append('Halpha')
+    if linetable['Chi Square'][i] < 2 and linetable['Chi Square'][i] > 0.5: # check for decent fit
+        if abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 5 and linetable['e_Height'][i] > 0\
+        and linetable['Height'][i]/linetable['e_Height'][i] > 10 and linetable['Velocity'][i] > 500:
+            score += 1
+            filter_pass.append('Halpha')
+               
     
     #HBeta
     i = lines.index('Hbeta')
-    if linetable['e_Height'][i]/linetable['Height'][i] < 0.05 and \
-            linetable['Height'][i]> 3*linetable['Variance'][i] and \
-            linetable['e_Sigma'][i]/linetable['Sigma'][i] < 0.05 and linetable['Velocity'][i] > 400\
-            and abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 20 and \
-            linetable['e_Mean'][i] < 30:
-        score +=1
-        filter_pass.append('Hbeta')
+    if linetable['Chi Square'][i] < 2 and linetable['Chi Square'][i] > 0.5: # check for decent fit
+        if abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 5 and linetable['e_Height'][i] > 0\
+        and linetable['Height'][i]/linetable['e_Height'][i] > 10 and linetable['Velocity'][i] > 400:
+            score += 1
+            filter_pass.append('Hbeta')
         
     #Hgamma
     i = lines.index('Hgamma')
-    if linetable['e_Height'][i]/linetable['Height'][i] < 0.05 and \
-            linetable['Height'][i]> 3*linetable['Variance'][i] and \
-            linetable['e_Sigma'][i]/linetable['Sigma'][i] < 0.05 and linetable['Velocity'][i] > 300\
-            and abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 20 and \
-            linetable['e_Mean'][i] < 30:
-        score +=1
-        filter_pass.append('Hgamma')
+    if linetable['Chi Square'][i] < 2 and linetable['Chi Square'][i] > 0.5: # check for decent fit
+        if abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 5 and linetable['e_Height'][i] > 0\
+        and linetable['Height'][i]/linetable['e_Height'][i] > 10 and linetable['Velocity'][i] > 300:
+            score += 1
+            filter_pass.append('Hgamma')
     #HeII4686
     i = lines.index('HeII4686')
-    if linetable['e_Height'][i]/linetable['Height'][i] < 0.05 and \
-            linetable['Height'][i]> 3*linetable['Variance'][i] and \
-            linetable['e_Sigma'][i]/linetable['Sigma'][i] < 0.05 and linetable['Velocity'][i] > 400\
-            and abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 20 and \
-            linetable['e_Mean'][i] < 30:
-        score +=1
-        filter_pass.append('HeII4686')
+    if linetable['Chi Square'][i] < 2 and linetable['Chi Square'][i] > 0.5: # check for decent fit
+        if abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 5 and linetable['e_Height'][i] > 0\
+        and linetable['Height'][i]/linetable['e_Height'][i] > 10 and linetable['Velocity'][i] > 400:
+            score += 1
+            filter_pass.append('HeII4686')
     #NIII
     i = lines.index('NIII')
-    if linetable['e_Height'][i]/linetable['Height'][i] < 0.05 and \
-            linetable['Height'][i]> 3*linetable['Variance'][i] and \
-            linetable['e_Sigma'][i]/linetable['Sigma'][i] < 0.05 and linetable['Velocity'][i] > 300\
-            and abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 20 and \
-            linetable['e_Mean'][i] < 30:
-        score +=1
-        filter_pass.append('NIII')
+    if linetable['Chi Square'][i] < 2 and linetable['Chi Square'][i] > 0.5: # check for decent fit
+        if abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 5 and linetable['e_Height'][i] > 0\
+        and linetable['Height'][i]/linetable['e_Height'][i] > 10 and linetable['Velocity'][i] > 300:
+            score += 1
+            filter_pass.append('NIII')
 
     
     #OIII
     i = lines.index('OIII')
-    if linetable['e_Height'][i]/linetable['Height'][i] < 0.05 and \
-            linetable['Height'][i]> 3*linetable['Variance'][i] and \
-            linetable['e_Sigma'][i]/linetable['Sigma'][i] < 0.05 and linetable['Velocity'][i] > 10\
-            and abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 20 and \
-            linetable['e_Mean'][i] < 30:
-        score -= 1.1
-   
+    if linetable['Chi Square'][i] < 2 and linetable['Chi Square'][i] > 0.5: # check for decent fit
+        if abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 5 and linetable['e_Height'][i] > 0\
+        and linetable['Height'][i]/linetable['e_Height'][i] > 10 and linetable['Velocity'][i] > 10:
+            score -= 1.1
+
     #Blueness
     if blue_end/red_end >= 2:
         score += 1
@@ -283,29 +276,26 @@ def Hline_filter(linetable):
 
     #Halpha
     i = lines.index('Halpha')
-    if linetable['e_Height'][i]/linetable['Height'][i] < 0.05 and \
-            linetable['e_Sigma'][i]/linetable['Sigma'][i] < 0.05 and linetable['Velocity'][i] > 75\
-            and abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 20 and \
-            linetable['e_Mean'][i] < 30:
-        score += linetable['Height'][i]/linetable['Variance'][i]
-        filter_pass.append('Halpha')
+    if linetable['Chi Square'][i] < 2 and linetable['Chi Square'][i] > 0.5: # check for decent fit
+        if abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 5 and linetable['e_Height'][i] > 0\
+        and linetable['Height'][i]/linetable['e_Height'][i] > 15 and linetable['Velocity'][i] > 75:
+            score += 1
+            filter_pass.append('Halpha')
     
     #HBeta
     i = lines.index('Hbeta')
-    if linetable['e_Height'][i]/linetable['Height'][i] < 0.05 and \
-            linetable['e_Sigma'][i]/linetable['Sigma'][i] < 0.05 and linetable['Velocity'][i] > 75\
-            and abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 20 and \
-            linetable['e_Mean'][i] < 30:
-        score += linetable['Height'][i]/linetable['Variance'][i]
-        filter_pass.append('Hbeta')
+    if linetable['Chi Square'][i] < 2 and linetable['Chi Square'][i] > 0.5: # check for decent fit
+        if abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 5 and linetable['e_Height'][i] > 0\
+        and linetable['Height'][i]/linetable['e_Height'][i] > 15 and linetable['Velocity'][i] > 75:
+            score += 1
+            filter_pass.append('Hbeta')
         
     #Hgamma
     i = lines.index('Hgamma')
-    if linetable['e_Height'][i]/linetable['Height'][i] < 0.05 and \
-            linetable['e_Sigma'][i]/linetable['Sigma'][i] < 0.05 and linetable['Velocity'][i] > 50\
-            and abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 20 and \
-            linetable['e_Mean'][i] < 30:
-        score += linetable['Height'][i]/linetable['Variance'][i]
-        filter_pass.append('Hgamma')
+    if linetable['Chi Square'][i] < 2 and linetable['Chi Square'][i] > 0.5: # check for decent fit
+        if abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 5 and linetable['e_Height'][i] > 0\
+        and linetable['Height'][i]/linetable['e_Height'][i] > 15 and linetable['Velocity'][i] > 75:
+            score += 1
+            filter_pass.append('Hgamma')
   
     return(score)
