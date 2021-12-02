@@ -73,7 +73,7 @@ def line_finder(wave, flux,ivar,mask,z):
 
     lines = ['Halpha','Hbeta', 'Hgamma','HeII4686','OIII','NIII','SII']
     restwavelengths = [6562,4861,4340,4686,5007,4100, 6732]
-    
+    wave,flux,mask, ivar = Combine_multifilt(wave,flux, mask,ivar)
     
     
     HB_center = list(abs(wave-4861.4)).index(min(abs(wave - 4861.4)))
@@ -102,7 +102,7 @@ def line_finder(wave, flux,ivar,mask,z):
     NIIIsigma = ma.masked_array(NIIIsigma, NIIImask)
     
     
-    HBopt, HBcov = curve_fit(triplegaus, HBroi[~HBroi.mask], HBflux[~HBlux.mask], \
+    HBopt, HBcov = curve_fit(triplegaus, HBroi[~HBroi.mask], HBflux[~HBflux.mask], \
                              p0 = [1,4686,3,1,4861,5,5,5007,0.125],sigma = HBsigma[~HBsigma.mask], \
                              bounds = (0,np.inf), maxfev = 3000, absolute_sigma = True)
     
