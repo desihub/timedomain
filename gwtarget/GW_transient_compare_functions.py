@@ -1012,4 +1012,12 @@ def plot_cartmap_tiles(lvc_healpix_file, levels=[0.5, 0.9], angsize=3., tile_ra=
 
     return fig
 
-# Unit tests????
+def disruptive_mode():
+    pass
+
+def nondisruptive_mode():
+    pass
+
+if __name__ == "__main__":
+    pass
+    # Unit tests????
