@@ -1,0 +1,2 @@
+sendEveryoneEmails = True
+sendEveryoneTexts = True
