@@ -104,7 +104,7 @@ def line_finder(wave, flux,ivar,mask,z):
     try:
         HBopt, HBcov = curve_fit(triplegaus, HBroi[~HBroi.mask], HBflux[~HBflux.mask], \
                                  p0 = [1,4686,3,1,4861,5,5,5007,0.125],sigma = HBsigma[~HBsigma.mask], \
-                                 maxfev = 3000, absolute_sigma = True)
+                                 maxfev = 3000, absolute_sigma = True, check_finite = False)
     except RuntimeError:
         HBopt = [1,1,1,1,1,1,1,1,1]
         HBcov = np.ones((9,9))
@@ -112,14 +112,14 @@ def line_finder(wave, flux,ivar,mask,z):
     try:
         Haopt, Hacov = curve_fit(doublegaus, Haroi[~Haroi.mask], Haflux[~Haflux.mask], \
                              p0 = [3,6562,5,1,6732,1],sigma = Hasigma[~Hasigma.mask], \
-                                 maxfev = 3000, absolute_sigma = True)
+                                 maxfev = 3000, absolute_sigma = True, check_finite = False)
     except RuntimeError:
         Haopt = [1,1,1,1,1,1]
         Hacov = np.ones((6,6))
     try:
         NIIIopt, NIIIcov = curve_fit(doublegaus, NIIIroi[~NIIIroi.mask], NIIIflux[~NIIIflux.mask], \
                          p0 = [1,4100,2,1,4340,3],sigma = NIIIsigma[~NIIIsigma.mask], \
-                                     maxfev = 3000,absolute_sigma = True)
+                                     maxfev = 3000,absolute_sigma = True, check_finite = False)
     except RuntimeError:
         NIIIopt = [1,1,1,1,1,1]
         NIIIcov = np.ones((6,6))
@@ -253,21 +253,21 @@ def TDE_filter(linetable, flux):
         
     #Hgamma
     i = lines.index('Hgamma')
-    if linetable['Chi Square'][i] < 2 and linetable['Chi Square'][i] > 0.5: # check for decent fit
+    if linetable['Chi Square'][i] < 3 and linetable['Chi Square'][i] > 0.5: # check for decent fit
         if abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 5 and linetable['e_Height'][i] > 0\
         and linetable['Height'][i]/linetable['e_Height'][i] > 10 and linetable['Velocity'][i] > 300:
             score += 1
             filter_pass.append('Hgamma')
     #HeII4686
     i = lines.index('HeII4686')
-    if linetable['Chi Square'][i] < 2 and linetable['Chi Square'][i] > 0.5: # check for decent fit
+    if linetable['Chi Square'][i] < 3 and linetable['Chi Square'][i] > 0.5: # check for decent fit
         if abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 5 and linetable['e_Height'][i] > 0\
         and linetable['Height'][i]/linetable['e_Height'][i] > 10 and linetable['Velocity'][i] > 400:
             score += 1
             filter_pass.append('HeII4686')
     #NIII
     i = lines.index('NIII')
-    if linetable['Chi Square'][i] < 2 and linetable['Chi Square'][i] > 0.5: # check for decent fit
+    if linetable['Chi Square'][i] < 3 and linetable['Chi Square'][i] > 0.5: # check for decent fit
         if abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 5 and linetable['e_Height'][i] > 0\
         and linetable['Height'][i]/linetable['e_Height'][i] > 10 and linetable['Velocity'][i] > 300:
             score += 1
@@ -276,7 +276,7 @@ def TDE_filter(linetable, flux):
     
     #OIII
     i = lines.index('OIII')
-    if linetable['Chi Square'][i] < 2 and linetable['Chi Square'][i] > 0.5: # check for decent fit
+    if linetable['Chi Square'][i] < 3 and linetable['Chi Square'][i] > 0.5: # check for decent fit
         if abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 5 and linetable['e_Height'][i] > 0\
         and linetable['Height'][i]/linetable['e_Height'][i] > 10 and linetable['Velocity'][i] > 10:
             score -= 1.1
@@ -296,7 +296,7 @@ def Hline_filter(linetable):
 
     #Halpha
     i = lines.index('Halpha')
-    if linetable['Chi Square'][i] < 2 and linetable['Chi Square'][i] > 0.5: # check for decent fit
+    if linetable['Chi Square'][i] < 3 and linetable['Chi Square'][i] > 0.5: # check for decent fit
         if abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 5 and linetable['e_Height'][i] > 0\
         and linetable['Height'][i]/linetable['e_Height'][i] > 15 and linetable['Velocity'][i] > 75:
             score += 1
@@ -304,7 +304,7 @@ def Hline_filter(linetable):
     
     #HBeta
     i = lines.index('Hbeta')
-    if linetable['Chi Square'][i] < 2 and linetable['Chi Square'][i] > 0.5: # check for decent fit
+    if linetable['Chi Square'][i] < 3 and linetable['Chi Square'][i] > 0.5: # check for decent fit
         if abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 5 and linetable['e_Height'][i] > 0\
         and linetable['Height'][i]/linetable['e_Height'][i] > 15 and linetable['Velocity'][i] > 75:
             score += 1
@@ -312,7 +312,7 @@ def Hline_filter(linetable):
         
     #Hgamma
     i = lines.index('Hgamma')
-    if linetable['Chi Square'][i] < 2 and linetable['Chi Square'][i] > 0.5: # check for decent fit
+    if linetable['Chi Square'][i] < 3 and linetable['Chi Square'][i] > 0.5: # check for decent fit
         if abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 5 and linetable['e_Height'][i] > 0\
         and linetable['Height'][i]/linetable['e_Height'][i] > 15 and linetable['Velocity'][i] > 75:
             score += 1
