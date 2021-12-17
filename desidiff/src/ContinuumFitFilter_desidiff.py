@@ -245,7 +245,7 @@ def TDE_filter(linetable, flux):
     
     #HBeta
     i = lines.index('Hbeta')
-    if linetable['Chi Square'][i] < 2 and linetable['Chi Square'][i] > 0.5: # check for decent fit
+    if linetable['Chi Square'][i] < 1.5: # check for decent fit
         if abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 5 and linetable['e_Height'][i] > 0\
         and linetable['Height'][i]/linetable['e_Height'][i] > 10 and linetable['Velocity'][i] > 400:
             score += 1
@@ -253,21 +253,21 @@ def TDE_filter(linetable, flux):
         
     #Hgamma
     i = lines.index('Hgamma')
-    if linetable['Chi Square'][i] < 3 and linetable['Chi Square'][i] > 0.5: # check for decent fit
+    if linetable['Chi Square'][i] < 1.5: # check for decent fit
         if abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 5 and linetable['e_Height'][i] > 0\
         and linetable['Height'][i]/linetable['e_Height'][i] > 10 and linetable['Velocity'][i] > 300:
             score += 1
             filter_pass.append('Hgamma')
     #HeII4686
     i = lines.index('HeII4686')
-    if linetable['Chi Square'][i] < 3 and linetable['Chi Square'][i] > 0.5: # check for decent fit
+    if linetable['Chi Square'][i] < 1.5: # check for decent fit
         if abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 5 and linetable['e_Height'][i] > 0\
         and linetable['Height'][i]/linetable['e_Height'][i] > 10 and linetable['Velocity'][i] > 400:
             score += 1
             filter_pass.append('HeII4686')
     #NIII
     i = lines.index('NIII')
-    if linetable['Chi Square'][i] < 3 and linetable['Chi Square'][i] > 0.5: # check for decent fit
+    if linetable['Chi Square'][i] < 1.5: # check for decent fit
         if abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 5 and linetable['e_Height'][i] > 0\
         and linetable['Height'][i]/linetable['e_Height'][i] > 10 and linetable['Velocity'][i] > 300:
             score += 1
@@ -276,7 +276,7 @@ def TDE_filter(linetable, flux):
     
     #OIII
     i = lines.index('OIII')
-    if linetable['Chi Square'][i] < 3 and linetable['Chi Square'][i] > 0.5: # check for decent fit
+    if linetable['Chi Square'][i] < 1.5: # check for decent fit
         if abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 5 and linetable['e_Height'][i] > 0\
         and linetable['Height'][i]/linetable['e_Height'][i] > 10 and linetable['Velocity'][i] > 10:
             score -= 1.1
@@ -296,25 +296,25 @@ def Hline_filter(linetable):
 
     #Halpha
     i = lines.index('Halpha')
-    if linetable['Chi Square'][i] < 3 and linetable['Chi Square'][i] > 0.5: # check for decent fit
+    if linetable['Chi Square'][i] < 1.5: # check for decent fit
         if abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 5 and linetable['e_Height'][i] > 0\
-        and linetable['Height'][i]/linetable['e_Height'][i] > 15 and linetable['Velocity'][i] > 75:
+        and linetable['Height'][i]/linetable['e_Height'][i] > 12 and linetable['Velocity'][i] > 75:
             score += 1
             filter_pass.append('Halpha')
     
     #HBeta
     i = lines.index('Hbeta')
-    if linetable['Chi Square'][i] < 3 and linetable['Chi Square'][i] > 0.5: # check for decent fit
+    if linetable['Chi Square'][i] < 1.5: # check for decent fit
         if abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 5 and linetable['e_Height'][i] > 0\
-        and linetable['Height'][i]/linetable['e_Height'][i] > 15 and linetable['Velocity'][i] > 75:
+        and linetable['Height'][i]/linetable['e_Height'][i] > 12 and linetable['Velocity'][i] > 75:
             score += 1
             filter_pass.append('Hbeta')
         
     #Hgamma
     i = lines.index('Hgamma')
-    if linetable['Chi Square'][i] < 3 and linetable['Chi Square'][i] > 0.5: # check for decent fit
+    if linetable['Chi Square'][i] < 1.5: # check for decent fit
         if abs(linetable['Wavelength'][i] - linetable['Mean'][i]) < 5 and linetable['e_Height'][i] > 0\
-        and linetable['Height'][i]/linetable['e_Height'][i] > 15 and linetable['Velocity'][i] > 75:
+        and linetable['Height'][i]/linetable['e_Height'][i] > 12 and linetable['Velocity'][i] > 75:
             score += 1
             filter_pass.append('Hgamma')
   
