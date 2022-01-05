@@ -39,7 +39,7 @@ class UniqueViolationError(Error):
 class SkyPortal:
 
     #skyportal location and 
-    url = "http://desi2.lbl.gov:5000"
+    url = "https://desi-skyportal.lbl.gov"
     
     #skyportal token im a secret file
 #     secret_file = "/global/cscratch1/sd/akim/secrets/desi_sp.txt"
