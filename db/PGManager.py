@@ -2834,6 +2834,7 @@ if __name__ == "__main__":
         zbest_daily.fill_table()
         fibermap_daily.fill_table()
         exposure_tables_daily.fill_table()
+        everest_daily_fibermap.fill_table()
 
     elif args.action == "load-mosthosts":
         if not args.really_do:
