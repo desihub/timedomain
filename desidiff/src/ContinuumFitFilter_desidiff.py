@@ -72,53 +72,65 @@ def Combine_multifilt(wave,flux, mask,ivar):
         return difwave_single,difflux_single,difmask_single,difivar_single
        
 
-def line_finder(wave, flux,ivar,z):
+
+def line_finder(wave, flux,ivar,mask,z):
     c = 2.99e5 #km/s
 
     lines = ['Halpha','Hbeta', 'Hgamma','HeII4686','OIII5007','NIII','SII','OIII4959']
     restwavelengths = [6562,4861,4340,4686,5007,4100, 6732,4959]
     
+    wave,flux,mask, ivar = Combine_multifilt(wave,flux, mask,ivar)
     
     
     HB_center = list(abs(wave-4861.4)).index(min(abs(wave - 4861.4)))
-    HBroi = wave[HB_center - 500:HB_center + 500]
-    HBflux = flux[HB_center - 500:HB_center + 500]
-    HBsigma = np.sqrt(1/ivar[HB_center - 500:HB_center + 500])
+    HBmask = mask[HB_center - 500:HB_center + 500]
+    HBroi = ma.masked_array(wave[HB_center - 500:HB_center + 500], HBmask)
+    HBflux = ma.masked_array(flux[HB_center - 500:HB_center + 500], HBmask)
+    HBivar = ivar[HB_center - 500:HB_center + 500]
+    HBsigma = 1/np.sqrt(HBivar)
+    HBsigma = ma.masked_array(HBsigma, HBmask)
+    
     
     Ha_center = list(abs(wave-6562.79)).index(min(abs(wave - 6562.79)))
-    Haroi = wave[Ha_center - 300:Ha_center + 300]
-    Haflux = flux[Ha_center - 300:Ha_center + 300]
-    Hasigma = np.sqrt(1/ivar[Ha_center - 300:Ha_center + 300])
+    Hamask = mask[Ha_center - 300:Ha_center + 300]
+    Haroi = ma.masked_array(wave[Ha_center - 300:Ha_center + 300], Hamask)
+    Haflux = ma.masked_array(flux[Ha_center - 300:Ha_center + 300], Hamask)
+    Haivar = ivar[Ha_center - 300:Ha_center + 300]
+    Hasigma = 1/np.sqrt(Haivar)
+    Hasigma = ma.masked_array(Hasigma, Hamask)
     
     NIII_center = list(abs(wave-4200)).index(min(abs(wave - 4200)))
-    NIIIroi = wave[NIII_center- 200:NIII_center+200]
-    NIIIflux = flux[NIII_center- 200:NIII_center+200]
-    NIIIsigma = np.sqrt(1/ivar[NIII_center - 200:NIII_center + 200])
-    
+    NIIImask = mask[NIII_center - 200:NIII_center + 200]
+    NIIIroi = ma.masked_array(wave[NIII_center- 200:NIII_center+200], NIIImask)
+    NIIIflux = ma.masked_array(flux[NIII_center- 200:NIII_center+200], NIIImask)    
+    NIIIivar = ivar[NIII_center - 200:NIII_center + 200]
+    NIIIsigma = 1/np.sqrt(NIIIivar)
+    NIIIsigma = ma.masked_array(NIIIsigma, NIIImask)
     
     try:
-        HBopt, HBcov = curve_fit(quadgaus, HBroi, HBflux, \
-                                 p0 = [1,4686,3,1,4861,5,5,5007,0.125, 3, 4959,0.125],sigma = HBsigma, \
-                                 maxfev = 3000, absolute_sigma = True)
+        HBopt, HBcov = curve_fit(quadgaus, HBroi[~HBroi.mask], HBflux[~HBflux.mask], \
+                                 p0 = [1,4686,3,1,4861,5,5,5007,0.125, 3, 4959,0.125],sigma = HBsigma[~HBsigma.mask], \
+                                 maxfev = 3000, absolute_sigma = True, check_finite = False)
     except RuntimeError:
         HBopt = [1,1,1,1,1,1,1,1,1,1,1,1]
         HBcov = np.ones((12,12))
     
     try:
-        Haopt, Hacov = curve_fit(doublegaus, Haroi, Haflux, \
-                             p0 = [3,6562,5,1,6732,1],sigma = Hasigma, \
-                                 maxfev = 3000, absolute_sigma = True)
+        Haopt, Hacov = curve_fit(doublegaus, Haroi[~Haroi.mask], Haflux[~Haflux.mask], \
+                             p0 = [3,6562,5,1,6732,1],sigma = Hasigma[~Hasigma.mask], \
+                                 maxfev = 3000, absolute_sigma = True, check_finite = False)
     except RuntimeError:
         Haopt = [1,1,1,1,1,1]
         Hacov = np.ones((6,6))
     try:
-        NIIIopt, NIIIcov = curve_fit(doublegaus, NIIIroi, NIIIflux, \
-                         p0 = [1,4100,2,1,4340,3],sigma = NIIIsigma, \
-                                     maxfev = 3000,absolute_sigma = True)
+        NIIIopt, NIIIcov = curve_fit(doublegaus, NIIIroi[~NIIIroi.mask], NIIIflux[~NIIIflux.mask], \
+                         p0 = [1,4100,2,1,4340,3],sigma = NIIIsigma[~NIIIsigma.mask], \
+                                     maxfev = 3000,absolute_sigma = True, check_finite = False)
     except RuntimeError:
         NIIIopt = [1,1,1,1,1,1]
         NIIIcov = np.ones((6,6))
 
+    
     
     Haexp = doublegaus(Haroi, *Haopt)
     rHa = Haflux - Haexp
