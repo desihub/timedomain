@@ -42,3 +42,19 @@ def hasNothingToProcess(tps,group_tid,group_tp,group_night):
             hasNothing=False
             return hasNothing
     return hasNothing
+
+def processed(tid, tileid, date, petalid):
+    filename_conn = "/global/cfs/cdirs/desi/science/td/daily-search/transients_search.db"
+    try:
+        sqliteConnection = sqlite3.connect(filename_conn)
+        cursor = sqliteConnection.cursor()
+        sqlite_insert_query = """INSERT INTO unprocessed_exposures (TARGETID, TILEID, YYYYMMDD, PETAL) VALUES({0},{1},{2},{3})""".format(tid, tileid, date, petalid)
+        count = cursor.execute(sqlite_insert_query)
+        sqliteConnection.commit()
+        cursor.close()
+    except sqlite3.Error as error:
+        print("Failed to insert data into sqlite table", error)
+    finally:
+        if sqliteConnection:
+            sqliteConnection.close()
+            print("The SQLite connection is closed")
