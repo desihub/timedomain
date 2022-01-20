@@ -243,7 +243,7 @@ def line_finder(wave, flux,ivar,mask,z):
     
     
     
-def TDE_filter(linetable, tflux):
+def TDE_filter(linetable, flux):
     filter_pass = []
     score = 0
     lines = list(linetable['Line'])
