@@ -112,7 +112,7 @@ def line_finder(wave, flux,ivar,mask,z):
         HBopt, HBcov = curve_fit(quadgaus, HBroi[~HBroi.mask], HBflux[~HBflux.mask], \
                                  p0 = [1,4686,3,1,4861,5,5,5007,0.125, 3, 4959,0.125],sigma = HBsigma[~HBsigma.mask], \
                                  maxfev = 3000, absolute_sigma = True, check_finite = False)
-    except RuntimeError:
+    except (ValueError,RuntimeError) as e:
         HBopt = [1,1,1,1,1,1,1,1,1,1,1,1]
         HBcov = np.ones((12,12))
     
@@ -120,14 +120,14 @@ def line_finder(wave, flux,ivar,mask,z):
         Haopt, Hacov = curve_fit(doublegaus, Haroi[~Haroi.mask], Haflux[~Haflux.mask], \
                              p0 = [3,6562,5,1,6732,1],sigma = Hasigma[~Hasigma.mask], \
                                  maxfev = 3000, absolute_sigma = True, check_finite = False)
-    except RuntimeError:
+    except (ValueError,RuntimeError) as e:
         Haopt = [1,1,1,1,1,1]
         Hacov = np.ones((6,6))
     try:
         NIIIopt, NIIIcov = curve_fit(doublegaus, NIIIroi[~NIIIroi.mask], NIIIflux[~NIIIflux.mask], \
                          p0 = [1,4100,2,1,4340,3],sigma = NIIIsigma[~NIIIsigma.mask], \
                                      maxfev = 3000,absolute_sigma = True, check_finite = False)
-    except RuntimeError:
+    except (ValueError,RuntimeError) as e:
         NIIIopt = [1,1,1,1,1,1]
         NIIIcov = np.ones((6,6))
 
