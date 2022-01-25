@@ -149,7 +149,9 @@ def line_finder(wave, flux,ivar,mask,z):
     NIIIchisq = np.sum(rNIII**2/NIIIsigma**2)
     NIIIchisq = NIIIchisq/(len(NIIIroi)-len(NIIIopt))
     
-    
+    Hacov = abs(Hacov)
+    HBcov = abs(HBcov)
+    NIIIcov = abs(NIIIcov)
     heights = []
     heights_err = []
     means = []
