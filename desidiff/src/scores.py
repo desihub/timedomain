@@ -53,25 +53,32 @@ def perres_SN(y,ivar,mask,nsig=10):
         ans[k]=(ston>10).sum()
     return ans
 
-def perconv_SN(wave, y,ivar,mask,ncon=3,nsig=10):
-#     maskregions = [(5760,5780)]
-    maskregions=[]
-    newy=dict(y)
-    newivar=dict(ivar)
-    newmask=dict(mask)
-    for b in newmask.keys():
-        for m in maskregions:
-            newmask[b][numpy.logical_and(wave[b]>m[0], wave[b]<m[1])]=1        
-    
-    
-    ncon = numpy.zeros(ncon)+1.
-    for b in newy.keys():
-        newivar[b]=numpy.convolve(ivar[b],ncon,mode='valid')
-        newy[b] = numpy.convolve(y[b]*ivar[b],ncon,mode='valid')
-        newy[b] = newy[b]/newivar[b]
-        newmask[b]=numpy.convolve(mask[b],ncon,mode='valid')
+def perconv_SN(wave, y, ivar, mask, ncon=5, nsig=10):
+    newmask = dict(mask)
+    newston = dict(y)
+    newy = dict(y)
+    conk = numpy.zeros(ncon) + 1.
 
-    return perres_SN(newy,newivar, newmask,nsig=nsig)
+    nTrue = 0
+    for b in newston.keys():
+        # mask lines that are smaller than the ncov
+
+        f_logic = y[b]*numpy.sqrt(ivar[b]) > nsig/numpy.sqrt(ncon)
+        index=0
+        for _, g in groupby(f_logic):
+            ng  = sum(1 for _ in g)
+            if _ and ng<ncon//2:
+                newy[b][index:index+ng] = 0
+            index=index+ng
+
+        newston[b]=numpy.convolve(newy[b], conk, mode='valid') * numpy.sqrt(numpy.convolve(1/ivar[b], conk, mode='valid'))
+        newmask[b] = numpy.convolve(mask[b], conk, mode='valid')
+
+        w = numpy.where(newmask[b] == 0)[0]
+        for gb0,_ in groupby(newston[b][w] > nsig):
+            if gb0:
+                nTrue=nTrue+1
+    return nTrue
 
 def Hlines(wave, y,ivar,mask, z):
     target_wave = (6562.79, 4861.35, 4340.472, 4101.734, 3970.075)
