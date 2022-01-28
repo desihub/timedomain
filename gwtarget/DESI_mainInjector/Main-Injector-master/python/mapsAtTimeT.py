@@ -104,8 +104,8 @@ def manyDaysOfTotalProbability (
     dark = False
     isDark = []
     for time_since_start in np.arange(startOfDays,endOfDays,deltaTime) :
-        print "================================== ",
-        print "hours since Time Zero: {:5.1f}".format(time_since_start*24.),
+        print("================================== ", end=' ')
+        print("hours since Time Zero: {:5.1f}".format(time_since_start*24.), end=' ')
         totalProb, sunIsUp = totalProbability(obs, burst_mjd, start_mjd, time_since_start, \
             spatial, distance, distance_sig, \
             filter=filter, exposure=exposure, \
@@ -113,9 +113,9 @@ def manyDaysOfTotalProbability (
             kasen_fraction=kasen_fraction, data_dir = data_dir,
             simple_distance=simple_distance, simple_dist_err=simple_dist_err)
         if sunIsUp: 
-            print "\t ... the sun is up"
+            print("\t ... the sun is up")
         else:
-            print ""
+            print("")
         times.append(time_since_start)
         totalProbs.append(totalProb)
         if not dark and not sunIsUp:
@@ -123,10 +123,10 @@ def manyDaysOfTotalProbability (
         if dark and sunIsUp:
             dark = False ;# model sunrise
         isDark.append(dark)
-    print "================================== "
-    print "================================== ",
-    print "full 24 hours calculated"
-    print "================================== "
+    print("================================== ")
+    print("================================== ", end=' ')
+    print("full 24 hours calculated")
+    print("================================== ")
     totalProbs =np.array(totalProbs)
     times = np.array(times)
     isDark = np.array(isDark).astype(bool)
@@ -138,10 +138,10 @@ def manyDaysOfTotalProbability (
 
     # informational
     ix, = np.where(totalProbs > 0)
-    if verbose: print "total all-sky summed probability of detection (where > 0):"
-    if verbose: print totalProbs[ix]
-    if verbose: print "days since sunset:"
-    if verbose: print times[ix]
+    if verbose: print("total all-sky summed probability of detection (where > 0):")
+    if verbose: print(totalProbs[ix])
+    if verbose: print("days since sunset:")
+    if verbose: print(times[ix])
     #if verbose: print "isDark:"
     #if verbose: print isDark.astype(int)
     #if verbose: print "dark slots count:",darkCount.size
@@ -268,7 +268,7 @@ def probabilityMapSaver (obs, times, probabilities,
     keep_flag = performHexalatationCalculation
     
     prob_slots = np.percentile(probabilities, 95)
-    print("95th percentile of cumulative prob covered {}\n".format(prob_slots))
+    print(("95th percentile of cumulative prob covered {}\n".format(prob_slots)))
     ix, = np.where(probabilities > 0)
     # since we are now doing every slot in a night, counter 0 is at sunset
     counter = -1
@@ -305,7 +305,7 @@ def probabilityMapSaver (obs, times, probabilities,
         # sm.probMap = total prob map
         # hexRa,hexDec,hexVals
         nameStem = os.path.join(data_dir, str(trigger_id) + "-{}".format(str(counter)))
-        print "\t Writing map files as {} for time {:.3f} and prob {:.2e}".format(nameStem,time,prob)
+        print("\t Writing map files as {} for time {:.3f} and prob {:.2e}".format(nameStem,time,prob))
         made_maps_list = np.append(made_maps_list, counter)
 
         name = nameStem + "-ra.hp"

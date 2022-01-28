@@ -27,7 +27,7 @@ def selectSingleSim (
     sims, mjds, distances, models = veni()
     ix = sims==simNumber
     sims, mjds, distances = sims[ix], mjds[ix], distances[ix] 
-    print "found ",sims[0]
+    print("found ",sims[0])
     simfile="bayestar-{:d}.fits.gz".format(sims[0])
     ligoMapFile = data_dir+simfile
     return sims, mjds, distances, ligoMapFile
@@ -114,13 +114,13 @@ def vidi(sims, mjds, distances, models, quick=False) :
     counter = 0
     for sim, mjd, distance in zip(sims,mjds,distances) :
         simfile = file.format(sim)
-        print "sim, distance: ", sim, distance
+        print("sim, distance: ", sim, distance)
         simfile = data_dir + simfile
         outdir = odata_dir + str(sim) + "/"
         name = outdir + str(sim)+"-probabilityPlot.png"
         if not quick  and os.path.exists(name) : continue
         if not os.path.exists(simfile): 
-            print ".... skipping as no such file"; 
+            print(".... skipping as no such file"); 
             continue
 
         best_slot, n_slots, first_slot, \
@@ -180,7 +180,7 @@ def vedi2(sims, mjds, distances, do2015=True, doV=False) :
     cra, cdec = [],[]
     carea =[]
     for sim, mjd, distance in zip(sims,mjds,distances) :
-        print "sim, distance: ", sim, distance
+        print("sim, distance: ", sim, distance)
 
         new_maxtimeFile = maxtimeFilename(sim, data_dir)
         maxtimes, maxprobs = np.genfromtxt(new_maxtimeFile, unpack=True)
@@ -262,7 +262,7 @@ def readem2 (simNumber, day, hourno) :
 def saven2 (maxtimes, maxprobs, simNumber, data_dir) :
     name = maxtimeFilename ( simNumber, data_dir)
     np.savetxt(name, np.array([maxtimes,maxprobs]).T, "%.5f %.5e")
-    print "\t writing ", name
+    print("\t writing ", name)
 
 # A file finder routine
 def maxtimeFilename ( simNumber, data_dir) :

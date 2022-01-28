@@ -67,9 +67,9 @@ def make_maps(gw_map_trigger, gw_map_strategy, gw_map_control, gw_map_results) :
     import healpy as hp
     import os
 
-    print "=================================================="
-    print "                 make_maps "
-    print "=================================================="
+    print("==================================================")
+    print("                 make_maps ")
+    print("==================================================")
 
     skymap               = gw_map_trigger.skymap
     trigger_id           = gw_map_trigger.trigger_id
@@ -99,28 +99,28 @@ def make_maps(gw_map_trigger, gw_map_strategy, gw_map_control, gw_map_results) :
     snarf_mi_maps        = gw_map_control.snarf_mi_maps
     mi_map_dir           = gw_map_control.mi_map_dir
 
-    print "burst_mjd = {:.2f} at a distance of {:.1f} Mpc".format(
-        burst_mjd, distance)
+    print("burst_mjd = {:.2f} at a distance of {:.1f} Mpc".format(
+        burst_mjd, distance))
 
-    print "day of burst = {:.2f}" .format(start_mjd),
-    print ", calculation starting at  sunset --- with an additional {:.1f} days added\n".format(
-         days_since_burst)
+    print("day of burst = {:.2f}" .format(start_mjd), end=' ')
+    print(", calculation starting at  sunset --- with an additional {:.1f} days added\n".format(
+         days_since_burst))
     start_mjd = start_mjd + days_since_burst
 
     if snarf_mi_maps:
         if mi_map_dir == "/data/des41.a/data/desgw/O3FULL/Main-Injector/OUTPUT/O3REAL/":
             mi_map_dir = mi_map_dir + trigger_id 
         # get everything we need from a different directory
-        print "copying from {}/ to {}/".format(mi_map_dir, data_dir)
+        print("copying from {}/ to {}/".format(mi_map_dir, data_dir))
         os.system("cp {}/*hp {}/".format(mi_map_dir, data_dir))
         os.system("cp {}/*probabilityTimeCache*txt {}/".format(mi_map_dir, data_dir))
         os.system("cp {}/*-hexVals.txt {}/".format(mi_map_dir, data_dir))
         os.system("cp {}/*-hexVals-cutOverlappingProb.txt {}/".format(mi_map_dir, data_dir))
         return
 
-    print "\t cleaning up old files",
+    print("\t cleaning up old files", end=' ')
     if os.path.exists(data_dir+"/json") :
-        shutil.rmtree("json/")
+        shutil.rmtree(data_dir+"json/")
     files = glob.glob(data_dir+"/*png"); 
     for f in files: os.remove(f)
     files = glob.glob(data_dir+"/*jpg"); 
@@ -133,21 +133,21 @@ def make_maps(gw_map_trigger, gw_map_strategy, gw_map_control, gw_map_results) :
     for f in files: os.remove(f)
     files = glob.glob(data_dir+"/*pickle"); 
     for f in files: os.remove(f)
-    print "\t done cleaning up"
+    print("\t done cleaning up")
 
 # we need to understand the night, how long it is, etc
-    print "\t obs slots starting"
+    print("\t obs slots starting")
     answers = obsSlots.slotCalculations( start_mjd, exposure_list, tiling_list, 
         overhead, hexesPerSlot=maxHexesPerSlot, camera=camera) 
     hoursPerNight = answers["hoursPerNight"] ;# in minutes
     slotDuration = answers["slotDuration"] ;# in minutes
     deltaTime = slotDuration/(60.*24.) ;# in days
-    print "\t obs slots done: hours in night: {:.1f}, slot duration: {:.1f} minutes, ".format(
-        hoursPerNight, slotDuration),
-    print("hexes per slot: {}\n".format(maxHexesPerSlot))
+    print("\t obs slots done: hours in night: {:.1f}, slot duration: {:.1f} minutes, ".format(
+        hoursPerNight, slotDuration), end=' ')
+    print(("hexes per slot: {}\n".format(maxHexesPerSlot)))
 
     #  ==== run Rob's evaluate the kasen sim universe code
-    print "\t examining Kasen universe KN models for coverage"
+    print("\t examining Kasen universe KN models for coverage")
     night_dur,sunset,sunrise = mags.findNightDuration(start_mjd, camera)
     midnight_since_burst = 24*(sunset+night_dur/2. - burst_mjd) 
     apparent_mag = kasen_modelspace.run_ap_mag_for_kasen_models (
@@ -156,18 +156,19 @@ def make_maps(gw_map_trigger, gw_map_strategy, gw_map_control, gw_map_results) :
         midnight_since_burst,
         kasen_fraction, data_dir,
         fast = False)
-    print "\t\t at a time halfway through night, {:.2f} days after merger:".format(midnight_since_burst/24.)
-    print "\t\t {}% requires observations at {} <= {:5.2f}\n".format(kasen_fraction, filter_list[0], apparent_mag)
+    print("\t\t at a time halfway through night, {:.2f} days after merger:".format(midnight_since_burst/24.))
+    print("\t\t {}% requires observations at {} <= {:5.2f}\n".format(kasen_fraction, filter_list[0], apparent_mag))
 
         
     # ==== get the neutron star explosion models
     #models = modelRead.getModels()
 
     # === prep the maps
-    ra,dec,ligo=hp2np.hp2np(skymap, degrade=resolution, field=0)
+    print(("map inputs:skymap, res",skymap, resolution))
+    ra,dec,ligo=hp2np.hp2np(skymap, degrade=resolution, field=0, dtype=np.float64)
     ligo_dist, ligo_dist_sig, ligo_dist_norm  = \
         distance*np.ones(ra.size), np.zeros(ra.size), np.zeros(ra.size)
-    warnings.filterwarnings("error")
+    #warnings.filterwarnings("error")
     try :
         junk,junk,ligo_dist =hp2np.hp2np(skymap, degrade=resolution, field=1)
         junk,junk,ligo_dist_sig =hp2np.hp2np(skymap, degrade=resolution, field=2)
@@ -175,12 +176,13 @@ def make_maps(gw_map_trigger, gw_map_strategy, gw_map_control, gw_map_results) :
     except RuntimeWarning:
         pass
     except:
-        print "\t !!!!!!!! ------- no distance information in skymap ------ !!!!!!!!"
+        print("\t !!!!!!!! ------- no distance information in skymap ------ !!!!!!!!")
 
     # details of the observations
-    obs = mags.observed(ra,dec,ligo, start_mjd, verbose=False)
+    print(("obs input:ra,dec,start_mjd,camera ", ra,dec, start_mjd, camera))
+    obs = mags.observed(ra,dec,ligo, start_mjd, camera=camera, verbose=False)
     obs.limitMag(working_filter,exposure=summed_exposure_time)
-    print "finished setting up exposure calculation"
+    print("finished setting up exposure calculation")
 
     # ==== calculate maps during a full night of observing
     # essentially, give me the total prob, source + ligo for a 1 filter pass
@@ -189,6 +191,8 @@ def make_maps(gw_map_trigger, gw_map_strategy, gw_map_control, gw_map_results) :
     probs,times,isdark = mapsAtTimeT.oneDayOfTotalProbability(
         obs, deltaTime, start_mjd, probabilityTimesCache,
         gw_map_trigger, gw_map_strategy, gw_map_control)
+    #print("probs, times, isdark", probs,times,isdark)
+    #print("obs.map, deltaTime, start_mjd, probabilityTimesCache", obs.map, deltaTime, start_mjd, probabilityTimesCache)
 
     made_maps_list = mapsAtTimeT.probabilityMapSaver (obs, times, probs, 
         gw_map_trigger, gw_map_strategy, gw_map_control)
@@ -228,9 +232,9 @@ def make_maps(gw_map_trigger, gw_map_strategy, gw_map_control, gw_map_results) :
 def make_hexes( gw_map_trigger, gw_map_strategy, gw_map_control, gw_map_results, 
     start_slot = -1, do_nslots=-1) :
 
-    print "=================================================="
-    print "                 make_hexes "
-    print "=================================================="
+    print("==================================================")
+    print("                 make_hexes ")
+    print("==================================================")
 
     trigger_id = gw_map_trigger.trigger_id
     trigger_type  = gw_map_trigger.trigger_type
@@ -258,15 +262,15 @@ def make_hexes( gw_map_trigger, gw_map_strategy, gw_map_control, gw_map_results,
 # I believe as of Jan 2020, n_slots is related primarily to slotDuration and the length of the night
     n_slots, mapZero  = make_divisions_of_time (
         probs, times, hoursPerNight, hoursAvailable, slotDuration) 
-    print "\t tonight is {:.2f} hours long with {} slots".format(hoursPerNight, n_slots)
+    print("\t tonight is {:.2f} hours long with {} slots".format(hoursPerNight, n_slots))
         
     # if the number of slots is zero, nothing to observe or plot
     if n_slots == 0: 
         return 0
     # compute the observing schedule
-    print "=============>>>>  observing"
+    print("=============>>>>  observing")
     if start_slot != -1 or do_nslots != -1 :
-        print "\t tonight we will use {} slots starting at {}".format(do_nslots, start_slot)
+        print("\t tonight we will use {} slots starting at {}".format(do_nslots, start_slot))
     #print "hoursObserving=obsSlots.observing("
     #print trigger_id,n_slots, data_dir, "mapZero=",mapZero, "maxHexesPerSlot =", maxHexesPerSlot,
     #print "do_nslots =", do_nslots, "start_slot=",start_slot
@@ -277,7 +281,7 @@ def make_hexes( gw_map_trigger, gw_map_strategy, gw_map_control, gw_map_results,
         maxHexesPerSlot = maxHexesPerSlot, do_nslots = do_nslots, start_slot=start_slot)
 
     # print stats to screen
-    print "\n=============>>>>  observingStats from *ra-dec-id-* file"
+    print("\n=============>>>>  observingStats from *ra-dec-id-* file")
     # save results to the record -- here is made the ra-dec-id- file
     writeObservingRecord(hoursObserving,   data_dir, gw_map_trigger, gw_map_control, gw_map_strategy)
     #ra,dec,id,prob,mjd,slotNumbers,islots = obsSlots.observingStats(hoursObserving, mapZero, do_nslots, start_slot)
@@ -285,10 +289,10 @@ def make_hexes( gw_map_trigger, gw_map_strategy, gw_map_control, gw_map_results,
         hoursObserving, mapZero, do_nslots, start_slot)
     maxProb_slot = obsSlots.maxProbabilitySlot(prob,slotNumbers)
     hoursObserving["maxSlot"] = maxProb_slot
-    pickle.dump(hoursObserving, open("{}-hoursObserving.pickle".format(trigger_id),"w"))
+    pickle.dump(hoursObserving, open("{}-hoursObserving.pickle".format(trigger_id),"wb"))
     # if the length of ra is one and value zero, nothing to observe or plot
     if ra.size == 1 and prob.sum() == 0: 
-        print '\t ZERO PROBABILITY observed!'
+        print('\t ZERO PROBABILITY observed!')
         sum_ligo_prob = 0.
     else :
         # shall we measure the total ligo probability covered?
@@ -296,7 +300,7 @@ def make_hexes( gw_map_trigger, gw_map_strategy, gw_map_control, gw_map_results,
         try:
             sum_ligo_prob = how_well_did_we_do( gw_map_trigger, gw_map_strategy, gw_map_control)
         except:
-            print '\t ZERO PROBABILITY observed!'
+            print('\t ZERO PROBABILITY observed!')
             sum_ligo_prob = 0.
         
         if do_nslots == -1 :
@@ -323,9 +327,9 @@ def make_hexes( gw_map_trigger, gw_map_strategy, gw_map_control, gw_map_results,
 def make_jsons(gw_map_trigger, gw_map_strategy, gw_map_control, gw_map_results) :
     import shutil
     from gw_helper import gw_helper
-    print "=================================================="
-    print "                 make_jsons "
-    print "=================================================="
+    print("==================================================")
+    print("                 make_jsons ")
+    print("==================================================")
 
     skymap        = gw_map_trigger.skymap
     trigger_id    = gw_map_trigger.trigger_id
@@ -336,7 +340,7 @@ def make_jsons(gw_map_trigger, gw_map_strategy, gw_map_control, gw_map_results) 
     propid        = gw_map_strategy.propid
     data_dir      = gw_map_control.datadir
 
-    print "\t cleaning up old jsons"
+    print("\t cleaning up old jsons")
     if os.path.exists(data_dir+"/json") :
         shutil.rmtree("json/")
     files = glob.glob(data_dir+"/*json"); 
@@ -350,7 +354,7 @@ def make_jsons(gw_map_trigger, gw_map_strategy, gw_map_control, gw_map_results) 
     n_hexes       = gw_map_results.n_hexes
 
     if n_hexes == 0 :
-        print "\t no hexes to turn into json files"
+        print("\t no hexes to turn into json files")
         return 
 
     ra,dec,id,prob,mjd,slotNum,dist = obsSlots.readObservingRecord(trigger_id,data_dir)
@@ -358,14 +362,16 @@ def make_jsons(gw_map_trigger, gw_map_strategy, gw_map_control, gw_map_results) 
     list_of_jsons = turnObservingRecordIntoJSONs(
         ra,dec,id,prob,mjd,slotNum, trigger_id,
         exposure_list, filter_list, tiling_list, trigger_type, skymap, data_dir, propid) 
-
+    print(("tiling list", tiling_list)) #ag check 8.11.20
+    print(("list of jsons", list_of_jsons))
     for tiling in tiling_list[1:] :
         if tiling == 0: ra_shift, dec_shift =  0.00, 0.00
         if tiling == 1: ra_shift, dec_shift =  0.02, 0.00
         if tiling == 2: ra_shift, dec_shift =  0.00, 0.02
         if tiling == 3: ra_shift, dec_shift = -0.02, 0.00
         if tiling == 4: ra_shift, dec_shift =  0.00,-0.02
-        print("\t tiling {} ra,dec shift by {},{}".format(tiling, ra_shift, dec_shift))
+        print(("\t tiling {} ra,dec shift by {},{}".format(tiling, ra_shift, dec_shift)))
+        print(("list of jsons, rashift, decshift, tiling", list_of_jsons, ra_shift, dec_shift, tiling))
         gw_helper.setup_tilings(
             list_of_jsons,
             ra_shift = [ra_shift], dec_shift = [dec_shift],
@@ -376,15 +382,17 @@ def make_jsons(gw_map_trigger, gw_map_strategy, gw_map_control, gw_map_results) 
     for file in list_of_jsons:
         dir = os.path.dirname(file)
         file = os.path.basename(file)
+        print(("basename file", file))
+        print(("basename dir", dir))
         shutil.copyfile(dir+"/"+file, "json/tiling_{}_".format(tiling_list[0]) + file)
 
 #
 # ====== there are possibilities. Show them.
 #
 def makeGifs (gw_map_trigger, gw_map_strategy, gw_map_control, gw_map_results) :
-    print "\n=================================================="
-    print "                 make_gifs "
-    print "=================================================="
+    print("\n==================================================")
+    print("                 make_gifs ")
+    print("==================================================")
     hoursPerNight = gw_map_results.hoursPerNight
     if (hoursPerNight == False)  :
         gw_map_results = reuse_results(
@@ -399,12 +407,12 @@ def makeGifs (gw_map_trigger, gw_map_strategy, gw_map_control, gw_map_results) :
 
     # make gif centered on hexes
     if  gw_map_control.centeredSky== True :
-        print "n_hexes=",n_hexes
+        print("n_hexes=",n_hexes)
         if n_hexes != 0:
             n_plots = makeObservingPlots(
                 gw_map_trigger, gw_map_strategy, gw_map_control, gw_map_results, allSky=False)
         else :
-            print "\t skipping centered gif as no hexes observed"
+            print("\t skipping centered gif as no hexes observed")
 
 def makeObservingPlots( gw_map_trigger, gw_map_strategy, gw_map_control, gw_map_results, allSky=True) :
 
@@ -431,10 +439,10 @@ def makeObservingPlots( gw_map_trigger, gw_map_strategy, gw_map_control, gw_map_
 
     made_maps_list = (gw_map_results.made_maps_list).astype(int)
 
-    print "\n================ >>>>>>>>>>>>>>>>>>>>> =================== "
-    print "makeObservingPlots(",n_slots, trigger_id, best_slot,data_dir," )"
-    print "================ >>>>>>>>>>>>>>>>>>>>> =================== "
-    print "We're going to do {} slots with best slot={}".format(made_maps_list.size, best_slot)
+    print("\n================ >>>>>>>>>>>>>>>>>>>>> =================== ")
+    print("makeObservingPlots(",n_slots, trigger_id, best_slot,data_dir," )")
+    print("================ >>>>>>>>>>>>>>>>>>>>> =================== ")
+    print("We're going to do {} slots with best slot={}".format(made_maps_list.size, best_slot))
     figure = plt.figure(1,figsize=(8.5*1.618,8.5))
 
     # first, make the probability versus something plot
@@ -458,7 +466,7 @@ def makeObservingPlots( gw_map_trigger, gw_map_strategy, gw_map_control, gw_map_
         counter+= equalAreaPlot(figure,i,trigger_id,data_dir)
 
     string = "$(ls -v {}observingPlot*)  {}_{}animate.gif".format(data_dir+'/'+trigger_id+'-'+label, data_dir+'/'+trigger_id, label)
-    print string
+    print(string)
     os.system("convert  -delay 40 -loop 0  " + string)
 
     # return the number of plots made
@@ -479,8 +487,8 @@ def how_well_did_we_do(gw_map_trigger, gw_map_strategy, gw_map_control) :
     treedata = decam2hp.buildtree(ra, dec, resolution, recompute=True) 
     tree = treedata[2] 
     sum = decam2hp.hexalateMapWithoutOverlap(ra,dec,ligo,tree, raH,decH,camera, verbose=False) 
-    print "\nTotal Ligo probability covered by hexes observed: {:.3f}%".format(sum.sum()*100.)
-    print "   (from decam2hp.sumHexalatedMap of -ra-dec-id file)\n"
+    print("\nTotal Ligo probability covered by hexes observed: {:.3f}%".format(sum.sum()*100.))
+    print("   (from decam2hp.sumHexalatedMap of -ra-dec-id file)\n")
     return sum.sum()
 
 
@@ -500,7 +508,7 @@ def make_divisions_of_time (
     verbose = 0
     n_slots = obsSlots.findNSlots(hoursAvailable,slotDuration=slotDuration)
     n_maps = times.size
-    if verbose: print n_slots, n_maps
+    if verbose: print(n_slots, n_maps)
     if n_maps == n_slots : 
         mapZero = 0
     elif n_maps < n_slots : 
@@ -510,9 +518,9 @@ def make_divisions_of_time (
         mapZero = obsSlots.findStartMap ( probs, times, n_slots )
     else :
         raise Exception ("no possible way to get here")
-    print "\n=============>>>>  make_divisions_of_time:"
-    print "\t n_maps = {}, n_slots = {}, mapZero = {}, prob_max = {:.6}".format(
-        n_maps, n_slots, mapZero, probs.max())
+    print("\n=============>>>>  make_divisions_of_time:")
+    print("\t n_maps = {}, n_slots = {}, mapZero = {}, prob_max = {:.6}".format(
+        n_maps, n_slots, mapZero, probs.max()))
     return n_slots, mapZero
 
 # make_hexes computes slot information, so get_slots = false
@@ -528,11 +536,11 @@ def old_reuse_results(gw_map_trigger, gw_map_strategy, gw_map_control, gw_map_re
         camera           = gw_map_strategy.camera
         probabilityTimesCache = os.path.join(data_dir,\
         "probabilityTimesCache_"+str(trigger_id)+".txt")
-        print "=============>>>> Reuse results via reuse_results"
+        print("=============>>>> Reuse results via reuse_results")
         #print "\t using probabilities, times, and maps from", probabilityTimesCache
         if os.stat(probabilityTimesCache).st_size == 0 :
             probs, times = np.array([0,]),np.array([0,])
-            print "\t got nothing- we're skipping this one"
+            print("\t got nothing- we're skipping this one")
         else :
             data = np.genfromtxt(probabilityTimesCache, unpack=True)
             probs, times,isdark = data[0],data[1],data[2]
@@ -603,12 +611,12 @@ def economics (simNumber, best_slot, mapDirectory,
     if fraction_of_sims_better_than_this_trigger < 1./N_max :
         area, cum_prob = cumul.area(ra,dec,obsProb, prob, nsides, max_area=max_area)
         if area>area_left:
-            print "\t maxing out area: \t {:.3f} -> ".format( cum_prob),
+            print("\t maxing out area: \t {:.3f} -> ".format( cum_prob), end=' ')
             cum_prob = cumul.probability_covered(ra,dec,obsProb, area_left, nsides, max_area=max_area)
-            print "{:.3f}".format(cum_prob)
+            print("{:.3f}".format(cum_prob))
             area=area_left
     else :
-        print "\t ignore event"
+        print("\t ignore event")
         area = 0
         prob = 0
 
@@ -691,7 +699,9 @@ def turnObservingRecordIntoJSONs(
             trigger_type=trigger_type, propid=propid, skymap=skymap, jsonFilename=tmpname)
         desJson(tmpname, name, mapDirectory, slotMJD) 
         seqzero += ra[ix].size
-        list_of_jsons.append(mapDirectory+name)
+#        list_of_jsons.append(mapDirectory+name) #ag commented out 8.10.20
+        list_of_jsons.append(name)
+#        print("mapDirectory, name", mapDirectory, name)
     return list_of_jsons
         
 # verbose can be 0, 1=info, 2=debug
@@ -707,7 +717,7 @@ def desJson(tmpname, name, data_dir, start_time, verbose = 1) :
     time_buffer= 300.
     fixed_queue = gwwide.gwwide([],gw_queue, start_time, time_buffer, sort=True)
     fd = open(name,"w")
-    print "make ericJson {}".format(name)
+    print("make ericJson {}".format(name))
     json.dump(fixed_queue, fd, indent=4); fd.close()
     os.remove(tmpname)
 
@@ -802,7 +812,6 @@ def cumulPlot(trigger_id, data_dir) :
         new_mjd = np.append(new_mjd, mjd[ix].min())
         year,month,day,hour,minute = utc_time_from_mjd(mjd[ix].min())
         new_hour = np.append(new_hour, hour+minute/60.)
-
     plt.close()
     fig, ax1 = plt.subplots() ; 
     ax2 = ax1.twinx()
@@ -843,14 +852,14 @@ def cumulPlot(trigger_id, data_dir) :
     ax2.set_ylim(0,new_cy.max())
     fig.tight_layout()
     qtiles = new_cy/new_cy[-1]
-    if verbose: print('qtiles:',qtiles, len(qtiles))
-    if verbose: print('new_x:',new_x, len(new_x))
+    if verbose: print(('qtiles:',qtiles, len(qtiles)))
+    if verbose: print(('new_x:',new_x, len(new_x)))
     if len (new_x) < 2:
         new_x = np.append(new_x,new_x[0] + 1e-9)
     if len(qtiles) < 2:
         qtiles = np.append(qtiles,qtiles[0] + 1e-9)
-    if verbose: print('qtiles after:',qtiles,len(qtiles))
-    if verbose: print('new_x after:',new_x,len(new_x))
+    if verbose: print(('qtiles after:',qtiles,len(qtiles)))
+    if verbose: print(('new_x after:',new_x,len(new_x)))
 
     interp = interp1d(qtiles, new_x, fill_value="extrapolate")
     for q in [0.25, 0.5, 0.75] :
@@ -859,12 +868,19 @@ def cumulPlot(trigger_id, data_dir) :
             verticalalignment='bottom', alpha=0.3, color="r")
 
     mjd_h = (new_mjd - new_mjd[0])*24.
+    print(("new_mjd, new_mjd[0]", new_mjd, new_mjd[0]))
+    print(("newx, u_slotnum, mjd_h", new_x, u_slotNum, mjd_h)) #ag test 8.11.20
+    if len (mjd_h) < 2:
+        mjd_h = np.append(mjd_h,mjd_h[0]) #added if to make interp1d inputs the same
     interp = interp1d(mjd_h,new_x)
     x_ticks = interp( np.arange(0, mjd_h.max(), 1) )
 
     mjd_24 = (new_mjd - new_mjd[0])*24. + new_hour[0]
     ix = mjd_24 > 24
     mjd_24[ix] = mjd_24[ix]-24.0
+    if len (mjd_24) < 2: #interp1d requires arrays to have at least 2 entries
+        mjd_24 = np.append(mjd_24,mjd_24[0])
+    print((mjd_h, mjd_24))
     interp = interp1d(mjd_h, mjd_24)
     hours_labels = interp( np.arange(0, mjd_h.max(), 1) )
     labels = []
@@ -879,7 +895,7 @@ def cumulPlot(trigger_id, data_dir) :
     eyear,emonth,eday,ehour,eminute = utc_time_from_mjd(mjd[ix].max())
     ax3.set_xlabel("UT hour, starting {}/{}/{}, ending {}/{}".format(
         year, month, day, emonth, eday))
-    print "\t writing {}-slot-probabilities.png".format(data_dir+'/'+trigger_id)
+    print("\t writing {}-slot-probabilities.png".format(data_dir+'/'+trigger_id))
     plt.savefig("{}-slot-probabilities.png".format(data_dir+'/'+trigger_id))
 
 
@@ -895,7 +911,7 @@ def cumulPlot2(trigger_id, data_dir) :
     fig, ax1 = plt.subplots() ; 
     ax2 = ax1.twinx()
 
-    x = range(0,prob.size)
+    x = list(range(0,prob.size))
     ax1.scatter(x,prob,c="b",s=15)
     ax1.plot(x,prob,c="k",zorder=100)
     ax1.set_xlabel("hex count,  max to min")
@@ -918,7 +934,7 @@ def cumulPlot2(trigger_id, data_dir) :
         ax2.plot([interp(q),interp(q)], [0, new_cy.max()],alpha=0.3,c="r", ls="dotted")
         ax2.text(interp(q), new_cy.max()*0.95, "{:2d}%".format(int(q*100)), 
             verticalalignment='bottom', alpha=0.3, color="r")
-    print "\t writing {}-hex-probabilities.png".format(data_dir+'/'+trigger_id)
+    print("\t writing {}-hex-probabilities.png".format(data_dir+'/'+trigger_id))
     plt.savefig("{}-hex-probabilities.png".format(data_dir+'/'+trigger_id))
 
 def equalAreaPlot(figure,slot,simNumber,data_dir, title="") :
@@ -940,7 +956,7 @@ def equalAreaPlot(figure,slot,simNumber,data_dir, title="") :
 
 
     name = os.path.join(data_dir,str(simNumber)+"-"+str(slot)+"-ligo-eq.png")
-    print "making ",name,
+    print("making ",name, end=' ')
     plt.clf();mcplot.plot(ra,dec,ligo)
     plt.plot(desx,desy,color="w")
     plt.xlabel("RA");plt.ylabel("Dec")
@@ -948,7 +964,7 @@ def equalAreaPlot(figure,slot,simNumber,data_dir, title="") :
     plt.savefig(name)
 
     name = os.path.join(data_dir,str(simNumber)+"-"+str(slot)+"-maglim-eq.png")
-    print name,
+    print(name, end=' ')
     plt.clf();mcplot.plot(ra,dec,maglim,vmin=17);
     plt.plot(desx,desy,color="w")
     plt.xlabel("RA");plt.ylabel("Dec")
@@ -956,7 +972,7 @@ def equalAreaPlot(figure,slot,simNumber,data_dir, title="") :
     plt.savefig(name)
 
     name = os.path.join(data_dir,str(simNumber)+"-"+str(slot)+"-prob-eq.png")
-    print name,
+    print(name, end=' ')
     plt.clf();mcplot.plot(ra,dec,prob)
     plt.plot(desx,desy,color="w")
     plt.xlabel("RA");plt.ylabel("Dec")
@@ -964,7 +980,7 @@ def equalAreaPlot(figure,slot,simNumber,data_dir, title="") :
     plt.savefig(name)
 
     name = os.path.join(data_dir,str(simNumber)+"-"+str(slot)+"-probXligo-eq.png")
-    print name
+    print(name)
     plt.clf();mcplot.plot(ra,dec,prob*ligo)
     plt.plot(desx,desy,color="w")
     plt.xlabel("RA");plt.ylabel("Dec")
@@ -1027,9 +1043,9 @@ def writeObservingRecord(slotsObserving, data_dir, gw_map_trigger, gw_map_contro
         mjd = mjd[0:max_number_of_hexes_to_do]
         slotNum = slotNum[0:max_number_of_hexes_to_do]
         islot = islot[0:max_number_of_hexes_to_do]
-        print "\t ========================================"
-        print "\t number of hexes kept for jsons = {}".format( max_number_of_hexes_to_do)
-        print "\t ========================================"
+        print("\t ========================================")
+        print("\t number of hexes kept for jsons = {}".format( max_number_of_hexes_to_do))
+        print("\t ========================================")
     
     if just_sort_by_ra :
         # rearrange inside the slots if desired

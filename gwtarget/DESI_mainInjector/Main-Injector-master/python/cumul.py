@@ -36,8 +36,8 @@ def contour_sum(ra, dec, vals, threshold) :
         i += 1
     if i == ra.size :
         i -= 1
-        print "\t contour_sim: ",
-        print " npix set to max as sum < threshold, ",
-        print "{:.2f}<{:.2f} ".format(vals.sum(),threshold)
+        print("\t contour_sim: ", end=' ')
+        print(" npix set to max as sum < threshold, ", end=' ')
+        print("{:.2f}<{:.2f} ".format(vals.sum(),threshold))
     npixels =ra_sort[:i].size 
     return npixels,cumulative

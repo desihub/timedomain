@@ -56,7 +56,7 @@ def interpolateModels (models) :
     return models
 
 def readModels (dir = "/data/des30.a/data/annis/des-gw/ligo/fourModels/") :
-    import cPickle as pickle
+    import pickle as pickle
 
     file=open(dir+"model-m1.pickle","rb"); model1 = pickle.load(file); file.close()
     file=open(dir+"model-m2.pickle","rb"); model2 = pickle.load(file); file.close()

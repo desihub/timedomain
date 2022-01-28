@@ -23,13 +23,15 @@ license="""
 """
 
 #
-# from a healpix map, 
+# healpix map, 
 # return  ra, dec, val
 #   fluxConservation = False => averaging maps when changing resolution
 #   fluxConservation = True => sums maps when changing resolution
 #
-def hp2np (hp_map_file, nan=True, degrade=False, fluxConservation=True, field=0, verbose=False) :
-    hm = hp.read_map(hp_map_file, field=field, verbose=verbose)
+def hp2np (hp_map_file, nan=True, degrade=False, fluxConservation=True, field=0, verbose=False, **kwargs) :
+    hm = hp.read_map(hp_map_file, field=field, verbose=verbose, **kwargs)#, dtype=[float,float,float,float])
+    hm_masked = np.ma.masked_invalid(hm)
+    hm = hm_masked.filled(fill_value = 0)
     ra,dec,vals = map2np(hm, resolution=degrade, fluxConservation=fluxConservation, verbose=verbose)
     return ra,dec,vals
 
@@ -42,15 +44,15 @@ def hp2np (hp_map_file, nan=True, degrade=False, fluxConservation=True, field=0,
 # Give me, ra, dec, val.
 def map2np (hp_map, resolution=False, fluxConservation=True, verbose=False) :
     nside = hp.npix2nside(len(hp_map))
-    if verbose: print "\t map2np: \t res= ", nside
+    if verbose: print("\t map2np: \t res= ", nside)
     if resolution :
         if fluxConservation :
             hp_map = hp.ud_grade(hp_map, resolution, power=-2)
         else :
             hp_map = hp.ud_grade(hp_map, resolution)
         nside = hp.npix2nside(len(hp_map))
-        if verbose: print "map2np \t changed resolution to ", nside
-    ix = range(0,hp_map.size)
+        if verbose: print("map2np \t changed resolution to ", nside)
+    ix = list(range(0,hp_map.size))
     # pix2and wants the indicies numbers of the pixel to get the coord of
     theta,phi = hp.pix2ang(nside,ix)
     theta = theta*360./2./np.pi; 
@@ -65,7 +67,7 @@ def map2np (hp_map, resolution=False, fluxConservation=True, verbose=False) :
 #
 def convert(template_ra, template_dec, ra, dec, vals) :
     import scipy.spatial
-    tree = scipy.spatial.KDTree( zip(ra,dec) )
+    tree = scipy.spatial.KDTree( list(zip(ra,dec)) )
     newmap = []
     for i in range(0,template_ra.size) :
         data = tree.query(np.array([template_ra[i], template_dec[i]]))

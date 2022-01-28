@@ -104,7 +104,7 @@ def print_dict(d, title='', outfile=None):
         stream.close()
     else:
         for row in outdata:
-            print(row[:-1])
+            print((row[:-1]))
 
     return
 
@@ -186,6 +186,7 @@ def make_plot(percentile_dict, blue, red, title='', outfile=None, fraction=None)
             plt.yticks(fontsize=12)
 
     if fraction:
+        fraction = float(fraction)
         if fraction < 1.0:
             fraction *= 100
         #plt.axhline(y=fraction, color='black', lw=1, ls='--')
@@ -326,7 +327,7 @@ if __name__ == '__main__':
 
     percentile_dict = calc_mag_fractions(kn_calc.template_df_full)
     cutoffs = mags_of_percentile(float(options.fraction), percentile_dict)
-    cutoff_dict = {'%s_mag' %k : v for k, v in cutoffs.iteritems()}
+    cutoff_dict = {'%s_mag' %k : v for k, v in cutoffs.items()}
     for band in ['g', 'r', 'i', 'z']:
         cutoff_dict['%s_magerr' %band] = 0.00
     
@@ -335,7 +336,7 @@ if __name__ == '__main__':
     else:
         make_output_csv(np.linspace(0., 100., 101), percentile_dict, outfile=options.report_file)
     
-    if options.fraction < 1.0:
+    if float(options.fraction) < 1.0:
         print_dict(cutoff_dict, "%.2f Detection Probability Magnitude Thresholds" %float(options.fraction * 100), outfile=options.report_file)
     else:
         print_dict(cutoff_dict, "%.2f Detection Probability Magnitude Thresholds" %float(options.fraction), outfile=options.report_file)

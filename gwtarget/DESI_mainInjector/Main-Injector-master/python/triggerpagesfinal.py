@@ -26,7 +26,7 @@ def makeNewPage(master_dir,outfilename,trigger_id,event_paramfile,mapfolder,proc
     try:
         event_params = np.load(event_paramfile)
     except:
-        print 'could not load event_paramfile',event_paramfile
+        print('could not load event_paramfile',event_paramfile)
         return
     d = mjd_to_datetime(float(str(event_params['MJD'])))
     n = nowUTC()
@@ -164,7 +164,7 @@ def makeNewPage(master_dir,outfilename,trigger_id,event_paramfile,mapfolder,proc
 
     maps = []
     mapsubdirs = []
-    print 'TMAPFOLDER',tmapfolder,'/',trigger_id,'-observingPlot.gif'
+    print('TMAPFOLDER',tmapfolder,'/',trigger_id,'-observingPlot.gif')
     if real_or_sim == 'real':
         subdir = 'real-triggers'
     if real_or_sim == 'sim':
@@ -178,9 +178,9 @@ def makeNewPage(master_dir,outfilename,trigger_id,event_paramfile,mapfolder,proc
             
     thismap = ''
     for map in maps:
-        print map
+        print(map)
         #raw_input()
-        print event_params.keys()
+        print(list(event_params.keys()))
         if map in str(event_params['filename']):
                 html+='<div class="btn-group">\
                              <a ><button\

@@ -59,7 +59,7 @@ def molly ( do_not_too_close=False) :
     zone_mid[9] = 108.63
 
         
-    zones = range(6,len(seam_list)) + range(5,-1,-1)
+    zones = list(range(6,len(seam_list))) + list(range(5,-1,-1))
     for i in zones :
         zone = seam_list[i]
         zone_a = zone[0]
@@ -94,14 +94,14 @@ def euclideanHexen () :
     camHeight = (12*ccdScale + 11*xgap)*0.27*(1/15.)*1000./60./60. ;# degrees
     interrow_spacing = camHeight
     interrow_spacing = interrow_spacing + 0.05
-    print "interrow_spacing= ", interrow_spacing
+    print("interrow_spacing= ", interrow_spacing)
 
     ygap = 3.096
     ccdScale = 4096*15/1000.
     offset = (5*ccdScale + 4*ygap)*0.27*(1/15.)*1000./60./60. ;# degrees
     intercol_spacing = offset
     intercol_spacing = intercol_spacing/1.0001
-    print "intercol_spacing= ", intercol_spacing
+    print("intercol_spacing= ", intercol_spacing)
 
 
     # this is going to be a flat sheet of hexes

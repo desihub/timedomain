@@ -43,12 +43,12 @@ def economics (simNumber, best_slot, mapDirectory,
     if fraction_of_sims_better_than_this_trigger < 1./N_max :
         area, cum_prob = cumul.area(ra,dec,obsProb, prob, nsides, max_area=max_area)
         if area>area_left:
-            print "\t maxing out area: \t {:.3f} -> ".format( cum_prob),
+            print("\t maxing out area: \t {:.3f} -> ".format( cum_prob), end=' ')
             cum_prob = cumul.probability_covered(ra,dec,obsProb, area_left, nsides, max_area=max_area)
-            print "{:.3f}".format(cum_prob)
+            print("{:.3f}".format(cum_prob))
             area=area_left
     else :
-        print "\t ignore event"
+        print("\t ignore event")
         area = 0
         prob = 0
 

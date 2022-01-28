@@ -19,14 +19,17 @@ def run_ap_mag_for_kasen_models (filter, distance, dist_err, days_since_burst,
 
         file = report_file + ".txt"
         fd = open(file,"r")
-        for i in range(0,16): fd.readline()
-        line = fd.readline().split()
-        apparent_mag = dict()
-        apparent_mag["g"] = np.float(line[0])
-        apparent_mag["r"] = np.float(line[3])
-        apparent_mag["i"] = np.float(line[6])
-        apparent_mag["z"] = np.float(line[9])
-        ap_mag = apparent_mag[filter]
+        for i in range(0,16): #fd.readline()
+            line = fd.readline().split()
+            apparent_mag = dict()
+            try:
+                apparent_mag["g"] = np.float(line[0])
+                apparent_mag["r"] = np.float(line[3])
+                apparent_mag["i"] = np.float(line[6])
+                apparent_mag["z"] = np.float(line[9])
+                ap_mag = apparent_mag[filter]
+            except:
+                pass
 
     else :
         kn_calc         = kn_brightness_estimate.KNCalc(distance, dist_err, days_since_burst)

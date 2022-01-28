@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import sys, getopt, os
 
 def usage():
-    print 'Usage: cumulative_plots.py [-d <path_to_files>] [-p <path_for_plots> ] -e <event_id> -f <file 1 file 2 ... file n>'
+    print('Usage: cumulative_plots.py [-d <path_to_files>] [-p <path_for_plots> ] -e <event_id> -f <file 1 file 2 ... file n>')
 
 try:
     opts, args = getopt.getopt(sys.argv[1:],"hd:p:e:f:",["files=","event="])
@@ -50,9 +50,9 @@ events.append(this_file.split("/")[-1].split("-")[0])
 try:
     probs.append(np.genfromtxt(this_file, usecols=3))
 except IOError:
-    print "warning: file for this event not found."
+    print("warning: file for this event not found.")
 
-i = dict(zip(events,range(len(events))))
+i = dict(list(zip(events,list(range(len(events))))))
 
 plt.figure(figsize=(8.5*1.618,8.5))
 sims_labeled = False

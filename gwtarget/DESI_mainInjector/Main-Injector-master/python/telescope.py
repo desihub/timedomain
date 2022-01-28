@@ -28,7 +28,7 @@ def blancoLimits (ha, dec) :
 
     # get the limits
     tel_ha,tel_dec = blancoHorizonLimits()
-    blanco = matplotlib.path.Path(zip(tel_ha,tel_dec))
+    blanco = matplotlib.path.Path(list(zip(tel_ha,tel_dec)))
 
     # cut away hopless areas in ha, dec
     near_ix = (abs(ha) <= 6) & ( dec < 45)
@@ -37,7 +37,7 @@ def blancoLimits (ha, dec) :
         return transmission
 
     # find the answer
-    inside_ix = blanco.contains_points( zip(ha,dec) )
+    inside_ix = blanco.contains_points( list(zip(ha,dec)) )
 
     # the issue here is that near_ix is large, though few are True
     # thus inside_ix is small, and even less are True.
@@ -127,7 +127,7 @@ def circle(ra,dec,rad, modCircle=False) :
 #        ha,dec,ttlim      = telescope.loadLimits(tel_dir, tel_file)
 def loadLimits(dir = "/home/s1/annis/daedalean/desgw-map/data/",
         file = "blanco-limits-ha-dec.fits") :
-    print "\t loading telescope limits ",dir+file
+    print("\t loading telescope limits ",dir+file)
     import pyfits
     f=pyfits.open(dir+file)
     t = f[1].data;
@@ -140,7 +140,7 @@ def loadLimits(dir = "/home/s1/annis/daedalean/desgw-map/data/",
     return ha, dec, transmission
 
 def findLimits (ha, dec, tree, trans) :
-    coords = zip(ha,dec)
+    coords = list(zip(ha,dec))
     transmission = []
     for i in range(0, ha.size) :
         testHA  = coords[i][0]
@@ -169,7 +169,7 @@ def findLimits (ha, dec, tree, trans) :
     return transmission
 
 def tree (ha, dec) :
-    coords = zip(ha,dec)
+    coords = list(zip(ha,dec))
     tree = cKDTree(coords)
     return tree
 

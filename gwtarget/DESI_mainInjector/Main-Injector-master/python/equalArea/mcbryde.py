@@ -1,6 +1,6 @@
 import numpy as np
 import os
-import rotate
+from . import rotate
 from scipy.interpolate import interp1d
 
 license="""
@@ -77,10 +77,10 @@ def mcbryde (ra,dec, southUp=0, test=0, alpha=0, beta=0, isLine=False) :
     return x,y
 
     if test :
-        print "psi= ", psi*2*360/(2*np.pi)
-        print "ra,dec= ", rai, deci
-        print "x,y= ", round(x,3), round(y,3)
-        print "-180,  0 and 180,  0"
+        print("psi= ", psi*2*360/(2*np.pi))
+        print("ra,dec= ", rai, deci)
+        print("x,y= ", round(x,3), round(y,3))
+        print("-180,  0 and 180,  0")
         alpha = 0; ra = -180; psi=alpha/2.; psi = psi*2*np.pi/360.; ra = ra*2*np.pi/360.
         #print np.cos(psi),  np.cos(2*psi), np.sin(psi)
         #       1.0          1.0                 0
@@ -94,9 +94,9 @@ def mcbryde (ra,dec, southUp=0, test=0, alpha=0, beta=0, isLine=False) :
         #r1 = 1.87476*R*np.sin(psi)
         q2 = 31.246*ra*3
         r2 = 0
-        print round(q1,3), round(r1,3), round(q2,3), round(r2,3)
+        print(round(q1,3), round(r1,3), round(q2,3), round(r2,3))
     
-        print "-180,-90 and 180,-90"
+        print("-180,-90 and 180,-90")
         alpha = -90; ra = -180; psi=alpha/2.; psi = psi*2*np.pi/360.; ra = ra*2*np.pi/360.
         #print np.cos(psi),  np.cos(2*psi), np.sin(psi)
         #       0.707         0.0                 -0.707
@@ -110,7 +110,7 @@ def mcbryde (ra,dec, southUp=0, test=0, alpha=0, beta=0, isLine=False) :
         #r2 = 1.87476*R*np.sin(psi)
         q2 = 31.246*ra
         r2 =-132.545
-        print round(q1,3), round(r1,3), round(q2,3), round(r2,3)
+        print(round(q1,3), round(r1,3), round(q2,3), round(r2,3))
 
 
         alpha = -75; rao = 120; 
@@ -120,7 +120,7 @@ def mcbryde (ra,dec, southUp=0, test=0, alpha=0, beta=0, isLine=False) :
         psi = psi*2*np.pi/360.; ra = rao*2*np.pi/360.
         q1 = 0.31246*R*ra*(1 + 2* np.cos(psi*2)/np.cos(psi))
         r1 = 1.87476*R*np.sin(psi)
-        print("alt x,y for {:d} {:d}= {:8.3f} {:8.3f}".format(rao,alpha, round(q1,3), round(r1,3)))
+        print(("alt x,y for {:d} {:d}= {:8.3f} {:8.3f}".format(rao,alpha, round(q1,3), round(r1,3))))
 
         alpha = -85; rao = 120; 
         psi=alpha; 
@@ -129,8 +129,8 @@ def mcbryde (ra,dec, southUp=0, test=0, alpha=0, beta=0, isLine=False) :
         psi = psi*2*np.pi/360.; ra = rao*2*np.pi/360.
         q1 = 0.31246*R*ra*(1 + 2* np.cos(psi*2)/np.cos(psi))
         r1 = 1.87476*R*np.sin(psi)
-        print("alt x,y for {:d} {:d}= {:8.3f} {:8.3f}".format(rao,alpha, round(q1,3), round(r1,3)))
-        print("cal x,y for {:d} {:d}= {:8.3f} {:8.3f}".format(rai,deci, round(x,3), round(y,3)))
+        print(("alt x,y for {:d} {:d}= {:8.3f} {:8.3f}".format(rao,alpha, round(q1,3), round(r1,3))))
+        print(("cal x,y for {:d} {:d}= {:8.3f} {:8.3f}".format(rai,deci, round(x,3), round(y,3))))
 
 
 def mtCoord (ra,dec, alpha, beta) :
@@ -145,7 +145,7 @@ def mtCoord (ra,dec, alpha, beta) :
         index = np.nonzero(lon < -180)
         lon[index] = lon[index]+360.
     except :
-        print "mtCoord go Boom- but caught, distrust lon limits"
+        print("mtCoord go Boom- but caught, distrust lon limits")
         pass
     return lon,lat
 
@@ -165,7 +165,7 @@ def solveMT () :
                 enuff = j/100.
                 close = delta
                 bigb = b
-        print i, enuff, round(close,4), round(a,2), round(bigb,2)
+        print(i, enuff, round(close,4), round(a,2), round(bigb,2))
         fd.write("{:d} {:6.3f}\n".format(i,enuff))
     fd.close()
 def readMT() :
