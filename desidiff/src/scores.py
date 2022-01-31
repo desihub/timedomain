@@ -72,7 +72,7 @@ def perconv_SN(wave, y, ivar, mask, ncon=5, nsig=10):
                 newy[b][index:index+ng] = 0
             index=index+ng
 
-        newston[b]=numpy.convolve(newy[b], conk, mode='valid') * numpy.sqrt(numpy.convolve(1/ivar[b], conk, mode='valid'))
+        newston[b]=numpy.convolve(newy[b], conk, mode='valid') / numpy.sqrt(numpy.convolve(1/ivar[b], conk, mode='valid'))
         newmask[b] = numpy.convolve(mask[b], conk, mode='valid')
 
         w = numpy.where(newmask[b] == 0)[0]
