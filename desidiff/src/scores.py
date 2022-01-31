@@ -1,6 +1,7 @@
 import numpy
 import numpy.ma as ma
 import copy
+import itertools
 def clipmean_one(y,ivar,mask,nsig=3):
 
     w=numpy.where(mask==0)[0]
@@ -65,7 +66,7 @@ def perconv_SN(wave, y, ivar, mask, ncon=5, nsig=10):
 
         f_logic = y[b]*numpy.sqrt(ivar[b]) > nsig*numpy.sqrt(ncon)
         index=0
-        for _, g in groupby(f_logic):
+        for _, g in itertools.groupby(f_logic):
             ng  = sum(1 for _ in g)
             if _ and ng<=ncon//2:
                 newy[b][index:index+ng] = 0
@@ -75,7 +76,7 @@ def perconv_SN(wave, y, ivar, mask, ncon=5, nsig=10):
         newmask[b] = numpy.convolve(mask[b], conk, mode='valid')
 
         w = numpy.where(newmask[b] == 0)[0]
-        for gb0,_ in groupby(newston[b][w] > nsig):
+        for gb0,_ in itertools.groupby(newston[b][w] > nsig):
             if gb0:
                 nTrue=nTrue+1
     return nTrue
