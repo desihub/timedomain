@@ -9,11 +9,11 @@ import numpy
 #  group_tid: the set of targetid's associated with each RA/DEC
 #  group_tp:  the set of tile/petals associated with each RA/DEC
 
-def getMatchedTileid(yyyymmdd):
+def getMatchedTileid(yyyymmdd,prod='daily'):
     
     # read in and store in one place all the fibermap information in the spectra files
     dats=[]
-    for filename in glob.glob(f"/global/project/projectdirs/desi/spectro/redux/daily/tiles/cumulative/*/{yyyymmdd}/spectra-*.fits"):
+    for filename in glob.glob(f"/global/project/projectdirs/desi/spectro/redux/{prod}/tiles/cumulative/*/{yyyymmdd}/spectra-*.fits"):
         t = Table.read(filename, format='fits',hdu=1, memmap=True) 
         ##### DAVE'S ADDITION ##############
         targetcols = [i for i in t.colnames if i[-7:] =='_TARGET']
