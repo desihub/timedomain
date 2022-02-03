@@ -324,25 +324,22 @@ def Hline_filter(linetable):
     #Halpha
     i = lines.index('Halpha')
 #    if linetable['Chi Square'][i] < 4 and linetable['Chi Square'][i] > 0.5: # check for decent fit
-        if linetable['e_Height'][i] > 0\
-        and linetable['Height'][i]/linetable['e_Height'][i] > 15 and linetable['Velocity'][i] > 75:
-            score += 1
-            filter_pass.append('Halpha')
+    if linetable['e_Height'][i] > 0 and linetable['Height'][i]/linetable['e_Height'][i] > 7 and linetable['Velocity'][i] > 75:
+        score += 1
+        filter_pass.append('Halpha')
     
     #HBeta
     i = lines.index('Hbeta')
-    if linetable['Chi Square'][i] < 4 and linetable['Chi Square'][i] > 0.5: # check for decent fit
-        if  linetable['e_Height'][i] > 0\
-        and linetable['Height'][i]/linetable['e_Height'][i] > 15 and linetable['Velocity'][i] > 75:
-            score += 1
-            filter_pass.append('Hbeta')
+  #  if linetable['Chi Square'][i] < 4 and linetable['Chi Square'][i] > 0.5: # check for decent fit
+    if  linetable['e_Height'][i] > 0 and linetable['Height'][i]/linetable['e_Height'][i] > 7 and linetable['Velocity'][i] > 75:
+        score += 1
+        filter_pass.append('Hbeta')
         
     #Hgamma
     i = lines.index('Hgamma')
-    if linetable['Chi Square'][i] < 4 and linetable['Chi Square'][i] > 0.5: # check for decent fit
-        if linetable['e_Height'][i] > 0\
-        and linetable['Height'][i]/linetable['e_Height'][i] > 15 and linetable['Velocity'][i] > 75:
-            score += 1
-            filter_pass.append('Hgamma')
+#    if linetable['Chi Square'][i] < 4 and linetable['Chi Square'][i] > 0.5: # check for decent fit
+    if linetable['e_Height'][i] > 0 and linetable['Height'][i]/linetable['e_Height'][i] > 7 and linetable['Velocity'][i] > 75:
+        score += 1
+        filter_pass.append('Hgamma')
   
     return(score)
