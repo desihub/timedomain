@@ -64,11 +64,11 @@ def perconv_SN(wave, y, ivar, mask, ncon=5, nsig=10):
     for b in newston.keys():
         # mask lines that are smaller than the ncov
 
-        f_logic = numpy.abs(y[b]*numpy.sqrt(ivar[b])) > nsig #*numpy.sqrt(ncon)
+        f_logic = numpy.abs(y[b]*numpy.sqrt(ivar[b])) > 8
         index=0
         for _, g in itertools.groupby(f_logic):
             ng  = sum(1 for _ in g)
-            if _ and ng<=2:
+            if _ and ng<=3:
                 newy[b][index:index+ng] = 0
             index=index+ng
 
