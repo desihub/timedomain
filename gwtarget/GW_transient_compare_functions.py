@@ -451,12 +451,15 @@ def prob_pixel_locs(gw_in: dict, percentile = [0.9]):
             
             if p_idx > len(percentile) - 1:
                 break
-    
-    for i in range(len(sort_percentile)):
+        
+    all_idx = dict(zip(sort_percentile, all_idx))
+    total_area = {}
+    for i in sort_percentile:
         area = hp.nside2pixarea(gw_in['nside'], degrees=True)*len(all_idx[i])
-        print("The ", percentile[i]*100. ,"% map is ",area," deg^2", sep = '')
+        print("The ", i*100. ,"% map is ",area," deg^2", sep = '')
+        total_area[i] = area
 
-    return all_idx
+    return all_idx, total_area
 
 
 # ## Matching DESI observations to x% CI contour
@@ -1013,6 +1016,17 @@ def plot_cartmap_tiles(lvc_healpix_file, levels=[0.5, 0.9], angsize=3., tile_ra=
     return fig
 
 def disruptive_mode():
+    # insert code to modify com.py with the appropriate modifications (just gwfile I think?) and have it run... and figure out what to do with output
+    # Can I split this off and run maininjector *while* running the rest of the code to generate the below?
+    # 
+    # In the test case, this is the name of the ra dec txt file that is output
+    # GW190412_combined_skymap-ra-dec-id-prob-mjd-slot-dist.txt
+    # its contents --
+    # # ra, dec, id, prob, mjd, slotNum, dist
+    # -143.046020 34.20830  -143+34 0.0814400 58585.1250 4.0 713.22
+    # -141.881680 38.31392  -142+38 0.2394000 58585.1250 4.0 740.93
+    # -140.234940 35.93228  -140+36 0.5103000 58585.1250 4.0 696.36
+    # -144.769220 36.52287  -145+37 0.0490870 58585.1562 5.0 745.69
     pass
 
 def nondisruptive_mode():

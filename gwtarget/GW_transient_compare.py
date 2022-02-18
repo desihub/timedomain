@@ -101,8 +101,7 @@ if __name__ == "__main__":
     
     parser.add_argument(dest     = 'pointings',
                         type     = int,
-                        help     = 'Specify number of pointings'
-                          )
+                        help     = 'Specify number of pointings')
     
     c_intervals.add_argument('--confidence_interval=90', '-CI90', 
                         dest      = 'CI_val',
@@ -157,9 +156,13 @@ if __name__ == "__main__":
     
     # Grab pixel locations for probabilities in x% CI
     # prob_pixel_locs is written to return a list of n pixel maps
-    # corresponding to CI (for checking multiple CI maps at once), hence the [0].
+    # corresponding to CI (for checking multiple CI maps at once), hence the [CI_val].
     # This no longer applies but I'd like to keep the functionality in
-    pixmap = prob_pixel_locs(gw_properties, percentile = CI_val)[0]
+    pixmap, pix_area = prob_pixel_locs(gw_properties, percentile = CI_val)
+    pixmap = pixmap[CI_val]
+    pix_area = pix_area[CI_val]
+    if pix_area > 100:
+        raise(Exception(f"The {CI_val*100}% map is too large (it's not worth it!), quitting."))
     
     # Converting skymap to pixelmap
     ra_map, dec_map = hp.pix2ang(gw_properties["nside"], pixmap, nest = gw_properties["nest"], lonlat = True)
