@@ -81,6 +81,20 @@ def perconv_SN(wave, y, ivar, mask, ncon=5, nsig=10):
                 nTrue=nTrue+1
     return nTrue
 
+def narrowLineMask(wave, y, ivar, mask, SNRcutoff = 8):
+    newmask = dict(mask)
+    for b in mask.keys():
+        # mask lines that are closer than 3 pixels and have lower signal to noise than the cutoff
+        f_logic = (numpy.abs(y[b]*numpy.sqrt(ivar[b])) > SNRcutoff)
+        index=0
+        for _, g in itertools.groupby(f_logic):
+            ng  = sum(1 for _ in g)
+            if _ and ng<=3:
+                for i in range(index, index + ng + 1):
+                    newmask[b][i] = 1
+            index=index+ng
+    return newmask
+
 def Hlines(wave, y,ivar,mask, z):
     target_wave = (6562.79, 4861.35, 4340.472, 4101.734, 3970.075)
     R=500.
