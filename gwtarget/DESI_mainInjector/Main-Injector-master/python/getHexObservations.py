@@ -465,7 +465,7 @@ def makeObservingPlots( gw_map_trigger, gw_map_strategy, gw_map_control, gw_map_
         counter += 1
         counter+= equalAreaPlot(figure,i,trigger_id,data_dir)
 
-    string = "$(ls -v {}observingPlot*)  {}_{}animate.gif".format(data_dir+'/'+trigger_id+'-'+label, data_dir+'/'+trigger_id, label)
+    string = "$(ls -v {}observingPlot*)  {}_{}animate.gif".format(os.path.join(data_dir, trigger_id +'-'+label), os.path.join(data_dir, trigger_id), label)
     print(string)
     os.system("convert  -delay 40 -loop 0  " + string)
 
