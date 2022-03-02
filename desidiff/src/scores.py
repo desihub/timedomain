@@ -147,3 +147,42 @@ def normalization(newflux, newmask, refflux, refmask):
     norm = numpy.nanpercentile(norms,(50))
 
     return norm
+
+def gaussian(x,mu,sigma,a):
+    y = a*numpy.exp(-(x-mu)**2/(2*sigma**2))
+    return y
+
+def shift(xs, n):
+    if n >= 0:
+        return numpy.concatenate((numpy.full(n, numpy.nan), xs[:-n]))
+    else:
+        return numpy.concatenate((xs[-n:], numpy.full(-n, numpy.nan)))
+
+    
+def deriv_filter(flux,ivar,mask, prom_cut = 10, kernel_sigma = 50,nsigma =3):
+    peak_list = []
+    gausamp = 1/(numpy.sqrt(2*numpy.pi*kernel_sigma**2))
+    kernelx = numpy.linspace(-nsigma*kernel_sigma, nsigma*kernel_sigma, 2*nsigma*kernel_sigma+1)
+    kernely = gaussian(kernelx, 0, kernel_sigma, gausamp)
+    zeroind = nsigma*kernel_sigma 
+    
+    e_fd_kernel = kernely - shift(kernely, -1)
+    zeros = numpy.zeros(4000)
+    w = numpy.array([*zeros,*kernely,*zeros])
+    for k in flux.keys():
+
+        ma_flux = ma.masked_array(flux[k].astype(float), mask[k], fill_value = numpy.nan)
+        ma_ivar =  ma.masked_array(ivar[k].astype(float), mask[k], fill_value = numpy.nan)
+        errors = 1/numpy.sqrt(ma_ivar)
+        e_fd = []
+        N = len(ma_flux)
+        for i in range(N-1):
+            e_fd_i = w[zeroind + (i-1)]**2*errors[0]**2  + numpy.convolve(e_fd_kernel**2, shift(errors,1)**2,'same')[i] +w[zeroind + (i-N+1)]**2*errors[-1]**2
+            e_fd.append(e_fd_i)
+        spectrum_smooth = numpy.convolve(ma_flux, kernely, 'same')
+        fd = shift(spectrum_smooth,1) - spectrum_smooth
+        SNR = fd[1:]/e_fd
+        peaks = find_peaks(SNR, prominence = prom_cut)
+        negpeaks = find_peaks(-SNR, prominence = prom_cut)
+        peak_list.append(len(peaks[0]) + len(negpeaks[0]))
+    return(sum(peaks))
