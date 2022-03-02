@@ -75,11 +75,8 @@ if __name__ == "__main__":
     global today
     today = Time.now()
     
-    targetlists_path = os.path.join(user_home, 'targetlists')
-    # Check if targetlists folder exists, if not make one
-    if not os.path.isdir(targetlists_path):
-        os.makedir(targetlists_path)
-
+    # TODO: Suppress hp warnings
+    
 # *************************************************************************
 #
 # SETTING UP AND GRABBING COMMAND LINE ARGS
@@ -92,65 +89,112 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description = help_text)
     c_intervals = parser.add_mutually_exclusive_group()
-    modes = parser.add_mutually_exclusive_group()
+    d_modes = parser.add_mutually_exclusive_group()
 
     
     parser.add_argument(dest     = 'gwfile', 
                         type     = str, 
                         help     = 'The input GW file')
     
-    parser.add_argument(dest     = 'pointings',
-                        type     = int,
-                        help     = 'Specify number of pointings')
+    # Not yet implemented, leaving out for now
+    # parser.add_argument(dest     = 'pointings',
+    #                     type     = int,
+    #                     help     = 'Specify number of pointings')
     
     c_intervals.add_argument('--confidence_interval=90', '-CI90', 
                         dest      = 'CI_val',
                         action    = 'store_const', 
-                        const     = [0.9],
+                        const     = 0.9,
                         help      = 'Specifying 90% CI')
     
     c_intervals.add_argument('--confidence_interval=95', '-CI95', 
                         dest      = 'CI_val',
                         action    = 'store_const', 
-                        const     = [0.95],
+                        const     = 0.95,
                         help      = 'Specifying 95% CI')
     
-    modes.add_argument('--disruptive', '-D', 
+    d_modes.add_argument('--disruptive', '-D', 
                         dest   = 'mode', 
                         action = 'store_true',
                         help   = 'Enable disruptive mode.')
     
-    modes.add_argument('--non-disruptive', '-ND', 
+    d_modes.add_argument('--non-disruptive', '-ND', 
                         dest   = 'mode', 
                         action = 'store_false',
                         help   = 'Enable non-disruptive mode.')
 
     args = parser.parse_args() # Using vars(args) will call produce the args as a dict
     gwfile = args.gwfile
-    num_pointings = args.pointings
+    #num_pointings = args.pointings
     
     try:
         CI_val = args.CI_val
     except:
-        CI_val = [0.9]
+        CI_val = 0.9
         
     try:
-        mode = args.mode
+        d_mode = args.mode
     except:
-        mode = False
+        d_mode = False
+        
+# *************************************************************************
+#
+# SETTING UP DIRECTORY STRUCTURE
+#
+# *************************************************************************
+
+    try:
+        h = fits.open(gwfile)
+    except FileNotFoundError:
+        print("Could not find the GW file. Please specify either a relative or full path to the file. Exitting.")
+        sys.exit()
+        
+    #h=fits.open('skymaps/GW190412_combined_skymap.fits.gz')
+    head = h[1].header
+    
+    # Naming
+    filename = os.path.basename(gwfile)
+    file_basename = filename.split(".fits")[0]
+    try:
+        gw_name = head['OBJECT']
+    except:
+        print("OBJECT not found in header. Proceeding using filename and today's date.")
+        gw_name = file_basename + '_' + str(round(today.mjd))
+
+    original_dir = os.getcwd()
+    path_gwfile = os.path.abspath(gwfile)
+    
+    # Checks if 'master' folder in home directory and moves there
+    master_dir = os.path.join(user_home, 'GW_events_followup')
+    if not os.path.isdir(master_dir):
+        os.mkdir(master_dir)
+    
+    event_dir = os.path.join(master_dir, gw_name)
+    if not os.path.isdir(event_dir):
+        os.mkdir(event_dir)
+    
+    # I still try to use absolute paths where possible so as not to leave anything to chance
+    # But some functions may need to specify paths and rather than passing it along all the time
+    # I'll just use the current directory
+    os.chdir(event_dir)
+    
+    # Copies event file to current directory
+    os.popen('cp ' + path_gwfile + ' ./')
+    path_gwfile = os.path.abspath(os.path.join(event_dir, filename))
+        
+    targetlists_path = os.path.join(event_dir, 'targetlists')
+    # Check if targetlists folder exists, if not make one
+    if not os.path.isdir(targetlists_path):
+        os.mkdir(targetlists_path)
 
 # *************************************************************************
 #
 # READING IN SKYMAP, GRABBING INFORMATION, AND CONVERTING TO PIXEL MAP
 #
 # *************************************************************************
-    h = fits.open(gwfile)
-    #h=fits.open('skymaps/GW190412_combined_skymap.fits.gz')
-    head = h[1].header
-    gw_mjd = head['MJD-OBS']
-
+    
     # Read in GW file, grab its properties, and determine pixels in CI area
-    gw_name = gwfile.split('_')[0].split('/')[1]
+    gw_mjd = head['MJD-OBS']
     gw_properties = read_gwfile(gwfile)
     gw_map = hp.read_map(gwfile, nest = gw_properties["nest"])
     
@@ -158,9 +202,11 @@ if __name__ == "__main__":
     # prob_pixel_locs is written to return a list of n pixel maps
     # corresponding to CI (for checking multiple CI maps at once), hence the [CI_val].
     # This no longer applies but I'd like to keep the functionality in
-    pixmap, pix_area = prob_pixel_locs(gw_properties, percentile = CI_val)
+    pixmap, pix_area = prob_pixel_locs(gw_properties, percentile = [CI_val])
     pixmap = pixmap[CI_val]
     pix_area = pix_area[CI_val]
+    
+    # Too much stuff! 
     if pix_area > 100:
         raise(Exception(f"The {CI_val*100}% map is too large (it's not worth it!), quitting."))
     
@@ -181,9 +227,9 @@ if __name__ == "__main__":
     degrade_map = hp.ud_grade(gw_map, nside_out = gw_degraded_properties["nside"], order_in = gw_properties["nest"], order_out = gw_properties["nest"], power = -2)
 
     gw_degraded_properties["prob"] = degrade_map
-    pix_degraded = prob_pixel_locs(gw_degraded_properties, percentile = CI_val)
+    pix_degraded, _ = prob_pixel_locs(gw_degraded_properties, percentile = [CI_val])
 
-    ra_degraded, dec_degraded = hp.pix2ang(gw_degraded_properties["nside"], pix_degraded, nest = gw_degraded_properties["nest"], lonlat = True)
+    ra_degraded, dec_degraded = hp.pix2ang(gw_degraded_properties["nside"], pix_degraded[CI_val], nest = gw_degraded_properties["nest"], lonlat = True)
     
 # *************************************************************************
 #
@@ -311,7 +357,7 @@ if __name__ == "__main__":
     plt.scatter(alerce_sn_rows['meanra'], alerce_sn_rows['meandec'], label='SN', alpha=0.8)
     plt.legend()
     
-    plt.savefig(user_home + "/GW_DESI_Alerce.png")
+    plt.savefig(os.path.join(event_dir, "GW_DESI_Alerce.png"))
     plt.clf()
 
 
@@ -388,7 +434,7 @@ if __name__ == "__main__":
 # 
 # The target lists are built in the same way as [Segev's code](https://github.com/desihub/timedomain/blob/master/gwtarget/gw_dr9.ipynb)
 
-    trg_file = targetlists_path + '/' + gw_name + str(int((100*CI_val[0]))) + '_dr9.ecsv'
+    trg_file = os.path.join(targetlists_path, gw_name + str(int((100*CI_val))) + '_dr9.ecsv')
     
     try:
         targlist = Table.read(trg_file)
@@ -410,6 +456,7 @@ if __name__ == "__main__":
     # Match targetlist RAs and DECs to DESI pointings
     # Since targetlist is already found *wrt* the skymap
     # we should see the same results here.
+    print("Matching targetlist RAs and DECS to DESI pointings...")
     m_dict, _ = initial_check(np.array(targlist['RA']), np.array(targlist['DEC']))
     
     if not m_dict:
@@ -417,6 +464,8 @@ if __name__ == "__main__":
         print("Quitting.")
         sys.exit()
     
+ 
+    print("Performing a closer (1\") match if found in previous check...")
     # As a reminder, uses original targlist data to find 1 arcsecond matches to individual targets via fibers
     desi_target_matches, targlist_target_matches = closer_check(matches_dict = m_dict, catalog2_ras = np.array(targlist['RA']), catalog2_decs = np.array(targlist['DEC']))
     if not targlist_target_matches:
@@ -493,7 +542,7 @@ if __name__ == "__main__":
     targlist_radec_reduced = setdiff(targlist['RA', 'DEC'], tlist_matches_table)
 
     assert len(targlist_radec_reduced) == len(targlist) - len(unique_targlist_target_matches), "Something went wrong masking the dr9 target list! Stopping."
-    print('{:.2f}% of targets have already been observed within 2 degrees of DESI tile pointing in {} CI.'.format(100*len(unique_targlist_target_matches)/len(targlist), CI_val))
+    print('\n{:.2f}% of targets have already been observed within 2 degrees of DESI tile pointing in {} CI.'.format(100*len(unique_targlist_target_matches)/len(targlist), CI_val))
     
 # *************************************************************************
 #
@@ -506,7 +555,7 @@ if __name__ == "__main__":
     #targlist_write(targlist_radec_reduced, "dr9_targlist" + CI_val + "_reduced_radec.ecsv", overwrite = True)
 
     # Write dr9 targets to ecsv
-    write_too_ledger(filename = targetlists_path + '/testing_ToO-bgs.ecsv', too_table = targlist_radec_reduced.to_pandas(), checker='MP/AP', overwrite=True, verbose=False, tabformat='LEGACY')
+    write_too_ledger(filename = os.path.join(targetlists_path,'testing_ToO-bgs.ecsv'), too_table = targlist_radec_reduced.to_pandas(), checker='MP/AP', overwrite=True, verbose=False, tabformat='LEGACY')
 
 # *************************************************************************
 #
@@ -547,4 +596,26 @@ if __name__ == "__main__":
     ax.set(xlim=(222, 213), ylim=(33,40))
     ax.scatter(targlist_radec_reduced['RA'], targlist_radec_reduced['DEC'], alpha = 0.2, s = 0.3)
     #ax.scatter(targlist['RA'], targlist['DEC'])
-    plt.savefig(user_home + '/' + gw_name + '_desi_tile-matches.png', dpi=120)
+    plt.savefig(os.path.join(event_dir, gw_name + '_desi_tile-matches.png'), dpi=120)
+    
+# *************************************************************************
+#
+# DISRUPTIVE/NON-DISRUPTIVE MODE
+#
+# *************************************************************************    
+
+    if d_mode:
+        outfile = disruptive_mode(gwfile_path = path_gwfile, gw_name = gw_name)
+        os.replace(outfile, os.path.join(targetlists_path, os.path.basename(outfile)))
+    else:
+        #nondisruptive_mode()
+        pass
+    
+# *************************************************************************
+#
+# TIDYING UP
+#
+# *************************************************************************
+    
+    # Returning you back from whence you came!
+    os.chdir(original_dir)

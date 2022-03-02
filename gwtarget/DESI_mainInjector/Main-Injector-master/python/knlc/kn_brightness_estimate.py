@@ -129,7 +129,7 @@ def mags_of_percentile(cutoff, percentile_dict):
     index = int(round(cutoff))
     return {band: percentile_dict['%s_cutoff' %band][index] for band in ['g', 'r', 'i', 'z']}
 
-def make_output_csv(cutoffs, percentile_dict, outfile=None, return_df=False, write_answer=False, flt='', fraction=90.0):
+def make_output_csv(cutoffs, percentile_dict, outfile=None, return_df=False, write_answer=False, flt='', fraction=90.0, data_dir = "./"):
 
     out_data = [mags_of_percentile(cutoff, percentile_dict) for cutoff in cutoffs]
     out_df = pd.DataFrame(out_data)
@@ -139,12 +139,13 @@ def make_output_csv(cutoffs, percentile_dict, outfile=None, return_df=False, wri
 
     if write_answer:
         if fraction < 1.0:
-            farction *= 100
+            fraction *= 100
         #get closest index to fraction
         closest_index = np.argmin(np.abs(float(fraction) - out_df['PERCENTILE'].values))
-        stream = open('answer_%s.txt' %flt, 'w+')
+        stream = open(os.path.join(data_dir, f'answer_{flt}.txt'), 'w+')
         stream.write('%.2f' %out_df[flt].values[closest_index])
         stream.close()
+#        print(f"This should have worked for filter {flt}")
     
     if return_df:
         return out_df

@@ -168,7 +168,7 @@ def make_maps(gw_map_trigger, gw_map_strategy, gw_map_control, gw_map_results) :
     ra,dec,ligo=hp2np.hp2np(skymap, degrade=resolution, field=0, dtype=np.float64)
     ligo_dist, ligo_dist_sig, ligo_dist_norm  = \
         distance*np.ones(ra.size), np.zeros(ra.size), np.zeros(ra.size)
-    #warnings.filterwarnings("error")
+    warnings.filterwarnings("ignore")
     try :
         junk,junk,ligo_dist =hp2np.hp2np(skymap, degrade=resolution, field=1)
         junk,junk,ligo_dist_sig =hp2np.hp2np(skymap, degrade=resolution, field=2)
@@ -895,8 +895,8 @@ def cumulPlot(trigger_id, data_dir) :
     eyear,emonth,eday,ehour,eminute = utc_time_from_mjd(mjd[ix].max())
     ax3.set_xlabel("UT hour, starting {}/{}/{}, ending {}/{}".format(
         year, month, day, emonth, eday))
-    print("\t writing {}-slot-probabilities.png".format(data_dir+'/'+trigger_id))
-    plt.savefig("{}-slot-probabilities.png".format(data_dir+'/'+trigger_id))
+    print("\t writing {}-slot-probabilities.png".format(os.path.join(data_dir, trigger_id)))
+    plt.savefig("{}-slot-probabilities.png".format(os.path.join(data_dir, trigger_id)))
 
 
 

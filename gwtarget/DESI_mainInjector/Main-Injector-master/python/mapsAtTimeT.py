@@ -7,6 +7,8 @@ import kasen_modelspace
 
 import sourceProb
 import modelRead
+import contextlib
+
 
 #
 # mapsAtTimeT
@@ -308,48 +310,49 @@ def probabilityMapSaver (obs, times, probabilities,
         print("\t Writing map files as {} for time {:.3f} and prob {:.2e}".format(nameStem,time,prob))
         made_maps_list = np.append(made_maps_list, counter)
 
-        name = nameStem + "-ra.hp"
-        if os.path.exists(name): os.remove(name)
-        hp.write_map(name, obs.ra)
-        name = nameStem + "-dec.hp"
-        if os.path.exists(name): os.remove(name)
-        hp.write_map(name, obs.dec)
-        name = nameStem + "-ha.hp"
-        if os.path.exists(name): os.remove(name)
-        hp.write_map(name, obs.ha)
-        name = nameStem + "-hx.hp"
-        if os.path.exists(name): os.remove(name)
-        hp.write_map(name, obs.hx)
-        name = nameStem + "-hy.hp"
-        if os.path.exists(name): os.remove(name)
-        hp.write_map(name, obs.hy)
-        name = nameStem + "-x.hp"
-        if os.path.exists(name): os.remove(name)
-        hp.write_map(name, obs.x)
-        name = nameStem + "-y.hp"
-        if os.path.exists(name): os.remove(name)
-        hp.write_map(name, obs.y)
-        name = nameStem + "-map.hp"
-        if os.path.exists(name): os.remove(name)
-        hp.write_map(name, obs.map)
-        name = nameStem + "-maglim.hp"
-        if os.path.exists(name): os.remove(name)
-        hp.write_map(name, obs.maglim)
-        name = nameStem + "-maglim-global.hp"
-        if os.path.exists(name): os.remove(name)
-        hp.write_map(name, obs.maglimall)
-# do we need this?
-        #name = nameStem + "-prob.hp"
-        #if os.path.exists(name): os.remove(name)
-        #hp.write_map(name, sm.prob)
-        name = nameStem + "-probMap.hp"
-        if os.path.exists(name): os.remove(name)
-        #sm.probMap = sm.probMap*gal
-        try:
-            hp.write_map(name, sm.probMap)
-        except:
-            # there is no prob map in the sm, so prob is zero everywhere
-            hp.write_map(name, obs.map*0.0)
+        with contextlib.redirect_stderr(None):
+            name = nameStem + "-ra.hp"
+            if os.path.exists(name): os.remove(name)
+            hp.write_map(name, obs.ra)
+            name = nameStem + "-dec.hp"
+            if os.path.exists(name): os.remove(name)
+            hp.write_map(name, obs.dec)
+            name = nameStem + "-ha.hp"
+            if os.path.exists(name): os.remove(name)
+            hp.write_map(name, obs.ha)
+            name = nameStem + "-hx.hp"
+            if os.path.exists(name): os.remove(name)
+            hp.write_map(name, obs.hx)
+            name = nameStem + "-hy.hp"
+            if os.path.exists(name): os.remove(name)
+            hp.write_map(name, obs.hy)
+            name = nameStem + "-x.hp"
+            if os.path.exists(name): os.remove(name)
+            hp.write_map(name, obs.x)
+            name = nameStem + "-y.hp"
+            if os.path.exists(name): os.remove(name)
+            hp.write_map(name, obs.y)
+            name = nameStem + "-map.hp"
+            if os.path.exists(name): os.remove(name)
+            hp.write_map(name, obs.map)
+            name = nameStem + "-maglim.hp"
+            if os.path.exists(name): os.remove(name)
+            hp.write_map(name, obs.maglim)
+            name = nameStem + "-maglim-global.hp"
+            if os.path.exists(name): os.remove(name)
+            hp.write_map(name, obs.maglimall)
+    # do we need this?
+            #name = nameStem + "-prob.hp"
+            #if os.path.exists(name): os.remove(name)
+            #hp.write_map(name, sm.prob)
+            name = nameStem + "-probMap.hp"
+            if os.path.exists(name): os.remove(name)
+            #sm.probMap = sm.probMap*gal
+            try:
+                hp.write_map(name, sm.probMap)
+            except:
+                # there is no prob map in the sm, so prob is zero everywhere
+                 hp.write_map(name, obs.map*0.0)
 
         treedata = decam2hp.buildtree(obs.ra*360./2/np.pi,obs.dec*360./2/np.pi,\
             nsides=hp.get_nside(obs.ra), recompute=True)
