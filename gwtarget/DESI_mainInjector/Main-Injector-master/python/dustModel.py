@@ -39,7 +39,7 @@ def dustA(filter) :
 
 def loadDust(dir = "/home/s1/annis/daedalean/desgw-map/data/", 
         file = "plank-ebv-HFI_CompMap_ThermaDustModel.fits") :
-    print "\t loading dust map ",dir+file
+    print("\t loading dust map ",dir+file)
     hpFile = True
     if not hpFile :
         import pyfits

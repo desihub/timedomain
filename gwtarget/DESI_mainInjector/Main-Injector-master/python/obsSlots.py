@@ -12,7 +12,7 @@ import warnings
 #   with the 1% cut, then one expects far fewer. Perhaps zero.
 
 # May 2019
-# I added start_slot and do_nslots, in the name of running from a start for a 
+# I added start_slot and do_nslots, in the name of running start for a 
 #   number of slots. This brought out the mapping from slotNumber and hexData to 
 #   the actual slot number, done in the code at def observing line : map_i = i + mapZero
 # The issue is that start_slot and do_nslot are in the mapped slot number, so many
@@ -66,9 +66,9 @@ def slotDuration(exposure_lengths, tiling_list, overhead, hexesPerSlot = 6) :
 def findNSlots(hoursAvailable, slotDuration=32.) :
     verbose = 0
     if verbose:
-        print hoursAvailable
-        print hoursAvailable*60./slotDuration, round(hoursAvailable*60./slotDuration)
-        print int(round(hoursAvailable*60./slotDuration))
+        print(hoursAvailable)
+        print(hoursAvailable*60./slotDuration, round(hoursAvailable*60./slotDuration))
+        print(int(round(hoursAvailable*60./slotDuration)))
     nslots = int(round(hoursAvailable*60./slotDuration))   ;# 32 minutes/slot
     return nslots
 
@@ -140,7 +140,7 @@ def observing(sim, nslots, data_dir,
         raHexen, decHexen, idHexen, hexVal, rank, mjd, slotNum = \
            loadHexalatedProbabilities( sim, map_i, data_dir)
         islot = i*np.ones(raHexen.size)
-        print "\t", map_i, "map size= {:10d};".format(raHexen.size), 
+        print("\t", map_i, "map size= {:10d};".format(raHexen.size), end=' ') 
 
         impossible = 1e-5
         impossible = 1e-7
@@ -154,9 +154,9 @@ def observing(sim, nslots, data_dir,
             np.delete(mjd, ix) , \
             np.delete(slotNum, ix), \
             np.delete(islot, ix)
-        print " n hexes w/ >{} probability=".format(str(impossible)),
-        print "{:4d};".format(raHexen.size),
-        print "  in slot,all_possible_hexes sum prob= {:7.4f} %".format( 100*hexVal.sum())
+        print(" n hexes w/ >{} probability=".format(str(impossible)), end=' ')
+        print("{:4d};".format(raHexen.size), end=' ')
+        print("  in slot,all_possible_hexes sum prob= {:7.4f} %".format( 100*hexVal.sum()))
         hexData[i] = raHexen, decHexen, idHexen, hexVal, mjd, slotNum, islot
         #print i, np.sort(hexVal[0:10]), hexVal.sum(), 100.*hexVal.sum(),"%"
 
@@ -178,7 +178,7 @@ def observing(sim, nslots, data_dir,
                 # it is possible to make the observation, 
                 # put it onto the observing lists
                 slotsObserving = addObsToSlot (slotsObserving, maxData, slot)
-                if verbose >= 1: print n, "slot of max:",slot
+                if verbose >= 1: print(n, "slot of max:",slot)
             else :
                 # but if this slot of observing is full, it is not possible 
                 # to make the observation,
@@ -203,16 +203,16 @@ def observing(sim, nslots, data_dir,
             sumObs += slotsObserving[i]
 
         if verbose >= 2: 
-            print "sumHexes =", sumHexes, 
-            print "   slots left=", len(observingSlots),
-            print "   slots=",observingSlots,
-            print "   n_obs=",
+            print("sumHexes =", sumHexes, end=' ') 
+            print("   slots left=", len(observingSlots), end=' ')
+            print("   slots=",observingSlots, end=' ')
+            print("   n_obs=", end=' ')
             for i in observingSlots:
-                print slotsObserving[i],
-            print "   sum prob= ",
+                print(slotsObserving[i], end=' ')
+            print("   sum prob= ", end=' ')
             for i in observingSlots:
-                print " {:8.6f}".format( slotsObserving[i,"prob"].sum()) ,
-            print ""
+                print(" {:8.6f}".format( slotsObserving[i,"prob"].sum()), end=' ')
+            print("")
 
         # eliminate full observing slots
         observingSlots = eliminateFullObservingSlots(\
@@ -221,12 +221,12 @@ def observing(sim, nslots, data_dir,
         # check and see if we are done
         # two conditions: observing is full, or candidates empty
         if (len(observingSlots)==0) | (sumHexes == 0) :
-            print "\t======================================== "
+            print("\t======================================== ")
             if verbose >= 1: 
-                print "n slots =", len(observingSlots)," == 0?"
-                print "sumHexes = ", sumHexes, "==? 0"
-            print "\tnumber of hexes possible to observe = ", sumObs
-            print "\t======================================== "
+                print("n slots =", len(observingSlots)," == 0?")
+                print("sumHexes = ", sumHexes, "==? 0")
+            print("\tnumber of hexes possible to observe = ", sumObs)
+            print("\t======================================== ")
             return slotsObserving 
 
         # otherwise, go back and do it again
@@ -246,15 +246,15 @@ def observingStats( slotsObserving, mapZero=0, do_nslots=-1, start_slot=-1 ) :
             if i+mapZero < start_slot or i+mapZero >= start_slot+do_nslots : continue
         slot_sum_prob = 100*slotsObserving[i,"prob"].sum() 
         if slot_sum_prob > 1e-7 :
-            print "\t {:2d}".format(i+mapZero), 
+            print("\t {:2d}".format(i+mapZero), end=' ') 
             #print "slotnum={} ".format( slotsObserving[i,"slotNum"]),
-            print "n hexes= {}".format( slotsObserving[i,"ra"].size), 
-            print "  sum prob= {:7.4f} %".format( 100*slotsObserving[i,"prob"].sum())
+            print("n hexes= {}".format( slotsObserving[i,"ra"].size), end=' ') 
+            print("  sum prob= {:7.4f} %".format( 100*slotsObserving[i,"prob"].sum()))
     ra,dec,id,prob,mjd,slotNum,islot = slotsObservingToNpArrays(slotsObserving) 
 
-    print "\tobservingStats:  ",
-    print "observable prob_tot = {:.1f}%".format(100.*prob.sum()),
-    print "\t   (from the prob in each slot, summed)"
+    print("\tobservingStats:  ", end=' ')
+    print("observable prob_tot = {:.1f}%".format(100.*prob.sum()), end=' ')
+    print("\t   (from the prob in each slot, summed)")
     return ra,dec,id,prob,mjd,slotNum,islot
 
 def observingStatsFromRaDecFile( trigger_id, data_dir, slotsObserving, mapZero=0, do_nslots=-1, start_slot=-1 ) :
@@ -268,12 +268,12 @@ def observingStatsFromRaDecFile( trigger_id, data_dir, slotsObserving, mapZero=0
         if not (prob.size == 1 and prob.sum() == 0) and ix.size > 0 :
             slot_sum_prob = 100*prob[ix].sum() 
             if slot_sum_prob > 1e-7 :
-                print "\t {:2d}".format(i+mapZero), 
-                print "n hexes= {}".format( ix.size ),
-                print "  sum prob= {:7.4f} %".format( slot_sum_prob )
-    print "\tobservingStats:  ",
-    print "observable prob_tot = {:.1f}%".format(100.*prob.sum()),
-    print "\t   (from the prob in each slot, summed)"
+                print("\t {:2d}".format(i+mapZero), end=' ') 
+                print("n hexes= {}".format( ix.size ), end=' ')
+                print("  sum prob= {:7.4f} %".format( slot_sum_prob ))
+    print("\tobservingStats:  ", end=' ')
+    print("observable prob_tot = {:.1f}%".format(100.*prob.sum()), end=' ')
+    print("\t   (from the prob in each slot, summed)")
     return ra,dec,id,prob,mjd,slotNum,dist
 
 
@@ -344,12 +344,12 @@ def findMaxProbOfAllHexes(hexData, slotsObserving, observingSlots, n="", verbose
         hexMyslot = data[5]
         if hexVal.size == 0: continue
         if verbose >= 2: 
-            if i == 2: print n,"====",i, "hexSize =",hexRa.size
+            if i == 2: print(n,"====",i, "hexSize =",hexRa.size)
         # now check for max prob
         newProb = hexVal.max()
-        if verbose >= 4: print n,i, maxProb, ">?", newProb, "     n=",hexVal.size
+        if verbose >= 4: print(n,i, maxProb, ">?", newProb, "     n=",hexVal.size)
         if newProb > maxProb :
-            if verbose >= 1: print n,"==== new max", i, "       ",newProb , ">", maxProb
+            if verbose >= 1: print(n,"==== new max", i, "       ",newProb , ">", maxProb)
             ix = np.where(hexVal == newProb)
             maxRa     = hexRa[ix]
             maxDec    = hexDec[ix]
@@ -431,19 +431,19 @@ def deleteHexFromAllSlots (hexData, slotsObserving, observingSlots, maxRa, maxDe
         try:
             ix = np.nonzero((hexRa == maxRa) & (hexDec == maxDec))
         except:
-            print "len hexRA hexDec "+str(len(hexRa))+" "+str(len(hexDec))
-            print "len maxRA maxDec "+str(len(maxRa))+" "+str(len(maxDec))
+            print("len hexRA hexDec "+str(len(hexRa))+" "+str(len(hexDec)))
+            print("len maxRA maxDec "+str(len(maxRa))+" "+str(len(maxDec)))
             maxRa = max(maxRa)
             maxDec = max(maxDec)
             ix = np.nonzero((hexRa == maxRa) & (hexDec == maxDec))
-            print i
-            print ix              
+            print(i)
+            print(ix)              
 #        print "ag compare i "+str(i)
 #        print ix
-        if verbose >=4 : print ix, hexRa, maxRa
+        if verbose >=4 : print(ix, hexRa, maxRa)
         if verbose >=2 : 
             ixs = np.shape(ix)[1]
-            print n,"bookkeeping",i,"  nHex=",hexRa.size, "   ix.size", ixs, 
+            print(n,"bookkeeping",i,"  nHex=",hexRa.size, "   ix.size", ixs, end=' ') 
         hexRa  = np.delete(hexRa, ix)
         hexDec = np.delete(hexDec, ix)
         hexId  = np.delete(hexId, ix)
@@ -454,9 +454,9 @@ def deleteHexFromAllSlots (hexData, slotsObserving, observingSlots, maxRa, maxDe
         hexData[i] = hexRa, hexDec, hexId, hexVal, hexMjd, hexSlotNum, hexIslot
 
         if verbose >= 2: 
-            print "\t after delete nHex=",hexRa.size,
-            if ixs > 0 : print "index = ",ix[0][0]
-            else: print ""
+            print("\t after delete nHex=",hexRa.size, end=' ')
+            if ixs > 0 : print("index = ",ix[0][0])
+            else: print("")
     return hexData
 
 # it is useful to remove full observing slots from further processing,
@@ -478,9 +478,9 @@ def eliminateFullObservingSlots(
         if (slotsObserving[slot] >= maxHexesPerSlot) | (hexData[slot][0].size ==0): 
             full.append(i)
     if verbose >= 2: 
-        print "hiding full observing slot ", 
-        for f in full: print observingSlots[f],
-        print ""
+        print("hiding full observing slot ", end=' ') 
+        for f in full: print(observingSlots[f], end=' ')
+        print("")
     observingSlots = np.delete(observingSlots, full)
     return observingSlots
 

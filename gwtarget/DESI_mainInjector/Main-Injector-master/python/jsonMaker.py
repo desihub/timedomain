@@ -233,22 +233,22 @@ def test() :
     f6="G184098-11-UTC-2015-9-20-8:59:00.json"
 
     j=open(dir+f1); 
-    data6 = json.load(j);x=[(e["RA"],e["dec"]) for e in data6]; ra6,dec6 = zip(*x)
+    data6 = json.load(j);x=[(e["RA"],e["dec"]) for e in data6]; ra6,dec6 = list(zip(*x))
     j.close()
     j=open(dir+f2); 
-    data7 = json.load(j);x=[(e["RA"],e["dec"]) for e in data7]; ra7,dec7 = zip(*x)
+    data7 = json.load(j);x=[(e["RA"],e["dec"]) for e in data7]; ra7,dec7 = list(zip(*x))
     j.close()
     j=open(dir+f3); 
-    data8 = json.load(j);x=[(e["RA"],e["dec"]) for e in data8]; ra8,dec8 = zip(*x)
+    data8 = json.load(j);x=[(e["RA"],e["dec"]) for e in data8]; ra8,dec8 = list(zip(*x))
     j.close()
     j=open(dir+f4); 
-    data9 = json.load(j);x=[(e["RA"],e["dec"]) for e in data9]; ra9,dec9 = zip(*x)
+    data9 = json.load(j);x=[(e["RA"],e["dec"]) for e in data9]; ra9,dec9 = list(zip(*x))
     j.close()
     j=open(dir+f5); 
-    data10 = json.load(j);x=[(e["RA"],e["dec"]) for e in data10]; ra10,dec10 = zip(*x)
+    data10 = json.load(j);x=[(e["RA"],e["dec"]) for e in data10]; ra10,dec10 = list(zip(*x))
     j.close()
     j=open(dir+f6); 
-    data11 = json.load(j);x=[(e["RA"],e["dec"]) for e in data11]; ra11,dec11 = zip(*x)
+    data11 = json.load(j);x=[(e["RA"],e["dec"]) for e in data11]; ra11,dec11 = list(zip(*x))
     j.close()
 
 

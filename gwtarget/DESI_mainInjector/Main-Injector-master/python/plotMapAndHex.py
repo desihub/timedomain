@@ -3,7 +3,7 @@ import os
 from equalArea import mcbryde
 import matplotlib.pyplot as plt
 import warnings
-warnings.filterwarnings("ignore")
+#warnings.filterwarnings("ignore")
 
 #  raHex, decHex = np.genfromtxt("512/lmc-ra-dec-prob-mjd-slot.txt", unpack=True, usecols=(0,1))
 #  raHex, decHex = plotMapAndHex.getG184098_iband_hexes() 
@@ -101,7 +101,7 @@ def coreMapAndHex(figure, hexRa, hexDec, raMap, decMap, camera, map,
     import matplotlib
     from scipy.ndimage.filters import gaussian_filter
     if allSky: contourLabels = False
-    print "\t coreMapAndHex start",
+    print("\t coreMapAndHex start", end=' ')
 
     cmap = "cubehelix_r"
     cmap = "YlGnBu"
@@ -141,7 +141,7 @@ def coreMapAndHex(figure, hexRa, hexDec, raMap, decMap, camera, map,
         doHexes = False
 
 
-    print "\t ... makeImage",
+    print("\t ... makeImage", end=' ')
     # plot the image, either as an image or as a hexbin
     plt.clf()
     if image :
@@ -160,7 +160,7 @@ def coreMapAndHex(figure, hexRa, hexDec, raMap, decMap, camera, map,
         plt.hexbin(xMap[ix],yMap[ix],map[ix],vmin=low_limit, vmax=high_limit, gridsize=gridsize,
             cmap=cmap)
 
-    print "\t ... graticule",
+    print("\t ... graticule", end=' ')
     # put on a graticule
     graticule (alpha, beta, xmin, xmax, ymin, ymax,  redRa = redRa, redRaDec2 = gradRedHiDec,
         raGratDelRa= raGratDelRa, decGratDelDec= decGratDelDec)
@@ -231,7 +231,7 @@ def coreMapAndHex(figure, hexRa, hexDec, raMap, decMap, camera, map,
 
     plt.show()
 
-    print "\t ... coreMapAndHex done"
+    print("\t ... coreMapAndHex done")
     return alpha, beta
 
 # compute image limits and midpoints (alpha, beta)
@@ -260,7 +260,7 @@ def computeLimits (raHex, decHex, raMid = -1000, raBoxSize=5., decBoxSize=5, mod
         raMid = raMin+(raMax-raMin)/2.
     alpha= -1*(raMid+mod_alpha)
 
-    if verbose: print "\t raMin, raMax, decMin, decMax:", raMin, raMax, decMin, decMax
+    if verbose: print("\t raMin, raMax, decMin, decMax:", raMin, raMax, decMin, decMax)
     if allSky :
         #x,y = mcbryde.mcbryde(np.array([-179.999,179.999]), np.array([-60,60]), alpha=alpha, beta=beta)
         #decMin = -60; decMax = 60.0
@@ -285,9 +285,9 @@ def computeLimits (raHex, decHex, raMid = -1000, raBoxSize=5., decBoxSize=5, mod
     ymin = ymin-ybox; ymax= ymax+ybox
 
     if verbose:
-        print "ra box, dec box",raMin, raMax, decMin, decMax
-        print "x box, y box", xmin, xmax, ymin, ymax 
-        print "alpha, beta",alpha, beta
+        print("ra box, dec box",raMin, raMax, decMin, decMax)
+        print("x box, y box", xmin, xmax, ymin, ymax) 
+        print("alpha, beta",alpha, beta)
     #raise Exception("here")
     return raMin, raMax, decMin, decMax, xmin, xmax, ymin, ymax, alpha, beta
 
@@ -353,7 +353,7 @@ def plotPatch (ra, dec,  alpha, beta, xmin, xmax, ymin, ymax, ax,
         dec = dec_array[i]
         x,y = mcbryde.mcbryde(ra, dec, alpha=alpha, beta=beta)
         ix = (x > xmin) & (x < xmax) & (y > ymin) & (y < ymax)
-        footprint = matplotlib.path.Path(zip(x,y))
+        footprint = matplotlib.path.Path(list(zip(x,y)))
         patch = matplotlib.patches.PathPatch(footprint, 
             facecolor=facecolor, lw=1, alpha=face_alpha, fill=True)
         ax.add_patch(patch)
@@ -471,7 +471,7 @@ def cartesianToSpherical (x, y, z) :
 def makeImage (xMap, yMap, vals, xmin, xmax, ymin, ymax, scale, 
         badData=False, badDataVal=-11.0, verbose=False, too_far_away_scale=1.5) :
     import scipy.spatial
-    tree = scipy.spatial.KDTree(zip(xMap, yMap))
+    tree = scipy.spatial.KDTree(list(zip(xMap, yMap)))
 
     xsize = int(xmax)+1 - int(xmin)-1 
     ysize = int(ymax)+1 - int(ymin)-1 
@@ -481,7 +481,7 @@ def makeImage (xMap, yMap, vals, xmin, xmax, ymin, ymax, scale,
 
     data = np.zeros( (nsteps_y, nsteps_x) )
     
-    if verbose: print xmin, xmax, ymin, ymax, "    ", xsize, ysize
+    if verbose: print(xmin, xmax, ymin, ymax, "    ", xsize, ysize)
     
     # this is "supposed" to be slow
     for i in range(0, nsteps_x) :
@@ -497,7 +497,7 @@ def makeImage (xMap, yMap, vals, xmin, xmax, ymin, ymax, scale,
     
     if badData:
         data = np.ma.masked_equal(data, badDataVal)
-    if verbose: print data.mean()
+    if verbose: print(data.mean())
     return data
 
 def getOriginalLigoMap (mapName, resolution) :
@@ -571,15 +571,15 @@ def plotDecamHexen(ax, ra,dec,alpha, camera, beta=0, color="r", lw=1, plateCaree
                 ix_neg, = np.where(hexX<=-180)
                 ix_safe, = np.where((hexX <180) & (hexX>-180))
                 if ix_pos.size > 0:      # >= 180   
-                    hex_path = matplotlib.path.Path(zip(hexX[ix_pos],hexY[ix_pos]))
+                    hex_path = matplotlib.path.Path(list(zip(hexX[ix_pos],hexY[ix_pos])))
                     hex_patch = matplotlib.patches.PathPatch(hex_path, edgecolor=color, lw=lw, fill=False)
                     ax.add_patch(hex_patch)
                 if ix_neg.size > 0:     # <= -180 
-                    hex_path = matplotlib.path.Path(zip(hexX[ix_neg],hexY[ix_neg]))
+                    hex_path = matplotlib.path.Path(list(zip(hexX[ix_neg],hexY[ix_neg])))
                     hex_patch = matplotlib.patches.PathPatch(hex_path, edgecolor=color, lw=lw, fill=False)
                     ax.add_patch(hex_patch)
                 if ix_safe.size > 0:     
-                    hex_path = matplotlib.path.Path(zip(hexX[ix_safe],hexY[ix_safe]))
+                    hex_path = matplotlib.path.Path(list(zip(hexX[ix_safe],hexY[ix_safe])))
                     hex_patch = matplotlib.patches.PathPatch(hex_path, edgecolor=color, lw=lw, fill=False)
                     ax.add_patch(hex_patch)
             else :
@@ -593,19 +593,19 @@ def plotDecamHexen(ax, ra,dec,alpha, camera, beta=0, color="r", lw=1, plateCaree
                 ixp, = np.where((hexRa>0)&(hexRa<180))
                 #raise Exception("here")
                 if ixp.size > 0 :   # 0 <= x <= 180
-                    hex_path = matplotlib.path.Path(zip(hexX[ixp],hexY[ixp]))
+                    hex_path = matplotlib.path.Path(list(zip(hexX[ixp],hexY[ixp])))
                     hex_patch = matplotlib.patches.PathPatch(hex_path, edgecolor=color, lw=lw, fill=False)
                     ax.add_patch(hex_patch)
                 if ixn.size > 0 :  # -180 <= x <= 0
-                    hex_path = matplotlib.path.Path(zip(hexX[ixn],hexY[ixn]))
+                    hex_path = matplotlib.path.Path(list(zip(hexX[ixn],hexY[ixn])))
                     hex_patch = matplotlib.patches.PathPatch(hex_path, edgecolor=color, lw=lw, fill=False)
                     ax.add_patch(hex_patch)
                 if ix_pos.size > 0:      # >= 180   
-                    hex_path = matplotlib.path.Path(zip(hexX[ix_pos],hexY[ix_pos]))
+                    hex_path = matplotlib.path.Path(list(zip(hexX[ix_pos],hexY[ix_pos])))
                     hex_patch = matplotlib.patches.PathPatch(hex_path, edgecolor=color, lw=lw, fill=False)
                     ax.add_patch(hex_patch)
                 if ix_neg.size > 0:     # <= -180 
-                    hex_path = matplotlib.path.Path(zip(hexX[ix_neg],hexY[ix_neg]))
+                    hex_path = matplotlib.path.Path(list(zip(hexX[ix_neg],hexY[ix_neg])))
                     hex_patch = matplotlib.patches.PathPatch(hex_path, edgecolor=color, lw=lw, fill=False)
                     ax.add_patch(hex_patch)
                 
@@ -629,17 +629,17 @@ def plotDecamHexen(ax, ra,dec,alpha, camera, beta=0, color="r", lw=1, plateCaree
             ix_neg = np.nonzero(hexRa<-180)[0]
             ix, = np.where(np.nonzero((hexRa>=-180)&(hexRa<=180))[0])
             if ix.size > 0 :
-                hex_path = matplotlib.path.Path(zip(hexX[ix],hexY[ix]))
+                hex_path = matplotlib.path.Path(list(zip(hexX[ix],hexY[ix])))
                 hex_patch = matplotlib.patches.PathPatch(hex_path, facecolor='none', edgecolor=color, lw=lw, fill=False)
                 ax.add_patch(hex_patch)
 
             if ix_pos.size > 0:
-                hex_path = matplotlib.path.Path(zip(hexX[ix_pos],hexY[ix_pos]))
+                hex_path = matplotlib.path.Path(list(zip(hexX[ix_pos],hexY[ix_pos])))
                 hex_patch = matplotlib.patches.PathPatch(hex_path, facecolor='none', edgecolor=color, lw=lw, fill=False)
                 ax.add_patch(hex_patch)
             
             if ix_neg.size > 0:
-                hex_path = matplotlib.path.Path(zip(hexX[ix_neg],hexY[ix_neg]))
+                hex_path = matplotlib.path.Path(list(zip(hexX[ix_neg],hexY[ix_neg])))
                 hex_patch = matplotlib.patches.PathPatch(hex_path, facecolor='none', edgecolor=color, lw=lw, fill=False)
                 ax.add_patch(hex_patch)
 
@@ -674,9 +674,7 @@ def plotLigoContours(x,y, vals, color="w", alpha = 1.0, lw=0.66, ls="solid", lab
 ## of highest probability pixel to lowest
 #probsel = sorted_idx[np.cumsum(sorted_probs)<0.9]
 
-
-
-    coord = np.array(zip(x,y))
+    coord = np.array(list(zip(x,y)))
     xi=np.linspace(xmin, xmax, 500)
     yi=np.linspace(ymin, ymax, 500)
     xi,yi=np.meshgrid(xi,yi)
@@ -728,5 +726,3 @@ def readMaps(mapDir, simNumber, slot) :
     decMap=decMap/(2*np.pi/360.)
     return raMap, decMap, ligoMap, maglimMap, probMap, \
         haMap, xMap, yMap, hxMap, hyMap
-
-

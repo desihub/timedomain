@@ -86,7 +86,7 @@ def moon_brightness_model ( filter, extinction, phase, moon_sep, moon_zd, obj_zd
     lunar_airmass = scattering_airmass(moon_zd)
     obj_airmass   = scattering_airmass(obj_zd)
     if test : 
-        print "\t airmass of moon & object : ", lunar_airmass, obj_airmass
+        print("\t airmass of moon & object : ", lunar_airmass, obj_airmass)
     lunar_airmass = extinction*lunar_airmass
     obj_airmass = -2.5*np.log10( 1-10**(-0.4*extinction*obj_airmass))
 
@@ -120,7 +120,7 @@ def scattering_function (moon_sep) :
 
 # K&S eq 20
 # phase in %ilumination ala skycalc
-#   but note it goes from 0 to 1
+#   but note it goes to 1
 def moon_mag (phase, filter) :
     vmag = 3.84 + 0.026*phase + 4.0e-9 * phase**4
 

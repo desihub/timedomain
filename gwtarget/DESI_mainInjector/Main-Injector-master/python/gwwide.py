@@ -23,18 +23,18 @@ from astropy.units import radian
 
 from spherical_geometry.polygon import SphericalPolygon
 from spherical_geometry.vector import radec_to_vector
-from telescope import blancoHorizonLimits as load_blanco_limits
+from .telescope import blancoHorizonLimits as load_blanco_limits
 
 # constants
 
 max_match_angle = 3.0/60.0
-camera_radius = 1.3
+camera_radius = 1.3 # This should depend on the camera no?
 ctio_latitude = Latitude(-30.16527778, unit=deg)
 ctio_longitude = Longitude(-70.815, unit=deg)
 ctio_elevation = 2215.0
-kpno_latitude    = 31.9600784
-kpno_longitude   = -111.598169
-kpno_elevation   =  2067.
+kpno_latitude    = Latitude(31.9600784, unit=deg)
+kpno_longitude   = Longitude(-111.598169, unit=deg)
+kpno_elevation   =  2067.0
 
 # exception classes
 # interface functions
@@ -176,7 +176,7 @@ def fix_obs(gw_obs, all_filter_wide_queue, start_time, dt, camera):
     return fixed_obs
 
 def file_gwwide(gw_fnames, wide_fname, start_time, dt, fixed_fname, sort):
-    """Adjust exposure queue from a file to match a wide field entries, if close
+    """Adjust exposure queue file to match a wide field entries, if close
 
     :Parameters:
         - `gw_fnames`: the list of GW obs queue json files

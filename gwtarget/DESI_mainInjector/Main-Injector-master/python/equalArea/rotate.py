@@ -72,14 +72,14 @@ def cartesianToSpherical (x, y, z) :
     return ra, dec, r
 
 def rotateAboutXaxis (x, y, z, alpha, verbose = 0) :
-    if verbose : print "\t x axis rotation of ", alpha, "given  ", x[0], y[0], z[0]
+    if verbose : print("\t x axis rotation of ", alpha, "given  ", x[0], y[0], z[0])
     alpha = alpha*2*np.pi/360.
     xp = x
     yp = y*np.cos(alpha) - z*np.sin(alpha)
     zp = y*np.sin(alpha) + z*np.cos(alpha)
     return xp,yp,zp
 def rotateAboutYaxis (x, y, z, alpha, verbose = 0) :
-    if verbose : print "\t y axis rotation of ", alpha, "given  ", x[0], y[0], z[0]
+    if verbose : print("\t y axis rotation of ", alpha, "given  ", x[0], y[0], z[0])
     alpha = alpha*2*np.pi/360.
     # correct
     xp = z*np.sin(alpha) + x*np.cos(alpha)
@@ -91,7 +91,7 @@ def rotateAboutYaxis (x, y, z, alpha, verbose = 0) :
     zp = x*np.sin(alpha) + z*np.cos(alpha)
     return xp,yp,zp
 def rotateAboutZaxis (x, y, z, alpha, verbose = 0) :
-    if verbose : print "\t z axis rotation of ", alpha, "given  ", x[0], y[0], z[0]
+    if verbose : print("\t z axis rotation of ", alpha, "given  ", x[0], y[0], z[0])
     alpha = alpha*2*np.pi/360.
     xp = x*np.cos(alpha) - y*np.sin(alpha)
     yp = x*np.sin(alpha) + y*np.cos(alpha)
@@ -106,34 +106,34 @@ def getEulerAngles (ra, dec) :
 
 def test_euler (raCen, decCen) :
     alpha, beta, gamma = getEulerAngles (raCen, decCen)
-    print "rotate about axes by Euler angles: ", alpha, beta, gamma
+    print("rotate about axes by Euler angles: ", alpha, beta, gamma)
 
     ra = [-30, -10, -10, 0,  0, 30]
     dec = [ 0,   1,  -1, 3, -3,  0]
     ra = np.array(ra); dec = np.array(dec)
-    print "ra,dec pairs: ",
+    print("ra,dec pairs: ", end=' ')
     for i in range(0,len(ra)) :
-        print "{:6.2f} {:6.2f}          ".format(ra[i], dec[i]),
-    print ""
+        print("{:6.2f} {:6.2f}          ".format(ra[i], dec[i]), end=' ')
+    print("")
     x,y,z = sphericalToCartesian(ra,dec,1)
 
     i = 1
-    print "{:d} start              : {:10.5f}  {:10.5f}  {:10.5f}".format(i,float(x[i]),float(y[i]),float(z[i]))
+    print("{:d} start              : {:10.5f}  {:10.5f}  {:10.5f}".format(i,float(x[i]),float(y[i]),float(z[i])))
     x,y,z =rotateAboutZaxis(x,y,z,alpha)
-    print "Z-rot done {:5.1f} deg : {:10.5f}  {:10.5f}  {:10.5f}".format(alpha, float(x[i]),float(y[i]),float(z[i]))
+    print("Z-rot done {:5.1f} deg : {:10.5f}  {:10.5f}  {:10.5f}".format(alpha, float(x[i]),float(y[i]),float(z[i])))
 
     x,y,z = rotateAboutYaxis(x,y,z,beta)
-    print "Y-rot done {:5.1f} deg : {:10.5f}  {:10.5f}  {:10.5f}".format(beta, float(x[i]),float(y[i]),float(z[i]))
+    print("Y-rot done {:5.1f} deg : {:10.5f}  {:10.5f}  {:10.5f}".format(beta, float(x[i]),float(y[i]),float(z[i])))
 
     x,y,z = rotateAboutZaxis(x,y,z,gamma)
-    print "Z-rot done {:5.1f} deg : {:10.5f}  {:10.5f}  {:10.5f}".format(gamma, float(x[i]),float(y[i]),float(z[i]))
+    print("Z-rot done {:5.1f} deg : {:10.5f}  {:10.5f}  {:10.5f}".format(gamma, float(x[i]),float(y[i]),float(z[i])))
 
     ra,dec,r = cartesianToSpherical (x, y, z)
     ra = np.array(ra); dec = np.array(dec)
-    print "ra,dec pairs out: ",
+    print("ra,dec pairs out: ", end=' ')
     for i in range(0,len(ra)) :
-        print "{:6.2f} {:6.2f}          ".format(ra[i], dec[i]),
-    print ""
+        print("{:6.2f} {:6.2f}          ".format(ra[i], dec[i]), end=' ')
+    print("")
 
 # definintions:
 #   zxz rotation conventions, following the solid body
@@ -155,35 +155,35 @@ def getEulerAngles2 (ra, dec) :
 
 def test_euler_mk2 (raCen, decCen) :
     alpha, beta, gamma = getEulerAngles2 (raCen, decCen)
-    print "rotate about axes by Euler angles: ", alpha, beta, gamma
+    print("rotate about axes by Euler angles: ", alpha, beta, gamma)
 
     ra =  [60, 80, 80, 90, 90, 90.]
     dec = [ 0,  1, -1,  3, -3, 0.]
     ra = np.array(ra); dec = np.array(dec)
     ra = ra-90
-    print "ra,dec pairs: ",
+    print("ra,dec pairs: ", end=' ')
     for i in range(0,len(ra)) :
-        print "{:6.2f} {:6.2f}          ".format(ra[i], dec[i]),
-    print ""
+        print("{:6.2f} {:6.2f}          ".format(ra[i], dec[i]), end=' ')
+    print("")
     x,y,z = sphericalToCartesian(ra,dec,1)
 
     i = 1
-    print "{:d} start              : {:10.5f}  {:10.5f}  {:10.5f}".format(i,float(x[i]),float(y[i]),float(z[i]))
+    print("{:d} start              : {:10.5f}  {:10.5f}  {:10.5f}".format(i,float(x[i]),float(y[i]),float(z[i])))
     x,y,z =rotateAboutZaxis(x,y,z,alpha)
-    print "Z-rot done {:5.1f} deg : {:10.5f}  {:10.5f}  {:10.5f}".format(alpha, float(x[i]),float(y[i]),float(z[i]))
+    print("Z-rot done {:5.1f} deg : {:10.5f}  {:10.5f}  {:10.5f}".format(alpha, float(x[i]),float(y[i]),float(z[i])))
 
     x,y,z = rotateAboutXaxis(x,y,z,beta)
-    print "X-rot done {:5.1f} deg : {:10.5f}  {:10.5f}  {:10.5f}".format(beta, float(x[i]),float(y[i]),float(z[i]))
+    print("X-rot done {:5.1f} deg : {:10.5f}  {:10.5f}  {:10.5f}".format(beta, float(x[i]),float(y[i]),float(z[i])))
 
     x,y,z = rotateAboutZaxis(x,y,z,gamma)
-    print "Z-rot done {:5.1f} deg : {:10.5f}  {:10.5f}  {:10.5f}".format(gamma, float(x[i]),float(y[i]),float(z[i]))
+    print("Z-rot done {:5.1f} deg : {:10.5f}  {:10.5f}  {:10.5f}".format(gamma, float(x[i]),float(y[i]),float(z[i])))
 
     ra,dec,r = cartesianToSpherical (x, y, z)
     ra = np.array(ra); dec = np.array(dec)
-    print "ra,dec pairs out: ",
+    print("ra,dec pairs out: ", end=' ')
     for i in range(0,len(ra)) :
-        print "{:6.2f} {:6.2f}          ".format(ra[i], dec[i]),
-    print ""
+        print("{:6.2f} {:6.2f}          ".format(ra[i], dec[i]), end=' ')
+    print("")
 
 
 

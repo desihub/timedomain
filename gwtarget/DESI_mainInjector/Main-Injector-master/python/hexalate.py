@@ -75,7 +75,7 @@ def cutAndHexalateOnRaDec (obs, sm, raHexen, decHexen, idHexen, tree, camera, cu
 
     probabilities = obs.map*sm.probMap
     if verbose  :
-        print "\t cutAndHexalate probabilities sum",probabilities.sum()
+        print("\t cutAndHexalate probabilities sum",probabilities.sum())
 
     hexVals = np.zeros(raHexen.size)
     if not cutProbs:
@@ -85,7 +85,7 @@ def cutAndHexalateOnRaDec (obs, sm, raHexen, decHexen, idHexen, tree, camera, cu
         hexVals[ix2] = decam2hp.hexalateMapWithoutOverlap(obsRa,obsDec, probabilities, tree,
                                             raHexen[ix2], decHexen[ix2], camera, verbose=False)
     if verbose  :
-        print "hexVals max", hexVals.max()
+        print("hexVals max", hexVals.max())
     rank=np.argsort(hexVals);
     rank = rank[::-1];# sort from large to small by flipping natural argsort order                                                                                                   
  

@@ -42,6 +42,7 @@ from copy import deepcopy
 from glob import glob
 import argparse
 import logging # to disable output when reading in FITS info
+import subprocess
 
 import sqlite3
 
@@ -64,7 +65,6 @@ today = Time.now()
 
 # From decam_TAMU_ledgermaker.ipynb - https://github.com/desihub/timedomain/blob/master/too_ledgers/decam_TAMU_ledgermaker.ipynb
 # Thanks Antonella!
-
 def write_too_ledger(filename, too_table, checker, overwrite=False, verbose=False, tabformat='TAMU'):
     """Write ToO ledger in the ECSV format specified by Adam Meyers.
     These can be passed to fiberassign for secondary targeting.
@@ -451,12 +451,15 @@ def prob_pixel_locs(gw_in: dict, percentile = [0.9]):
             
             if p_idx > len(percentile) - 1:
                 break
-    
-    for i in range(len(sort_percentile)):
+        
+    all_idx = dict(zip(sort_percentile, all_idx))
+    total_area = {}
+    for i in sort_percentile:
         area = hp.nside2pixarea(gw_in['nside'], degrees=True)*len(all_idx[i])
-        print("The ", percentile[i]*100. ,"% map is ",area," deg^2", sep = '')
+        print("The ", i*100. ,"% map is ",area," deg^2", sep = '')
+        total_area[i] = area
 
-    return all_idx
+    return all_idx, total_area
 
 
 # ## Matching DESI observations to x% CI contour
@@ -1012,8 +1015,71 @@ def plot_cartmap_tiles(lvc_healpix_file, levels=[0.5, 0.9], angsize=3., tile_ra=
 
     return fig
 
-def disruptive_mode():
-    pass
+def mainInjector_env(path = "./"):
+    
+    _ = [sys.path.append(i.path) for i in os.scandir(os.path.join(user_home, "timedomain/gwtarget/DESI_mainInjector/Main-Injector-master")) if i.is_dir()]
+    sys.path.append(os.path.join(user_home, "timedomain/gwtarget/DESI_mainInjector"))
+    
+    os.environ["DESGW_DIR"] = os.path.join(path, "../Main-Injector-master/python/")
+    os.environ["DESGW_DATA_DIR"] = os.path.join(path, "../Main-Injector-master/data/")
+    if os.environ["DESGW_DIR"] not in os.environ["PYTHONPATH"]:
+        os.environ["PYTHONPATH"] = os.environ["PYTHONPATH"] + ":" + os.environ["DESGW_DIR"]
+     
+    # My, my, what convention to use here?
+    #return
+
+def disruptive_mode(gwfile_path = "./", gw_name = ""):
+    # TODO: What to do with maininjector as a whole? That's a lot of files to copy!
+    # Running maininjector
+    # user_home = "/global/u2/p/portmanm/"
+    
+    # TODO: Set this as an environment variable? Or grab it from the environment?
+    path_to_MI = os.path.join(user_home, "timedomain/gwtarget/DESI_mainInjector/work_dark/")
+    
+    mainInjector_env(path_to_MI)
+    
+    import resimulator
+    
+    try: 
+        from pyslalib import slalib
+    except:
+        _ = subprocess.run(sys.executable, '-m', 'pip', 'install', '--user', 'pyslalib', shell = True, check = True)
+        
+    if not gw_name:
+        gw_name = os.path.basename(gwfile_path).split(".fits")[0]
+        
+    current_dir = os.path.join(os.getcwd(), "./") # To make sure we end in a /
+        
+    os.chdir(path_to_MI)
+    #resimulator.recycle(gw_name, gwfile_path, "dark", path_to_MI, do_make_maps = True, do_make_hexes = True, do_make_jsons = False, do_make_gifs = False)
+    resimulator.recycle(gw_name, gwfile_path, "dark", current_dir, do_make_maps = True, do_make_hexes = True, do_make_jsons = False, do_make_gifs = False)
+    os.chdir(current_dir)
+    
+    ra_dec_in = os.path.join(current_dir, gw_name + "-ra-dec-id-prob-mjd-slot-dist.txt")
+    ra_dec_out = os.path.join(current_dir, gw_name + "_disruptive_ToO_ledger_pointings.txt")
+    
+    with open(ra_dec_in, "r") as i:
+        file_text = i.readlines()
+        
+    with open(ra_dec_out, "w") as o:
+        header = "name," + file_text[0].strip("#")
+        new_header = header.split(" ")
+        # It should be the same every time but just in case...
+        new_header = " ".join(["mjd_start, mjd_end," if "mjd" in head else head for head in new_header])
+        
+        o.write(new_header)
+        
+        for line in file_text[1:]:
+            # We use .replace For an errant extra space in the test output
+            values = line.replace("  "," ").split(" ")
+            mjd_end = str(float(values[4]) + 10.) #mjd
+            values.insert(0, gw_name)
+            values.insert(6, mjd_end)
+            o.write(", ".join(values))
+            
+    # Can I split this off and run maininjector *while* running the rest of the code to generate the below?
+    
+    return ra_dec_out
 
 def nondisruptive_mode():
     pass

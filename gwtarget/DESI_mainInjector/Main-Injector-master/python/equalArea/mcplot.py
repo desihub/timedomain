@@ -25,8 +25,16 @@ license="""
 # tru cmap = gray_r
 def plot(x, y, vals, gridsize=160, save=False, file="", vmin="", vmax="", cmap="jet", sum=False) :
     ax1 = plt.axes()
-    if vmin > vals.max() : vmin = ""
-    if vmax < vals.min() : vmax = ""
+    try:
+        if vmin > vals.max() : vmin = ""
+    except:
+        vmin = ""
+
+    try:
+        if vmax < vals.min() : vmax = ""
+    except:
+        vmax = ""
+    
     if vmin == "" and vmax == "":
         polycol = ax1.hexbin(x,y,vals,gridsize=gridsize, cmap=cmap);  
     elif vmax == "" :
@@ -35,7 +43,7 @@ def plot(x, y, vals, gridsize=160, save=False, file="", vmin="", vmax="", cmap="
         polycol = ax1.hexbin(x,y,vals,gridsize=gridsize, vmax=vmax, cmap=cmap);  
     else :
         if sum:
-            print "\t sum!"
+            print("\t sum!")
             polycol = ax1.hexbin(x,y,vals,gridsize=gridsize, vmin=vmin, vmax=vmax, cmap=cmap, reduce_C_function=np.sum);  
         else :
             polycol = ax1.hexbin(x,y,vals,gridsize=gridsize, vmin=vmin, vmax=vmax, cmap=cmap);  

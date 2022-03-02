@@ -141,7 +141,7 @@ class map(object):
                 var = ap_mag_var[ic]
 # Now we weight by r^2 dr , thus assuming equal probability per unit volume
 # We will also drop constants, equivalent to assuming we are going
-# to renormalize by integrating from 0 to infinity
+# to renormalize by integrating to infinity
             # normalize
                 norm_min, norm_max = 7.0, 25.0 # magnitudes
                 ans = scipy.integrate.quad(self.probability_density, 
@@ -156,7 +156,7 @@ class map(object):
                 prob = prob/norm 
                 prob_map[pix] = prob
                 ic += 1
-            print "\t probMap: made for source absMag {:.1f}".format(absMag_mean)
+            print("\t probMap: made for source absMag {:.1f}".format(absMag_mean))
 
 # probability of recognition propto star density
         prob_map = prob_map * self.precog
@@ -191,7 +191,7 @@ class map(object):
         import matplotlib.pyplot as plt
         con_levels=10
         if self.zi == "" or self.lastCtype != type:
-            print "\t calculating contours for type = ",type
+            print("\t calculating contours for type = ",type)
             if hourangle == False :
                 xmin = obs.x.min(); xmax = obs.x.max()
                 ymin = obs.y.min(); ymax = obs.y.max()

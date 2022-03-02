@@ -215,9 +215,9 @@ def examine (raHexen, decHexen, sumProb, nu, ng, nr, ni, nz, slice=30, n=4) :
 
     print(" i  cumProb   nu  ng  nr  ni  nz     raHexen   decHexen")
     for i in range(0,slice): 
-        print "{:3d} {:5.1f}%   {:3.0f} {:3.0f} {:3.0f} {:3.0f} {:3.0f}   {:10.4f} {:10.4f}".format(
+        print("{:3d} {:5.1f}%   {:3.0f} {:3.0f} {:3.0f} {:3.0f} {:3.0f}   {:10.4f} {:10.4f}".format(
             i, 100*sumProb[ix[0:i+1]].sum(), 
-            nu[ix[i]], ng[ix[i]], nr[ix[i]], ni[ix[i]],nz[ix[i]], raHexen[ix[i]], decHexen[ix[i]])
+            nu[ix[i]], ng[ix[i]], nr[ix[i]], ni[ix[i]],nz[ix[i]], raHexen[ix[i]], decHexen[ix[i]]))
 
     how (nu[ix],ng[ix],nr[ix],ni[ix],nz[ix], n=n, slice=slice) 
 
@@ -232,13 +232,13 @@ def how (nu,ng,nr,ni,nz, n=2, slice=40) :
         ix,=np.where( (ng[0:slice]>i-0.5) & (ng[0:slice]<=i+0.5 ) ); sum = sum + (n-i)*ix.size; 
 # feb 2, moon goes down at end, so no g band
     sum = 0
-    print "ng", sum
+    print("ng", sum)
     nexp = nexp+sum
 
     sum = 0
     for i in range(0,n+1) :
         ix,=np.where( (nr[0:slice]>i-0.5) & (nr[0:slice]<=i+0.5 ) ); sum = sum + (n-i)*ix.size; 
-    print "nr", sum
+    print("nr", sum)
     nexp = nexp+sum
     
     sum = 0
@@ -246,32 +246,32 @@ def how (nu,ng,nr,ni,nz, n=2, slice=40) :
         ix,=np.where( (ni[0:slice]>i-0.5) & (ni[0:slice]<=i+0.5 ) ); sum = sum + (n-i)*ix.size; 
 # feb 2, moon goes down at end, so no g band, and sheer greed- let alex do it
     sum = 0
-    print "ni", sum
+    print("ni", sum)
     nexp = nexp+sum
 
     sum = 0
     for i in range(0,n+1) :
         ix,=np.where( (nz[0:slice]>i-0.5) & (nz[0:slice]<=i+0.5 ) ); sum = sum + (n-i)*ix.size; 
-    print "nz", sum
+    print("nz", sum)
     nexp = nexp+sum
-    print "nexp= ", nexp
-    print "time = ", nexp*2, "   hours=", nexp*2/60.
+    print("nexp= ", nexp)
+    print("time = ", nexp*2, "   hours=", nexp*2/60.)
 # feb 2, moon goes down at end, so no u-band
     return
 
     sum = 0
     slice = int(slice/1.2)
     n = 4
-    print "u-band slice = ",slice, " n = ",n
+    print("u-band slice = ",slice, " n = ",n)
     for i in range(0,n+1) :
         #if i == 1: print np.where( (nu[0:slice]>i-0.5) & (nu[0:slice]<=i+0.5 ) )
         #if i == 1: print nu[0:slice]
         ix,=np.where( (nu[0:slice]>i-0.5) & (nu[0:slice]<=i+0.5 ) ); sum = sum + (n-i)*ix.size; 
-        print i, ix.size, (n-i)*ix.size
-    print "nu", sum
+        print(i, ix.size, (n-i)*ix.size)
+    print("nu", sum)
     nexp = nexp+sum
-    print "nexp= ", nexp
-    print "time = ", nexp*2, "   hours=", nexp*2/60.
+    print("nexp= ", nexp)
+    print("time = ", nexp*2, "   hours=", nexp*2/60.)
 
 
 
@@ -297,7 +297,7 @@ def gw_map_nexp (raHexen, decHexen, file="LALInference_skymap.fits.gz", nside=32
     ra,dec,vals=hp2np.hp2np(dir+file,degrade=nside)
     if nside == 32 : ix,=np.where((vals>2e-3)&(dec<40));
     if nside == 64 : ix,=np.where((vals>5e-4)&(dec<40));
-    print ra[ix].size, vals[ix].sum()
+    print(ra[ix].size, vals[ix].sum())
     ra, dec, probs = ra[ix], dec[ix], vals[ix]
 
 # the telemtry db exposures
@@ -329,7 +329,7 @@ def gw_map (file="LALInference_skymap.fits.gz", nside=32) :
     ra,dec,vals=hp2np.hp2np(dir+file,degrade=nside)
     if nside == 32 : ix,=np.where((vals>2e-3)&(dec<40));
     if nside == 64 : ix,=np.where((vals>5e-4)&(dec<40));
-    print ra[ix].size, vals[ix].sum()
+    print(ra[ix].size, vals[ix].sum())
 
     return ra[ix], dec[ix], vals[ix]
 
@@ -404,7 +404,7 @@ def exp_map (data, do_filter="i", nside=32) :
 
     pix_no = hp.ang2pix(nside, ra, dec, lonlat=True)
     unique_pix = np.unique(pix_no)
-    print do_filter, unique_pix.size
+    print(do_filter, unique_pix.size)
     for i in range(0,unique_pix.size) :
         up = unique_pix[i]
         ix, = np.where(pix_no == up)
@@ -465,7 +465,7 @@ def writeJson(radecfile, exp, jsonFilename, propid="2019B-0371") :
 
     size = ra.size
     seqtot= seqtot*nexp
-    print "n targets=",size
+    print("n targets=",size)
     for i in range(0,size) :
         filter = filterList[i]
         tiling = tilingList[i]

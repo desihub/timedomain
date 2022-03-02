@@ -4,10 +4,11 @@ from knlc import kn_brightness_estimate
 
 def run_ap_mag_for_kasen_models (filter, distance, dist_err, days_since_burst, 
         kasen_fraction, data_dir="./", fast=False, doPlots=True) :
-    report_file = data_dir + "/kn_report"
+    report_file = os.path.join(data_dir, "kn_report")
     if not fast :
-        knlc_dir = os.getenv("DESGW_DIR", "./")+ "/knlc/"
-        code = knlc_dir+"kn_brightness_estimate.py"
+        knlc_dir = os.path.join(os.getenv("DESGW_DIR", data_dir), "knlc")
+        print(knlc_dir)
+        code = os.path.join(knlc_dir, "kn_brightness_estimate.py")
         cmd = "python {} --distance {} --distance_err {} --time_delay {} ".format(
             code, distance, dist_err, days_since_burst)
         cmd = cmd + "--fraction {} ".format(kasen_fraction)
@@ -19,14 +20,17 @@ def run_ap_mag_for_kasen_models (filter, distance, dist_err, days_since_burst,
 
         file = report_file + ".txt"
         fd = open(file,"r")
-        for i in range(0,16): fd.readline()
-        line = fd.readline().split()
-        apparent_mag = dict()
-        apparent_mag["g"] = np.float(line[0])
-        apparent_mag["r"] = np.float(line[3])
-        apparent_mag["i"] = np.float(line[6])
-        apparent_mag["z"] = np.float(line[9])
-        ap_mag = apparent_mag[filter]
+        for i in range(0,16): #fd.readline()
+            line = fd.readline().split()
+            apparent_mag = dict()
+            try:
+                apparent_mag["g"] = np.float(line[0])
+                apparent_mag["r"] = np.float(line[3])
+                apparent_mag["i"] = np.float(line[6])
+                apparent_mag["z"] = np.float(line[9])
+                ap_mag = apparent_mag[filter]
+            except:
+                pass
 
     else :
         kn_calc         = kn_brightness_estimate.KNCalc(distance, dist_err, days_since_burst)
@@ -38,9 +42,10 @@ def run_ap_mag_for_kasen_models (filter, distance, dist_err, days_since_burst,
             percentile_dict, 
             write_answer=True, 
             flt=filter, 
-            fraction=kasen_fraction)
+            fraction=kasen_fraction,
+            data_dir=data_dir)
 
-        file = data_dir+"/answer_{}.txt".format(filter)
+        file = os.path.join(data_dir, "answer_{}.txt".format(filter))
         ap_mag = np.genfromtxt(file)
  
     return ap_mag

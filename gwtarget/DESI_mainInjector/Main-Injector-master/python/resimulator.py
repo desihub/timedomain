@@ -1,7 +1,9 @@
 import numpy as np
 import os
 import yaml
+#
 import getHexObservations
+#
 import gw_map_configure
 import healpy as hp
 
@@ -123,7 +125,7 @@ def gethexIDfromJson (dir = "/data/des30.a/data/annis/des-gw/Jan4-2017-event/GW1
     import json; import glob
     import os
     import hexalate
-    cwd = os.getcwd(); print cwd
+    cwd = os.getcwd(); print(cwd)
     os.chdir(dir)
     files = glob.glob("*.json")
     nfiles=len(files);
@@ -131,13 +133,13 @@ def gethexIDfromJson (dir = "/data/des30.a/data/annis/des-gw/Jan4-2017-event/GW1
     dec = np.array([])
     slot = np.array([])
     for n in range(nfiles) :
-        print files[n]
+        print(files[n])
         fd=open(files[n],"r"); data=json.load(fd);fd.close()
         for i in range(len(data)): 
             ra = np.append(ra, data[i]["RA"])
             dec = np.append(dec, data[i]["dec"])
             slot = np.append(slot, files[n][9:11])
-            if verbose: print data[i]["RA"],data[i]["dec"],files[n][9:11]
+            if verbose: print(data[i]["RA"],data[i]["dec"],files[n][9:11])
 
     os.chdir(cwd)
     id = hexalate.getHexId(ra,dec)
@@ -152,7 +154,7 @@ def gethexIDfromDB() :
     id = np.unique(id)
     return id
 #
-# shall we run the hexes from a ra-dec-id-prob-mjd-slot-dist.tx file?
+# shall we run the hexes ra-dec-id-prob-mjd-slot-dist.tx file?
 def hexID (file = "../Jan4-2017-event/GW170104-ra-dec-id-prob-mjd-slot-dist.txt") :
     ra,dec = np.genfromtxt(file, unpack=True,usecols=(0,1) )
     id = np.genfromtxt(file, unpack=True,usecols=(2), dtype = "str" )

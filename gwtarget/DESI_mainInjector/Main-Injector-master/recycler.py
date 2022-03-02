@@ -55,12 +55,12 @@ class event:
         except:
             self.event_params = {}
             self.weHaveParamFile = False
-        print(self.event_paramfile)
-        print(self.event_params.items())
+        print((self.event_paramfile))
+        print((list(self.event_params.items())))
         #asdf
         yaml_dir = os.path.join(work_area, 'strategy.yaml')
         os.system('cp recycler.yaml ' + yaml_dir)
-        print('***** Copied recycler.yaml to ' + yaml_dir + ' for future reference *****')
+        print(('***** Copied recycler.yaml to ' + yaml_dir + ' for future reference *****'))
         os.system('kinit -k -t /var/keytab/desgw.keytab desgw/des/des41.fnal.gov@FNAL.GOV')
         self.official = official
 
@@ -90,10 +90,10 @@ class event:
 #        print("ag copy skymap")
         os.system('cp '+self.master_dir+'/'+trigger_id +'_params.npz '+work_area)
 #        print("ag copy params npz")
-        print('cp '+skymap_filename.strip()+' '+work_area)
-        print("work area "+work_area)
+        print(('cp '+skymap_filename.strip()+' '+work_area))
+        print(("work area "+work_area))
         self.skymap = skymap_filename
-        print("skymaps "+self.skymap)
+        print(("skymaps "+self.skymap))
 
         # Setup website directories
         website = "./DES_GW_Website/"
@@ -199,7 +199,7 @@ class event:
         hours_used_by_BH  = 0
 
         '''
-        print(self.event_params)
+        print((self.event_params))
         hoursAvailable = 20.
         self.distance = 1.
 
@@ -223,7 +223,7 @@ class event:
         hoursAvailable = 20.
         self.time_budget = hoursAvailable
         
-        print(self.event_params.items())
+        print((list(self.event_params.items())))
         hasremnant = self.event_params['hasremnant']
         if hasremnant> 0.01:
             trigger_type = 'Rem'
@@ -406,7 +406,7 @@ class event:
 
         integrated_prob = np.sum(self.prob)
         try:
-            print('-'*20+'>','LIGO PROB: %.3f \tLIGO X DES PROB: %.3f' % (gw_map_results.sum_ligo_prob,integrated_prob))
+            print(('-'*20+'>','LIGO PROB: %.3f \tLIGO X DES PROB: %.3f' % (gw_map_results.sum_ligo_prob,integrated_prob)))
         except:
             pass
 
@@ -498,7 +498,7 @@ class event:
         mapDir = self.mapspath
         recycler_mjd = self.recycler_mjd
         # JTA
-        print ("mainInjector ",trigger_id, skymap, mjd, outputDir)
+        print(("mainInjector ",trigger_id, skymap, mjd, outputDir))
 
         start_days_since_burst = self.recycler_mjd - self.mjd
 
@@ -567,7 +567,7 @@ class event:
 
         if config["force_distance"]:
             self.distance = config["distance"]
-            print '--- FORCING DISTANCE TO ',config["distance"],'---'
+            print('--- FORCING DISTANCE TO ',config["distance"],'---')
         #self.distance = distance
 
         if not os.path.exists(outputDir):
@@ -576,7 +576,7 @@ class event:
 
         self.gethexobstype = gethexobstype
         #print 'triggertype'*100
-        print('TRIGGER TYPE:',self.gethexobstype)
+        print(('TRIGGER TYPE:',self.gethexobstype))
 
 
         if not os.path.exists(outputDir): os.makedirs(outputDir)
@@ -735,7 +735,7 @@ class event:
         self.slotNum = slotNum
 
         integrated_prob = np.sum(self.prob)
-        print('-'*20+'>','LIGO PROB: %.3f \tLIGO X DES PROB: %.3f' % (self.sumligoprob,integrated_prob))
+        print(('-'*20+'>','LIGO PROB: %.3f \tLIGO X DES PROB: %.3f' % (self.sumligoprob,integrated_prob)))
         #raw_input('checking comparison of probs!!!!'*10)
 
 
@@ -919,7 +919,7 @@ class event:
         # Copy json file to web server for public download
         if not os.path.exists(jsonFile):
             if integrated_prob == 0:
-                print("zero probability, thus no jsonFile at ", jsonFile)
+                print(("zero probability, thus no jsonFile at ", jsonFile))
             else:
                 # try:
                 os.chmod(self.mapspath, 0o777)
@@ -1012,26 +1012,26 @@ class event:
         trigger_html = os.path.join(self.master_dir, trigger_id +'_' + 
             trigger_dir + '_trigger.html') 
 
-        print 'scp -r ' + GW_website_dir_t + self.trigger_id+ ' ' + desweb_t
-        print 'scp ' + GW_website_dir + '/* ' + desweb
+        print('scp -r ' + GW_website_dir_t + self.trigger_id+ ' ' + desweb_t)
+        print('scp ' + GW_website_dir + '/* ' + desweb)
         #asdf
         os.system('cp '+trigger_html+' '+GW_website_dir)
 
         os.system('scp -r ' + GW_website_dir_t + self.trigger_id+ ' ' + desweb_t)
         os.system('scp ' + GW_website_dir + '/* ' + desweb)
         #master_dir,outfilename,trigger_id,event_paramfile,mapfolder,processing_param_file=None,real_or_sim='real',secondtimearound=False
-        print self.master_dir
-        print os.path.join(self.master_dir, trigger_id +'_'+ trigger_dir+ '_trigger.html')
+        print(self.master_dir)
+        print(os.path.join(self.master_dir, trigger_id +'_'+ trigger_dir+ '_trigger.html'))
         #os.system('cp '+trigger_html+' '+GW_website_dir)
-        print trigger_id,self.event_paramfile,trigger_dir
+        print(trigger_id,self.event_paramfile,trigger_dir)
 
         tp.makeNewPage(self.master_dir,os.path.join(self.master_dir, trigger_id +'_'+ trigger_dir+ '_trigger.html'),trigger_id,self.event_paramfile,trigger_dir, real_or_sim=real_or_sim)
-        print 'here1'
-        print 'scp -r ' + trigger_html + ' ' + desweb_t2 + "/"
+        print('here1')
+        print('scp -r ' + trigger_html + ' ' + desweb_t2 + "/")
         os.system('scp -r ' + trigger_html + ' ' + desweb_t2 + "/")
-        print 'here2'
+        print('here2')
         os.system('scp -r ' + trigger_html + ' ' + desweb_t2 +'_trigger.html')
-        print 'here3'
+        print('here3')
         os.system('cp ' + self.master_dir +'/'+  trigger_dir + '/'+trigger_dir+ '_recycler.log ' + self.website_jsonpath)
         return
 
@@ -1101,7 +1101,7 @@ if __name__ == "__main__":
             longopts=["triggerpath=", "triggerid=", "mjd=", "exposure_length=", "official","skymapfilename=", "hasrem="])
 
     except getopt.GetoptError as err:
-        print(str(err))
+        print((str(err)))
         print("Error : incorrect option or missing argument.")
         print(__doc__)
         sys.exit(1)
@@ -1154,7 +1154,7 @@ if __name__ == "__main__":
             skymap_filename = str(a)
         elif o in ['--hasrem']:
             hasrem = str(a)
-            print("HASREM "+hasrem)
+            print(("HASREM "+hasrem))
         elif o in ['--official']:
             official = True
 #        elif o in ['--hasrem']:
@@ -1163,7 +1163,7 @@ if __name__ == "__main__":
         #    hasrem = False
 
         else:
-            print("Warning: option", o, "with argument", a, "is not recognized")
+            print(("Warning: option", o, "with argument", a, "is not recognized"))
 
     # Clear bad triggers, only used for wrapping all triggers...
     badtriggers = open('badtriggers.txt', 'w')
@@ -1202,7 +1202,7 @@ if __name__ == "__main__":
                print('Could not find skymap url file')
 
         if 'bayestar' in skymap_filename:
-            print('bayestar' * 50)
+            print(('bayestar' * 50))
 
         try:
             try:
@@ -1210,7 +1210,7 @@ if __name__ == "__main__":
             except:
                 badtriggers = open('badtriggers.txt', 'a')
                 badtriggers.write(trigger_id + '\n')
-                print('WARNING: Could not convert mjd to float. Trigger: ' + trigger_id + ' flagged as bad.')
+                print(('WARNING: Could not convert mjd to float. Trigger: ' + trigger_id + ' flagged as bad.'))
 # here is where the object is made, and parts of it are filed in
             master_dir = os.path.join(trigger_path, trigger_id)
             e = event(skymap_filename, master_dir, trigger_id, mjd, config, official, hasrem)
@@ -1230,7 +1230,7 @@ if __name__ == "__main__":
             #e.updateWebpage(real_or_sim)
 
         except KeyError:
-            print("Unexpected error:", sys.exc_info())
+            print(("Unexpected error:", sys.exc_info()))
             badtriggers = open('badtriggers.txt', 'a')
             badtriggers.write(trigger_id + '\n')
     #############################################################################

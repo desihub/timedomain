@@ -66,10 +66,7 @@ class observed(object):
         kpno_lat          = 31.9600784
         kpno_lon          = -111.598169
         kpno_height       =  2067.
-        maunakea_lat      = 19.826667
-        maunakea_lon      = -155.471667
-        maunakea_height   = 4215.
-        if camera == "decam" or camera == "des":
+        if camera == "decam" :
             obs_lat = ctio_lat
             obs_lon = ctio_lon
             obs_height = ctio_height
@@ -77,11 +74,6 @@ class observed(object):
             obs_lat = kpno_lat
             obs_lon = kpno_lon
             obs_height = kpno_height
-        elif camera == "hsc" :
-            obs_lat = maunakea_lat
-            obs_lon = maunakea_lon
-            obs_height = maunakea_height
-        self.observatory = camera
 
         self.date         = slalib.sla_djcl(mjd)
 
@@ -251,16 +243,7 @@ class observed(object):
 
     def telescopeLimits (self, ha, dec) :
         if self.verbose: print("\t ... telescope limits")
-        if self.observatory == "decam" or self.observatory == "des" :
-            #limits = telescope.blancoLimits(ha, dec)
-            #print "HACK HACK HACK"
-            limits = np.zeros(ha.size)
-            ix = self.zd*360./2/np.pi <= 67.5
-            limits[ix] = 1.0
-        elif self.observatory == "desi" or self.observatory == "hsc" :
-            limits = np.zeros(ha.size)
-            ix = self.zd*360./2/np.pi <= 80.
-            limits[ix] = 1.0
+        limits = telescope.blancoLimits(ha, dec)
         return limits 
 
     def seeing(self, airmass, wavelength=775., seeingAtZenith=1.0) :
@@ -406,10 +389,7 @@ def findNightDuration(mjd, camera="decam") :
     kpno_lat          = 31.9600784
     kpno_lon          = -111.598169
     kpno_height       =  2067.
-    maunakea_lat      = 19.826667
-    maunakea_lon      = -155.471667
-    maunakea_height   = 4215.
-    if camera == "decam" or camera == "des" :
+    if camera == "decam" :
         obs_lat = ctio_lat
         obs_lon = ctio_lon
         obs_height = ctio_height
@@ -417,10 +397,6 @@ def findNightDuration(mjd, camera="decam") :
         obs_lat = kpno_lat
         obs_lon = kpno_lon
         obs_height = kpno_height
-    elif camera == "hsc" :
-        obs_lat = maunakea_lat
-        obs_lon = maunakea_lon
-        obs_height = maunakea_height
 
     degToRad = 2.*np.pi/360.
     lat          = obs_lat*degToRad

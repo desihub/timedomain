@@ -22,8 +22,8 @@ class trigger(object):
         hdr = fitsio.read_header(skymap,1)
         burst_mjd = np.float(hdr["mjd-obs"])
         try:
-            distance = hdr["distmean"]
-            diststd = hdr["diststd"]
+            distance = np.float(hdr["distmean"])
+            diststd = np.float(hdr["diststd"])
         except:
             print('distmean was not in payload... ')
             raise Exception("now")
@@ -40,13 +40,13 @@ class trigger(object):
         else:
             named_trigger = "dark"
 
-        print ""
-        print "=================================================="
-        print "=================  desgw-map ====================="
-        print "=================================================="
-        print "                                        since 2015"
-        print "\ngw_map_trigger: {} map {}, {} at {:.0f} Mpc\n".format(
-            trigger_id, skymap, named_trigger, distance)
+        print("")
+        print("==================================================")
+        print("=================  desgw-map =====================")
+        print("==================================================")
+        print("                                        since 2015")
+        print("\ngw_map_trigger: {} map {}, {} at {:.0f} Mpc\n".format(
+            trigger_id, skymap, named_trigger, distance))
         if trigger_type == "dark" :
             print('\t strategy=dark,  setting distance, dist_err to 100 Mpc, 30 Mpc')
             self.distance = 100.
@@ -67,7 +67,7 @@ class trigger(object):
             ligo_dist_sig  = hp.ud_grade(ligo_dist, resolution)
             ligo_dist_norm = hp.ud_grade(ligo_dist, resolution)
         except:
-            print "\n\t !!!!!!!! ------- no distance information in skymap ------ !!!!!!!!\n"
+            print("\n\t !!!!!!!! ------- no distance information in skymap ------ !!!!!!!!\n")
     
         # JTA Hack
         # GW190425
@@ -121,7 +121,7 @@ class strategy(object) :
         self.kasen_fraction            = kasen_fraction
         self.use_teff                  = use_teff
         if abs(use_teff - 1.0) > 0.01 :
-           print "\t scaling summed exposure time by teff {}".format(use_teff)
+           print("\t scaling summed exposure time by teff {}".format(use_teff))
 
         working_filter            = self.filter_list[0]
         ix                        = self.filter_list == working_filter

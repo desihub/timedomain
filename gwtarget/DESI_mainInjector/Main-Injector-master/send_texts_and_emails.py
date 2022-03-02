@@ -42,7 +42,7 @@ def send(subject,text,official=False,atchannel=False):
         report["value2"] = 'please fix asap.'
         requests.post("https://maker.ifttt.com/trigger/desgwtrigger/with/key/dmCI74bFTHzz2uCOIevguh", data=report)
 
-    print people['name']
+    print(people['name'])
 
     me = 'automated-desGW@fnal.gov'
     you = []
@@ -81,7 +81,7 @@ def send(subject,text,official=False,atchannel=False):
             s.sendmail(me, y, msg.as_string())
             s.quit()
         except:
-            print 'could not send alert! to ', y
+            print('could not send alert! to ', y)
 
         
 

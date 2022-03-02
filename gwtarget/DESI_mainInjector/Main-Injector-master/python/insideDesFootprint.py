@@ -5,7 +5,7 @@ def insideFootprint (ra, dec) :
     ix = ra > 180
     ra[ix] = ra[ix]-360.
     footprint = getFootprint()
-    ix = footprint.contains_points( zip(ra,dec) )
+    ix = footprint.contains_points( list(zip(ra,dec)) )
     return ix
 
 def getFootprint() :
@@ -22,6 +22,6 @@ def getFootprintRaDec() :
     return ra,dec
 
 def desPath(raDes, decDes) :
-    footprint = matplotlib.path.Path(zip(raDes, decDes))
+    footprint = matplotlib.path.Path(list(zip(raDes, decDes)))
     return footprint
 
