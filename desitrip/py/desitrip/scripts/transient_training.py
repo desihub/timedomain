@@ -199,14 +199,20 @@ class TransientModels:
 
 class ExposureData:
     
-    def __init__(self, prefix=os.environ['DESI_SPECTRO_REDUX'], redux='fuji'):
+    def __init__(self, prefix=os.environ['DESI_SPECTRO_REDUX'], survey='SV2', redux='fuji', grouping='pernight'):
         """Build an exposure table with observing conditions using Aaron Meisner's
         exposure conditions database.
 
         Parameters
         ----------
+        prefix : str
+            Path to DESI spectroscopic reductions.
+        survey : str
+            Type of tile to use: SV0(1|2|3), MAIN, ...
         redux : str
             Spectroscopic reduction (denali, everest, fuji, ...).
+        grouping : str
+            Type of exposure grouping (pernight, cumulative, ...).
 
         Returns
         -------
@@ -252,7 +258,7 @@ class ExposureData:
                       'FIBERFAC', 'FIBERFAC_ELG', 'FIBERFAC_BGS']
 
         self.exptab = join(exptab_redux, obsconditions[obscolumns], keys=['EXPID'])
-        self.specfiles = self._get_spectra_files()
+        self.specfiles = self._get_spectra_files(survey, grouping)
         
         self.tiles = [*self.specfiles]
         self.nights = [[*self.specfiles[t]][0] for t in self.tiles]
@@ -289,7 +295,7 @@ class ExposureData:
         except IndexError:
             raise StopIteration
         
-    def _get_spectra_files(self, program='SV2', grouping='pernight'):
+    def _get_spectra_files(self, program='sv2', grouping='pernight'):
         """Get list of coadds and redrock files for a given reduction, program, and grouping.
 
         Parameters
