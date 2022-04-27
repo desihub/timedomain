@@ -115,13 +115,15 @@ if __name__ == "__main__":
     
     d_modes.add_argument('--disruptive', '-D', 
                         dest   = 'mode', 
-                        action = 'store_true',
+                        action = 'store_const', # store_true
+                        const  = 0, # of pointings... # TODO: can this be fed to MI?
                         help   = 'Enable disruptive mode.')
     
     d_modes.add_argument('--non-disruptive', '-ND', 
                         dest   = 'mode', 
-                        action = 'store_false',
-                        help   = 'Enable non-disruptive mode.')
+                        action = 'store',
+                        #const  = 20, # of pointings
+                        help   = 'Enable non-disruptive mode and specify number of pointings.')
 
     args = parser.parse_args() # Using vars(args) will call produce the args as a dict
     gwfile = args.gwfile
@@ -131,11 +133,12 @@ if __name__ == "__main__":
         CI_val = args.CI_val
     except:
         CI_val = 0.9
-        
+    
+    # if nd_mode evaluates to false, disruptive since = 0
     try:
-        d_mode = args.mode
+        nd_mode = int(args.mode)
     except:
-        d_mode = False
+        nd_mode = 10
         
 # *************************************************************************
 #
@@ -196,6 +199,7 @@ if __name__ == "__main__":
     # Read in GW file, grab its properties, and determine pixels in CI area
     gw_mjd = head['MJD-OBS']
     gw_properties = read_gwfile(gwfile)
+    
     gw_map = hp.read_map(gwfile, nest = gw_properties["nest"])
     
     # Grab pixel locations for probabilities in x% CI
@@ -231,6 +235,35 @@ if __name__ == "__main__":
 
     ra_degraded, dec_degraded = hp.pix2ang(gw_degraded_properties["nside"], pix_degraded[CI_val], nest = gw_degraded_properties["nest"], lonlat = True)
     
+# *************************************************************************
+#
+# NON-DISRUPTIVE MODE
+#
+# *************************************************************************    
+
+    # Use some sneaky Python-fu to determine number of pointings 
+    # i.e. nd_mode as non-zero for bool evaluation and as integer
+    if nd_mode:
+        nd_tile_info = nondisruptive_mode(gw_properties, gw_degraded_properties, pixmap, num_pointings = nd_mode, restrict = False, overlap = True)
+        
+        outfile_name = f'{gw_name}_ND_ToO_ledger.ecsv'
+        outfile = os.path.join(targetlists_path, outfile_name)
+        
+        # First time writing
+        ow = True
+        
+        print(f"Writing to {outfile_name} for ND mode.")
+        for k,v in nd_tile_info.items():
+            print(f"Writing {k}...")
+            # We use every column but the last because I've introduced a new column
+            # that isn't needed in the output
+            write_too_ledger(outfile, v.to_pandas(), 
+                             checker='MP/AP', overwrite=ow, verbose=False, tabformat='ND')
+            
+            # Guarantee append after first key
+            ow = False
+            
+        print()
 # *************************************************************************
 #
 # GRABBING TRANSIENT ALERT MATCHES 'WITHIN' DEGRADED PIXEL MAP PIXELS
@@ -465,7 +498,7 @@ if __name__ == "__main__":
         sys.exit()
     
  
-    print("Performing a closer (1\") match if found in previous check...")
+    print("\nPerforming a closer (1\") match if found in previous check...")
     # As a reminder, uses original targlist data to find 1 arcsecond matches to individual targets via fibers
     desi_target_matches, targlist_target_matches = closer_check(matches_dict = m_dict, catalog2_ras = np.array(targlist['RA']), catalog2_decs = np.array(targlist['DEC']))
     if not targlist_target_matches:
@@ -600,16 +633,26 @@ if __name__ == "__main__":
     
 # *************************************************************************
 #
-# DISRUPTIVE/NON-DISRUPTIVE MODE
+# DISRUPTIVE MODE
 #
 # *************************************************************************    
 
-    if d_mode:
+    # Use some sneaky Python-fu to determine number of pointings 
+    # i.e. nd_mode as non-zero for bool evaluation and as integer
+    
+#     if nd_mode:
+#         nd_tile_info = nondisruptive_mode(map_properties, degraded_map_properties, pixmap, num_pointings = nd_mode, restrict = False, overlap = True)
+        
+#         outfile = f'{gw_name}_ND_ToO_ledger.ecsv'
+#         outfile = os.path.join(targetlists_path, outfile)
+        
+#         write_too_ledger(outfile, nd_tile_info.to_pandas(), 
+#                          checker='MP/AP', overwrite=True, verbose=False, tabformat='ND')
+        # TODO: Check format of 2022 targetlist matches, it seems like they're not working right
+    if not nd_mode:
         outfile = disruptive_mode(gwfile_path = path_gwfile, gw_name = gw_name)
         os.replace(outfile, os.path.join(targetlists_path, os.path.basename(outfile)))
-    else:
-        #nondisruptive_mode()
-        pass
+        
     
 # *************************************************************************
 #
