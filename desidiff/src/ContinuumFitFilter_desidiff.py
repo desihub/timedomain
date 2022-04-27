@@ -76,9 +76,11 @@ def line_finder(wave, flux,ivar,mask,z):
     lines = ['Halpha','Hbeta', 'Hgamma','HeII4686','OIII5007','NIII','SII','OIII4959']
     restwavelengths = [6562,4861,4340,4686,5007,4100, 6732,4959]
     
-    wave,flux,mask, ivar = Combine_multifilt(wave,flux, mask,ivar)
+    key = list(wave.keys())[0] #if data is coadded, should be the first key
+        
     
-
+    wave,flux,mask, ivar = wave[key], flux[key], mask[key],ivar[key]
+    
     
     HB_center = list(abs(wave-4861.4)).index(min(abs(wave - 4861.4)))
     HBmask = mask[HB_center - 400:HB_center + 400]
