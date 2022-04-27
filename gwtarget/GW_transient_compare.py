@@ -159,7 +159,7 @@ if __name__ == "__main__":
     filename = os.path.basename(gwfile)
     file_basename = filename.split(".fits")[0]
     try:
-        gw_name = head['OBJECT']
+        gw_name = str(head['OBJECT'])
     except:
         print("OBJECT not found in header. Proceeding using filename and today's date.")
         gw_name = file_basename + '_' + str(round(today.mjd))
@@ -264,6 +264,7 @@ if __name__ == "__main__":
             ow = False
             
         print()
+    
 # *************************************************************************
 #
 # GRABBING TRANSIENT ALERT MATCHES 'WITHIN' DEGRADED PIXEL MAP PIXELS
@@ -575,7 +576,7 @@ if __name__ == "__main__":
     targlist_radec_reduced = setdiff(targlist['RA', 'DEC'], tlist_matches_table)
 
     assert len(targlist_radec_reduced) == len(targlist) - len(unique_targlist_target_matches), "Something went wrong masking the dr9 target list! Stopping."
-    print('\n{:.2f}% of targets have already been observed within 2 degrees of DESI tile pointing in {} CI.'.format(100*len(unique_targlist_target_matches)/len(targlist), CI_val))
+    print('\n{:.2f}% of targets have already been observed within 2 degrees of DESI tile pointing in {} CI.'.format(100*len(unique_targlist_target_matches)/len(targlist), CI_val*100))
     
 # *************************************************************************
 #
