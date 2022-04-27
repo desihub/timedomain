@@ -24,7 +24,7 @@ python build_ledger.py toolist.csv -o ToO-input.ecsv
 
 to update the ToO database and the ASCII ToO ledger.
 
-## Limits on ToOs
+## Details
 
 The ToO ledger used by fiberassign cannot include duplicate ToO IDs, which are
 stored as 32-bit integers. The role of the TOO SQLite database defined in
@@ -41,6 +41,9 @@ tooid = ((mjd - 55197) << 18) + number
 I.e., MJD is expressed with respect to 1 Jan 2010 and is stored as a 14-bit
 number. That will allow valid storage through 10 Nov 2054. The event number
 within the MJD takes up the 18 least significant bits, which means we can track
-up to 262144 unique alerts per night.
+up to 262,144 unique alerts per night.
 
-Encoding and decoding of the ToO ID is provided inside `toodb.py`.
+Encoding and decoding of the ToO ID is provided inside `toodb.py`. The database
+classes ensure unique IDs for each alert, for each night.
+
+The I/O to write the ledger is provided inside `tooledger.py`.
