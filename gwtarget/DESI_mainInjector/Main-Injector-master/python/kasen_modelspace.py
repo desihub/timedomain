@@ -7,7 +7,6 @@ def run_ap_mag_for_kasen_models (filter, distance, dist_err, days_since_burst,
     report_file = os.path.join(data_dir, "kn_report")
     if not fast :
         knlc_dir = os.path.join(os.getenv("DESGW_DIR", data_dir), "knlc")
-        print(knlc_dir)
         code = os.path.join(knlc_dir, "kn_brightness_estimate.py")
         cmd = "python {} --distance {} --distance_err {} --time_delay {} ".format(
             code, distance, dist_err, days_since_burst)

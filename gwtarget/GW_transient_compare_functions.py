@@ -24,6 +24,13 @@ from astropy import units as u
 from astropy.coordinates import SkyCoord, match_coordinates_sky, Angle
 from astropy.time import Time
 
+try:
+    from astropy_healpix import HEALPix
+except:
+    import subprocess
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "--user", "astropy-healpix"])
+    from astropy_healpix import HEALPix
+
 import requests
 from alerce.core import Alerce
 from alerce.exceptions import APIError
@@ -61,6 +68,9 @@ color_band = "r"
 global today
 today = Time.now()
 
+global tile_rad
+tile_rad = 1.6*u.deg
+
 # ## Some function definitions which are hopefully self-explanatory
 
 # From decam_TAMU_ledgermaker.ipynb - https://github.com/desihub/timedomain/blob/master/too_ledgers/decam_TAMU_ledgermaker.ipynb
@@ -82,10 +92,17 @@ def write_too_ledger(filename, too_table, checker, overwrite=False, verbose=Fals
     verbose : bool
         If True, 
     """
+    today = Time.now()
+    
     mode = 'w' if overwrite else 'a'
     if verbose:
         mode = mode + '+'
     
+    if tabformat == 'ND':
+        last_id = "TILEID"
+    else:
+        last_id = "TOOID"
+        
     with open(filename, mode) as outf:
         if overwrite:
             outf.write("""# %ECSV 0.9
@@ -103,11 +120,11 @@ def write_too_ledger(filename, too_table, checker, overwrite=False, verbose=Fals
     # - {name: MJD_BEGIN, unit: d, datatype: float64}
     # - {name: MJD_END, unit: d, datatype: float64}
     # - {name: TOOID, datatype: int32}
+    # - {name: PROB_COVERED, datatype: float64} if applicable
     # meta: {DEPNAM00: desitarget, DEPNAM01: desitarget-git, DEPVER00: 0.53.0.dev4635, DEPVER01: 0.53.0-24-g58c9a719, EXTNAME: TOO, RELEASE: 9999}
-    # schema: astropy-2.0
-    RA DEC PMRA PMDEC REF_EPOCH CHECKER TOO_TYPE TOO_PRIO OCLAYER MJD_BEGIN MJD_END TOOID\n""")
+    # schema: astropy-2.0\n""")
+            outf.write(f"RA DEC PMRA PMDEC REF_EPOCH CHECKER TOO_TYPE TOO_PRIO OCLAYER MJD_BEGIN MJD_END {last_id} PROB_COVERED\n")
             
-        today = Time.now()
         datedict = {}
         reporting = ['DESIRT','DDF','ALERCE', 'LEGACY']
         
@@ -212,6 +229,8 @@ def write_too_ledger(filename, too_table, checker, overwrite=False, verbose=Fals
 
                 #mag  = row['Discovery-Magnitude']
                 too_type = 'FIELD' 
+                
+                # Should this be the original program?
                 too_prog = 'BRIGHT' #if mag < 21 else 'DARK'
                 too_prio = 'LOW'
 
@@ -239,6 +258,45 @@ def write_too_ledger(filename, too_table, checker, overwrite=False, verbose=Fals
                 outf.write('{:<10.6f} {:>10.6f} {:>8.6f} {:>8.6f} {:>6.1f} {} {} {} {} {:>13.8f} {:>13.8f} {}\n'.format(
                         ra, dec, 0, 0, epoch, checker, too_type, too_prio, too_prog, today.mjd, today.mjd+30, too_id))
     
+        if tabformat == 'ND': #ND Mode
+            counter = 0
+            for i in range(too_table.shape[0]):
+
+                row = too_table.iloc[i]           
+                coord = SkyCoord(ra=row['RA'], dec=row['DEC'], unit=(u.degree, u.degree))
+                ra, dec = coord.ra.to('deg').value, coord.dec.to('deg').value
+
+                #mag  = row['Discovery-Magnitude']
+                too_type = 'FIELD' 
+                too_prog = 'BRIGHT' #if mag < 21 else 'DARK'
+                too_prio = 'LOW'
+
+                # Encode the ToO ID as: ID + NNNNN.
+                # mjd_disc = int(t_disc.mjd) 
+                # reporter = 'LEGACY'
+                
+                '''
+                if reporter not in reporting:
+                    reporting.append(reporter)
+                mjd_exp = 100*mjd_disc + reporting.index(reporter)
+                
+                 if mjd_exp in datedict:
+                     datedict[mjd_exp] += 1
+                 else:
+                     datedict[mjd_exp] = 1
+                     
+                too_id = 100*mjd_exp + datedict[mjd_exp]
+                ''' 
+                #too_id = 99 + counter
+                #counter += 1
+                
+                tile_id = row['TILEID']
+                prob = row['PROB_COVERED']
+
+                epoch = 2000.0
+
+                outf.write('{:<10.6f} {:>10.6f} {:>8.6f} {:>8.6f} {:>6.1f} {} {} {} {} {:>13.8f} {:>13.8f} {} {:>.3f}%\n'.format(
+                        ra, dec, 0, 0, epoch, checker, too_type, too_prio, too_prog, today.mjd, today.mjd+30, tile_id, prob))
     
         if verbose:
             outf.seek(0)
@@ -1052,7 +1110,9 @@ def disruptive_mode(gwfile_path = "./", gw_name = ""):
         
     os.chdir(path_to_MI)
     #resimulator.recycle(gw_name, gwfile_path, "dark", path_to_MI, do_make_maps = True, do_make_hexes = True, do_make_jsons = False, do_make_gifs = False)
-    resimulator.recycle(gw_name, gwfile_path, "dark", current_dir, do_make_maps = True, do_make_hexes = True, do_make_jsons = False, do_make_gifs = False)
+    # Default to keeping maps but for testing it's false
+    # In future, delete after 1 month or something
+    resimulator.recycle(gw_name, gwfile_path, "dark", current_dir, do_make_maps = False, do_make_hexes = True, do_make_jsons = False, do_make_gifs = False)
     os.chdir(current_dir)
     
     ra_dec_in = os.path.join(current_dir, gw_name + "-ra-dec-id-prob-mjd-slot-dist.txt")
@@ -1081,8 +1141,220 @@ def disruptive_mode(gwfile_path = "./", gw_name = ""):
     
     return ra_dec_out
 
-def nondisruptive_mode():
-    pass
+def recursive_pix_filter(map_properties, best_tile_pix, tile_dict, r_num, best_ids, threshold):
+    # This function performs a recursive search of the tiles
+    # that cover the CI region and chooses tiles which cover
+    # the most probability while excluding the pixels that overlap.
+    # 
+    # This is mostly deprecated but left in just in case an area
+    # has a great deal of coverage in one of the programs.    
+    # 
+    # This method is no longer prioritized so the following TODO
+    # may take awhile...
+    # TODO: Make this work with full astropy TABLE
+    
+    if r_num >= len(tile_dict):
+        return best_ids
+    
+    if len(best_ids) == threshold:
+        return best_ids
+    
+    print('Recursion', r_num)
+    
+    #pix_in_tiles = np.zeros(np.shape(best_tile_pix))
+    
+    all_probs = np.zeros((r_num,2))
+    
+    # pass in prob, best pix
+    for ID in np.setdiff1d(list(tile_dict.keys()), best_ids):
+        remain = np.isin(tile_dict[ID], best_tile_pix, assume_unique = True, invert = True)
+        pix_remain = tile_dict[ID][remain]
+        
+        if pix_remain.size == 0:
+            continue
+        
+        all_probs = np.vstack((all_probs, (ID, np.sum(np.array(map_properties["prob"])[pix_remain]))))
+        
+    # Grabs argmax of prob column of all probs, spits back ID
+    new_max_id = all_probs[np.argmax(np.array(all_probs)[:,1]),0]
+    
+    if new_max_id in best_ids:
+        print(f"Something went wrong! ID {new_max_id} already exists in best.")
+        _ = [print(int(i[0]), i[1]) for i in all_probs]
+    elif not new_max_id:
+       #print(all_probs)
+        print("No non-overlapping tiles found in chosen CI threshold.")
+        print("Returning rest of tiles in area (up to number of pointings) as ranked by probability.")
+        #print("Either turn off CI restriction or allow overlap.")
+        return best_ids
+    
+    r_num += 1
+    
+    old_len = len(best_tile_pix)
+    best_tile_pix = np.union1d(best_tile_pix, tile_dict[new_max_id])
+    
+    if not len(best_tile_pix) - old_len:
+        # Grab second to last
+        new_max_id = all_probs[np.argsort(np.array(all_probs)[:,1]),0][-2]
+    
+    best_ids = np.append(best_ids, new_max_id)
+    
+    best_ids = recursive_pix_filter(map_properties, 
+                                    best_tile_pix, 
+                                    tile_dict,
+                                    r_num, 
+                                    best_ids,
+                                    threshold)
+    
+    return best_ids
+
+def nondisruptive_mode(map_properties: dict, degraded_map_properties:dict, pixmap, num_pointings:int = 10, restrict = False, overlap = True):
+    # This ND mode operates by calculating the probability interpolated over the 
+    # 90% CI region of the map. This is faster than summing up the probability
+    # of the pixels in each tile although the timing is fairly negligible. 
+    # This way is just cooler ;) -- Matt P.
+    #
+    # The sum method can be found in the jupyter notebook of the same name.
+    # EXAMPLE CALL:
+    #     result_dict = nondisruptive_mode2(gw_properties, gw_degraded_properties, pixmap = pixmap[0.9], num_pointings = 15)
+    # 
+    # I DO NOT RECOMMEND RUNNING THIS WITH RESTRICT ON AND OVERLAP OFF
+    #
+    # Restrict limits to pixmap, which in here represents the 90% CI so there has to be 
+    # *SOME* overlap with that exact boundary
+    #
+    # Overlap limits whether or not tiles can overlap. 
+    # Defaults to True since the overlaps are likely to be 
+    # found in different passes and programs
+    
+    pixmap = np.array(pixmap)
+
+    # Grab ecsv with tile numbers, positions, and # of observations
+    tiles_path = "/global/cfs/cdirs/desi/survey/ops/surveyops/trunk/ops/tiles-main.ecsv"
+    tile_info = unique(Table.read(tiles_path), keys=['RA', 'DEC'])
+    max_pass_num = np.max(tile_info['PASS'])
+    
+    conditions = tile_info['IN_DESI'] & (tile_info['STATUS'] == 'unobs') #& (tile_info['PROGRAM'] != 'BACKUP')
+    tile_info = tile_info[conditions] # filter out by IN_DESI
+    programs = ['DARK', 'BRIGHT', 'BACKUP']
+
+    best_tiles = {}
+
+    # Grab num_pointings per program
+    # May remove BACKUP in the future but the algo is fast, it's no problem.
+    for p in programs:
+        
+        in_DESI = tile_info[tile_info['PROGRAM'] == p]
+    
+        tile_ra = np.array(in_DESI['RA'])
+        tile_dec =  np.array(in_DESI['DEC'])
+
+        tile_skycoord = SkyCoord(tile_ra*u.deg, tile_dec*u.deg)
+
+        # Initialize astropy HEALPix
+        # SkyCoord defaults to ICRS so we hardcode it here
+        astro_hp_deg = HEALPix(nside = degraded_map_properties["nside"], 
+                           order = "nested" if degraded_map_properties["nest"] else "ring", 
+                           frame = 'icrs')
+
+        # Calculate interpolated probability at every pointing.
+        # We use the degraded map so that the interpolated probability
+        # better approximates the total probability covered by the tile (radius = 1.6 deg)
+        # since it uses the four nearest pixels to interpolate the value at that center position.
+        #
+        # We have seen similar results using NSIDE = 32 (pixel = 1.8 deg) and NSIDE = 64 (pixel = 55 arcmin)
+        # so we generally choose the former to get better coverage over the whole area of the tile.
+        interp_prob = astro_hp_deg.interpolate_bilinear_skycoord(tile_skycoord, degraded_map_properties["prob"])
+        
+        # Enforcing an arbitrary cut-off to speed up computation time later
+        # Because most will fail this test
+        cutoff = interp_prob > 0.001
+        
+        # UNCOMMENT if you want to keep *very* low to negligible probabilities to fill num_pointings
+        # if np.sum(cutoff) < num_pointings:
+        #     interp_prob_red = interp_prob
+        #     in_cutoff = in_DESI
+        # else:
+        
+        interp_prob_red = interp_prob[cutoff]
+        in_cutoff = in_DESI[cutoff]
+
+        # Interpolated probability as percentage
+        in_cutoff['PROB_COVERED'] = interp_prob_red*100
+        
+        # Sort by pass and then by probability
+        in_cutoff.sort(['PASS','PROB_COVERED'])
+        
+        # Reverse the order so that highest probability is at the top
+        in_cutoff.reverse()
+        
+        # We prioritize lower pass and work our way up
+        tile_table = in_cutoff[in_cutoff['PASS'] == 0]
+        pass_num = 1
+        
+        # Grab by pass number and stack on to result table
+        while (len(tile_table) < num_pointings) and (pass_num < max_pass_num):
+            in_pass = in_cutoff[in_cutoff['PASS'] == pass_num]
+            tile_table = vstack([tile_table, in_pass])
+            pass_num += 1
+        
+        # Limit to num_pointings in case/when we go over the amount needed
+        best_tiles[p] = tile_table[:num_pointings]
+        
+        if len(tile_table) < num_pointings:
+            print(f"Could not find requested number of tiles ({num_pointings}) in/near 90% CI for {p} program.")
+            print(f"Found {len(tile_table)} tiles in/near 90% CI covering an approximate probability of {np.sum(tile_table['PROB_COVERED']):.4f}%.\n")
+        
+        # Go to next program... avoid a tab cluster on the way ;) 
+        if overlap:
+            continue
+
+        # ************ RECURSIVE CALCULATION OF OVERLAP HERE ************
+        
+        # TODO: Make this non-recursive
+        # It doesn't go that deep but because it's relatively unnecessary we may as well re-do it
+        args_interp = np.argsort(interp_prob)[::-1]
+        args_interp_red = np.argsort(interp_prob_red)[::-1]#[-num_pointings:]
+
+        tileid_red = in_DESI['TILEID'][args_interp][:np.sum(cutoff)]
+        skycoord_red = tile_skycoord[args_interp][:np.sum(cutoff)]
+        
+        # Initialize astropy HEALPix to non-degraded map resolution.
+        astro_hp = HEALPix(nside = map_properties["nside"], 
+                           order = "nested" if map_properties["nest"] else "ring", 
+                           frame = 'icrs')
+
+        if restrict:
+            tile_pix = {ID:np.intersect1d(astro_hp.cone_search_skycoord(coord, tile_rad), pixmap) 
+                        for ID, coord in zip(tileid_red, skycoord_red)}
+        else:
+            tile_pix = {ID:astro_hp.cone_search_skycoord(coord, tile_rad) for ID, coord in zip(tileid_red, skycoord_red)}
+
+        tile_coord = {ID:coord for ID, coord in zip(tileid_red, skycoord_red)}
+
+        # initializing with the best tile
+        # return array will have size of pixmap
+
+        # Dictionaries are explicitly ordered in >Python3.6 so this algorithm relies on that
+        pix_in_best_tile = pixmap[np.isin(pixmap, tile_pix[tileid_red[0]], assume_unique = True)]
+
+        best_ids = np.array([tileid_red[0]], dtype = int) #, tileid_red[new_max]], dtype = int)
+
+        best_ids = recursive_pix_filter(map_properties, 
+                             pix_in_best_tile, 
+                             tile_pix,
+                             1, 
+                             best_ids,
+                             num_pointings)
+
+        if restrict and len(best_ids) != num_pointings:
+            tileid_redd = np.setdiff1d(tileid_red, best_ids)
+            best_ids = np.append(best_ids, tileid_redd)[:num_pointings]
+            
+        # TODO: GRAB FULL TABLE ROW 
+        best_tiles = best_ids
+
+    return best_tiles
 
 if __name__ == "__main__":
     pass
