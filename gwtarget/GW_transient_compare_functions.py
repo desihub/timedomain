@@ -471,7 +471,7 @@ def read_gwfile(filepath: str, hdu_num = 1):
         filename = filepath.split("/")[-1]
         print("Could not open or use:", filename)
         print("In path:", filepath)
-        print("Trying the next file if it exists...")
+        #print("Trying the next file if it exists...")
         return properties #np.array([]), np.array([]), np.array([])
     
     #if transient_candidate:
@@ -811,7 +811,7 @@ def closer_check(matches_dict = {}, catalog2_ras = [], catalog2_decs = [], exclu
 
         # Iterating tile by tile and grabbing all of the necessary info
         for i in row:
-            exp_paths = '/'.join((exposure_path, "daily/exposures", str(i['obsdate']), "000"+str(i['expid'])))
+            exp_paths = '/'.join((exposure_path, "daily/exposures", str(i['obsdate']), f"{str(i['expid']):0>8}"))
             #print(exp_paths)
             
             # Now finally going file by file and putting all of those ras/decs into one giant numpy array
@@ -873,7 +873,7 @@ def build_targlist_table(nside, pix_map):
         if targlist_threshold is None:
             targlist_threshold = Table(io.read_targets_in_hp(hpdirname, nside = nside, pixlist=pix_map, columns=readcols))
         else:
-            targlist_threshold = vstack(targlist_threshold, Table(io.read_targets_in_hp(hpdirname, nside = nside, pixlist=pix_map, columns=readcols)))
+            targlist_threshold = vstack([targlist_threshold, Table(io.read_targets_in_hp(hpdirname, nside = nside, pixlist=pix_map, columns=readcols))])
 
     # targlist90.rename_column('BRICK_OBJID', 'OBJID')
     targlist_threshold = unique(targlist_threshold)
@@ -931,7 +931,7 @@ def grab_desi_targetid(matches_dict = {}, targlist_table = Table(), exclusion_li
         target_ids_date = []
 
         for i in row:
-            exp_paths = '/'.join((exposure_path, "daily/exposures", str(i['obsdate']), "000"+str(i['expid'])))
+            exp_paths = '/'.join((exposure_path, "daily/exposures", str(i['obsdate']), f"{str(i['expid']):0>8}"))
             #print(exp_paths)
             #all_exp_fits[date].extend()
             for path in glob_frames(exp_paths):
