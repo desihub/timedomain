@@ -246,13 +246,13 @@ if __name__ == "__main__":
     if nd_mode:
         nd_tile_info = nondisruptive_mode(gw_properties, gw_degraded_properties, pixmap, num_pointings = nd_mode, restrict = False, overlap = True)
         
-        outfile = f'{gw_name}_ND_ToO_ledger.ecsv'
-        outfile = os.path.join(targetlists_path, outfile)
+        outfile_name = f'{gw_name}_ND_ToO_ledger.ecsv'
+        outfile = os.path.join(targetlists_path, outfile_name)
         
         # First time writing
         ow = True
         
-        print(f"Writing to {outfile} for ND mode.")
+        print(f"Writing to {outfile_name} for ND mode.")
         for k,v in nd_tile_info.items():
             print(f"Writing {k}...")
             # We use every column but the last because I've introduced a new column
