@@ -135,8 +135,8 @@ class TooDB:
         tooid : int
             32b ID number for TOO.
         """
-        mask = (1 << 14) - 1
-        tooid = (((mjd - 55197) & mask) << 18) + number
+        # MJD = 14 MSBs, number = 18 LSBs. Total TOOID = 32 bits.
+        tooid = ((((mjd - 55197) & 0x3fff) << 18) + number) & 0xffffffff
         return tooid
 
     def decode_tooid(self, tooid):
