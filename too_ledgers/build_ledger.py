@@ -10,9 +10,11 @@ if __name__ == '__main__':
                    help='Input TOO file.')
     p.add_argument('-o', '--output', dest='output', default='ToO-input.ecsv',
                    help='ToO ledger output filename.')
+    p.add_argument('-v', '--verbose', action='store_true',
+                   help='Verbose output')
     args = p.parse_args()
 
     # Generate the ToO ledger.
     ledger = TooLedgerMaker()
-    ledger.build_too_ledger(args.inputfile[0], args.output)
+    ledger.build_too_ledger(args.inputfile[0], args.output, args.verbose)
 
