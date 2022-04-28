@@ -126,7 +126,7 @@ class TooDB:
         Parameters
         ----------
         mjd : int
-            Modified Julian Date of the alert (valid thru 10 Nov 2054).
+            Modified Julian Date of the alert (valid thru 9 Nov 2054).
         number : int
             Alert number within given MJD (up to 262144).
 
@@ -135,7 +135,8 @@ class TooDB:
         tooid : int
             32b ID number for TOO.
         """
-        tooid = ((mjd - 55197) << 18) + number
+        mask = (1 << 14) - 1
+        tooid = (((mjd - 55197) & mask) << 18) + number
         return tooid
 
     def decode_tooid(self, tooid):
