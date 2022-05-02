@@ -50,7 +50,7 @@ factory = AlertListFactory()
 class TooLedgerMaker:
     """Generic alert handler to manage ToO lists in different formats."""
 
-    def build_too_ledger(self, too_input_file, too_ledger_file, verbose=False):
+    def build_too_ledger(self, too_input_file, too_ledger_file, add_header=False, verbose=False):
         """Open a ToO input file and build an alert ledger.
 
         Parameters
@@ -59,12 +59,16 @@ class TooLedgerMaker:
             Path to ToO input file, in a format readable by astropy.table.
         too_ledger_file : str
             ToO ledger, in a format appropriate for fiberassign.
+        add_header : bool
+            Add header to output file.
+        verbose : bool
+            Enable verbose output.
         """
         # Alert factory decides on the file format and acts appropriately.
         alerthandler = factory.get_alert_handler(too_input_file)
 
         # Appropriate alert handler writes the output.
-        alerthandler.write_too_list(too_ledger_file, verbose)
+        alerthandler.write_too_list(too_ledger_file, add_header, verbose)
 
 
 class TooAlertList(ABC):
@@ -81,13 +85,15 @@ class TooAlertList(ABC):
         """
         pass
 
-    def write_too_list(self, outputfile, verbose=False):
+    def write_too_list(self, outputfile, add_header=False, verbose=False):
         """Append ToO data to an ecsv file for processing by fiberassign.
 
         Parameters
         ----------
         outputfile : str
             Path to output ecsv file.
+        add_header : bool
+            Add header to output file.
         verbose : bool
             Print additional info if true.
         """
@@ -112,11 +118,13 @@ class TooAlertList(ABC):
 # meta: {DEPNAM00: desitarget, DEPNAM01: desitarget-git, DEPVER00: 0.53.0.dev4635, DEPVER01: 0.53.0-24-g58c9a719, EXTNAME: TOO, RELEASE: 9999}
 # schema: astropy-2.0
 RA DEC PMRA PMDEC REF_EPOCH CHECKER TOO_TYPE TOO_PRIO OCLAYER MJD_BEGIN MJD_END TOOID"""
-            if os.path.exists(outputfile):
-                if os.path.getsize(outputfile) == 0:
+            if add_header:
+                # Only write the header to an empty file.
+                if os.path.exists(outputfile):
+                    if os.path.getsize(outputfile) == 0:
+                        outf.write(f'{header}\n')
+                else:
                     outf.write(f'{header}\n')
-            else:
-                outf.write(f'{header}\n')
 
             for entry in too_list:
                 ra, dec, pmra, pmdec, epoch, checker, too_type, prio, prog, mjd0, mjd1, too_id = entry
