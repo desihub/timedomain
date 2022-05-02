@@ -33,6 +33,12 @@ As of May 2022, the ledger should be appeneded to the end of the file
 ```
 and Adam Meyers and Anand Raichoor should be informed of the update.
 
+Example:
+```
+python build_ledger.py desirt/legaObj220430.csv -o ToO-input-20220430.ecsv    # Check the output
+cat ToO-input-20220430.ecsv >> /global/cscratch1/sd/adamyers/ToO/segev_put_it_here/ToO-input.ecsv
+```
+
 ## Details
 
 The ToO ledger used by fiberassign cannot include duplicate ToO IDs, which are
