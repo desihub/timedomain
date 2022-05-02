@@ -22,7 +22,16 @@ If a ToO list is provided in `toolist.csv`, run
 python build_ledger.py toolist.csv -o ToO-input.ecsv
 ```
 
-to update the ToO database and the ASCII ToO ledger.
+to update the ToO database and the ASCII ToO ledger. This will append new ToOs
+to the file ToO-input.ecsv if it already exists. To write only a new set of
+entries to the file, specify a new output file each time the ledger builder is
+run.
+
+As of May 2022, the ledger should be appeneded to the end of the file
+```
+/global/cscratch1/sd/adamyers/ToO/segev_put_it_here/ToO-input.ecsv
+```
+and Adam Meyers and Anand Raichoor should be informed of the update.
 
 ## Details
 
