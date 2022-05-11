@@ -164,10 +164,21 @@ class DECamAlertList(TooAlertList):
             if tooid == 0:
                 continue
 
+            # Compute the observation window. If the discovery date is old
+            # enough that the window will be <9 days, starting today, move the
+            # window up.
+            now = Time.now().mjd
+            dt = now - mjd
+            if dt >= 5:
+                print(f'Shifting time window for alert {tooid} on {mjd}')
+                mjd0, mjd1 = now, now+14
+            else:
+                mjd0, mjd1 = mjd, mjd+14
+
             # Accumulate data for output:
             # RA, DEC, PMRA, PMDEC, EPOCH, CHECKER, TYPE, PRIO, PROG, MJD_START, MJD_STOP, TOO_ID
             too_list.append(
-                [ra, dec, 0., 0., 2000.0, 'SB/AP', 'FIBER', 'LO', 'BRIGHT', mjd, mjd + 14, tooid]
+                [ra, dec, 0., 0., 2000.0, 'SB/AP', 'FIBER', 'LO', 'BRIGHT', mjd0, mjd1, tooid]
             )
 
         return too_list
