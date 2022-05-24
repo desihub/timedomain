@@ -276,88 +276,44 @@ if __name__ == "__main__":
 
 # As a reminder, we rely on their classifier to determine SN or AGN
 
-    rad = 3600*4
+    rad = 4
     days_forward = 30
 
-    try:
-        agn_old_alerts = access_alerts(order_by = 'firstmjd',
-                                       order_mode = 'ASC',
-                                       class_names = ['AGN'],
-                                       firstmjd = [gw_mjd, gw_mjd + days_forward],
-                                       ra = ra_degraded[0],
-                                       dec = dec_degraded[0],
-                                       radius = rad
-                                       )
-        #mask=(agn_old_alerts['firstmjd']<gw_mjd+30)
-        #alerts_agn_2019=agn_old_alerts[mask]
-    except:
-        agn_old_alerts = pd.DataFrame()
+    alerts = access_alerts(order_by = 'firstmjd',
+                               order_mode = 'ASC',
+                               class_names = ['SN', 'AGN'],
+                               firstmjd = gw_mjd,
+                               days_forward = days_forward,
+                               ra = ra_degraded,
+                               dec = dec_degraded,
+                               radius = rad
+                               )
 
-    # I use a try because if there are no matches, it fails then everything falls apart
-    try: 
-        alerts_sn = access_alerts(class_names = ['SN'],
-                                  order_by = 'firstmjd',
-                                  order_mode = 'ASC',
-                                  firstmjd = [gw_mjd, gw_mjd + days_forward],
-                                  ra = ra_degraded[0],
-                                  dec = dec_degraded[0],
-                                  radius = rad
-                                  )
-
-        #mask=(alerts_sn['firstmjd']<gw_mjd+30)
-        #alerts_sn=alerts_sn[mask]'
-    except:
-        alerts_sn = pd.DataFrame()
-
-    for ra, dec in zip(ra_degraded[1:], dec_degraded[1:]):
-        try:
-            temp_sn = access_alerts(class_names = ['SN'],
-                                    order_by = 'firstmjd',
-                                    order_mode = 'ASC',
-                                    firstmjd = [gw_mjd, gw_mjd + days_forward],
-                                    ra = ra_degraded[0],
-                                    dec = dec_degraded[0],
-                                    radius = rad
-                                    )
-            #mask=(temp_sn['firstmjd']<gw_mjd+30)
-            #temp_sn=temp_sn[mask]
-            alerts_sn = alerts_sn.append(temp_sn, ignore_index=True)
-        except:
-            pass
-        
-        try:
-            temp_agn = access_alerts(class_names = ['SN'],
-                                    order_by = 'firstmjd',
-                                    order_mode = 'ASC',
-                                    firstmjd = [gw_mjd, gw_mjd + days_forward],
-                                    ra = ra_degraded[0],
-                                    dec = dec_degraded[0],
-                                    radius = rad
-                                    )
-            #mask=(temp_sn['firstmjd']<gw_mjd+30)
-            #temp_sn=temp_sn[mask]
-            alerts_agn = alerts_agn.append(temp_agn, ignore_index=True)
-        except:
-            pass
-        
-
-    if alerts_sn.empty and alerts_agn.empty:
+    if alerts.empty:
         print("No transient alert matches (SN or AGN) found within 4 degrees of CI contour.")
-        print("... this is unlikely. Something probably went wrong with call to broker!")
+        #print("... this is unlikely. Something probably went wrong with call to broker!")
+        print(f"For mjd -- {gw_mjd:.2f}, RA, DEC dump...")
+        print(*zip(ra_degraded,dec_degraded))
         print("Exitting.")
+        # TODO: REMOVE EXIT, used for testing
         sys.exit()
+        print("Continuing...")
         
-    alerts_sn = alerts_sn.drop_duplicates(subset='oid')
-    alerts_agn = agn_old_alerts.drop_duplicates(subset='oid')
+    else:
+        alerts_sn = alerts.groupby(alerts.class_name).get_group("SN")
+        alerts_agn = alerts.groupby(alerts.class_name).get_group("AGN")   
 
-    alerts_sn_ra = alerts_sn['meanra'].to_numpy()
-    alerts_sn_dec = alerts_sn['meandec'].to_numpy()
+        alerts_sn = alerts_sn.drop_duplicates(subset='oid')
+        alerts_agn = alerts_agn.drop_duplicates(subset='oid')
 
-    alerts_agn_ra = alerts_agn['meanra'].to_numpy()
-    alerts_agn_dec = alerts_agn['meandec'].to_numpy()
+        alerts_sn_ra = alerts_sn['meanra'].to_numpy()
+        alerts_sn_dec = alerts_sn['meandec'].to_numpy()
 
-    # print("Number of SN alerts:", alerts_sn_ra.size)
-    # print("Number of AGN alerts:", alerts_agn_ra.size)
+        alerts_agn_ra = alerts_agn['meanra'].to_numpy()
+        alerts_agn_dec = alerts_agn['meandec'].to_numpy()
+
+        # print("Number of SN alerts:", alerts_sn_ra.size)
+        # print("Number of AGN alerts:", alerts_agn_ra.size)
 
 # *************************************************************************
 #
@@ -365,20 +321,20 @@ if __name__ == "__main__":
 #
 # *************************************************************************
 
-    # Convert ALERCE data to pixel locations on GW map for ease of comparison (since CI pixel range is continuous, no fancy matching necessary)
-    transient_pix_locs_sn = hp.ang2pix(gw_properties["nside"], alerts_sn_ra, alerts_sn_dec, lonlat = True, nest = gw_properties["nest"])
-    transient_pix_locs_agn = hp.ang2pix(gw_properties["nside"], alerts_agn_ra, alerts_agn_dec, lonlat = True, nest = gw_properties["nest"])
+        # Convert ALERCE data to pixel locations on GW map for ease of comparison (since CI pixel range is continuous, no fancy matching necessary)
+        transient_pix_locs_sn = hp.ang2pix(gw_properties["nside"], alerts_sn_ra, alerts_sn_dec, lonlat = True, nest = gw_properties["nest"])
+        transient_pix_locs_agn = hp.ang2pix(gw_properties["nside"], alerts_agn_ra, alerts_agn_dec, lonlat = True, nest = gw_properties["nest"])
 
-    # Checks for matches in region 
-    trans_in_prob_region_sn = np.isin(transient_pix_locs_sn, pixmap)
-    trans_in_prob_region_agn = np.isin(transient_pix_locs_agn, pixmap)
+        # Checks for matches in region 
+        trans_in_prob_region_sn = np.isin(transient_pix_locs_sn, pixmap)
+        trans_in_prob_region_agn = np.isin(transient_pix_locs_agn, pixmap)
 
-    if np.any(trans_in_prob_region_sn) or np.any(trans_in_prob_region_agn):
-        print(trans_in_prob_region_sn.sum(), "SN matches")
-        print(trans_in_prob_region_agn.sum(), "AGN matches")
+        if np.any(trans_in_prob_region_sn) or np.any(trans_in_prob_region_agn):
+            print(trans_in_prob_region_sn.sum(), "SN matches")
+            print(trans_in_prob_region_agn.sum(), "AGN matches")
 
-    alerce_sn_rows = alerts_sn.loc[trans_in_prob_region_sn, :].sort_values(by='firstmjd')
-    alerce_agn_rows = alerts_agn.loc[trans_in_prob_region_agn, :].sort_values(by='firstmjd')
+        alerce_sn_rows = alerts_sn.loc[trans_in_prob_region_sn, :].sort_values(by='firstmjd')
+        alerce_agn_rows = alerts_agn.loc[trans_in_prob_region_agn, :].sort_values(by='firstmjd')
     
 # *************************************************************************
 #
@@ -386,13 +342,13 @@ if __name__ == "__main__":
 #
 # *************************************************************************
 
-    plt.scatter(ra_map, dec_map, alpha=0.6)
-    plt.scatter(alerce_agn_rows['meanra'], alerce_agn_rows['meandec'], label='AGN', s=4, alpha=0.7)
-    plt.scatter(alerce_sn_rows['meanra'], alerce_sn_rows['meandec'], label='SN', alpha=0.8)
-    plt.legend()
-    
-    plt.savefig(os.path.join(event_dir, "GW_DESI_Alerce.png"))
-    plt.clf()
+        plt.scatter(ra_map, dec_map, alpha=0.6)
+        plt.scatter(alerce_agn_rows['meanra'], alerce_agn_rows['meandec'], label='AGN', s=4, alpha=0.7)
+        plt.scatter(alerce_sn_rows['meanra'], alerce_sn_rows['meandec'], label='SN', alpha=0.8)
+        plt.legend()
+
+        plt.savefig(os.path.join(event_dir, "GW_DESI_Alerce.png"))
+        plt.clf()
 
 
 # *************************************************************************
@@ -411,7 +367,7 @@ if __name__ == "__main__":
     '''
 
     ## Only add SNe for now. AGNs should pass redshift cut. Also, Try rejecting stars
-    #write_too_ledger(user_home + '/testing_ToO-Alerce.ecsv', alerce_sn_rows, checker='MP/AP', overwrite=True, verbose=True, tabformat='ALERCE')
+        #write_too_ledger(user_home + '/testing_ToO-Alerce.ecsv', alerce_sn_rows, checker='MP/AP', overwrite=True, verbose=True, tabformat='ALERCE')
     
 # *************************************************************************
 # *************************************************************************

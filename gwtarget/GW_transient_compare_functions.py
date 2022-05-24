@@ -51,6 +51,8 @@ import argparse
 import logging # to disable output when reading in FITS info
 import subprocess
 
+import psycopg2
+import requests
 import sqlite3
 
 
@@ -412,7 +414,8 @@ def plot_cartmap(lvc_healpix_file, levels=[0.5, 0.9], angsize=3., tile_ra=None, 
 # I have had trouble importing this before so I copy, paste it, and modify it here.
 
 # Choose cone_radius of diameter of tile so that, whatever coord I choose for ra_in, dec_in, we cover the whole tile
-def access_alerts(radius = 3600*4, order_by = 'oid', order_mode = 'DESC', classifier = 'stamp_classifier', class_names=['SN', 'AGN'], **kwargs):
+# KEPT FOR POSTERITY, MAY DELETE IN NEXT PUSH TO REPO
+def access_alerts_old(radius = 3600*4, order_by = 'oid', order_mode = 'DESC', classifier = 'stamp_classifier', class_names=['SN', 'AGN'], **kwargs):
     alerce_client = Alerce()
     if type(class_names) is not list:
         raise TypeError('Argument `class_names` must be a list.')
@@ -430,7 +433,7 @@ def access_alerts(radius = 3600*4, order_by = 'oid', order_mode = 'DESC', classi
                                            radius = radius, # in arcseconds
                                            page_size = 5000,
                                            order_by = order_by,
-                                           order_mode = order_mode,                                          
+                                           order_mode = order_mode,                             
                                            format = 'pandas',
                                            **kwargs)
         
@@ -443,6 +446,95 @@ def access_alerts(radius = 3600*4, order_by = 'oid', order_mode = 'DESC', classi
     #print(pd.concat(dataframes).columns)
     return pd.concat(dataframes)#.sort_values(by = 'lastmjd')
 
+# Choose radius of diameter of tile (in degrees) so that, whatever coord I choose for ra_in, dec_in, we cover the whole tile
+def access_alerts(ra = 0, dec = 0, radius = 4, order_by = 'oid', # radius = 4
+                  order_mode = 'DESC', classifier = 'stamp_classifier', 
+                  class_names = ['SN'], **kwargs):
+    
+    if not np.any(ra) or not np.any(dec):
+        raise NameError('RAs and DECs must be fed in as arguments (ra =..., dec =...) to `access_alerts`.')
+    else:
+        objects_str = ",\n".join([f"({r}, {d})" for r,d in zip(ra, dec)])
+    
+    if not isinstance(class_names, (list,tuple)):
+        raise TypeError('Argument `class_names` in `access_alerts` must be a list or a tuple.')
+        
+    # ***** Backwards compatibility *****
+    # May remove in next push
+    if ("firstmjd" in kwargs) and ("lastmjd" in kwargs):
+        raise AttributeError('Can only accept argument `firstmjd` or `lastmjd` not both in `access_alerts`.')
+        
+    if "firstmjd" in kwargs:
+        mjd_choose = "firstmjd"
+        days_forward = kwargs.get("days_forward", 30)
+        days_backward = 0
+        mjd_date = kwargs.get("firstmjd", Time.now().mjd - days_forward)
+        if isinstance(mjd_date, list):
+            mjd_date = mjd_date[0]
+        
+    elif "lastmjd" in kwargs:
+        mjd_choose = "lastmjd"
+        days_forward = 0
+        days_backward = kwargs.get("days_backward", 60)
+        mjd_date = kwargs.get("lastmjd", Time.now().mjd + days_backward)
+        if isinstance(mjd_date, list):
+            mjd_date = mjd_date[1]
+        
+    else:
+        raise KeyError('Please specify either `firstmjd` or `lastmjd` in `access_alerts`.')
+        
+    credentials_file = "https://raw.githubusercontent.com/alercebroker/usecases/master/alercereaduser_v4.json"
+    params = requests.get(credentials_file).json()["params"]
+    conn = psycopg2.connect(dbname=params["dbname"], user=params["user"], host=params["host"], password=params["password"])
+    
+    # For backwards compatibility
+    matches = pd.DataFrame()
+    
+    for class_name in class_names:
+        prefix = class_name.lower()
+        # Query example taken from 
+        # https://github.com/alercebroker/usecases/blob/43e7775c00f6f949c5368aca3cd5dcc6bb64376c/notebooks/ALeRCE_Other_Watchlist.ipynb
+        # Also, Python is too flexible... no error for slicing an empty string [2:]
+        query = f"""
+                WITH catalog ( ra, dec) AS (
+                    VALUES
+                        {objects_str}
+                ),
+                {prefix} (oid, classifier_name, class_name) AS (
+                    SELECT
+                        o.oid, p.classifier_name, p.class_name, p.probability, p.ranking
+                    FROM
+                        probability p
+                    INNER JOIN 
+                        object o
+                    ON 
+                        o.oid=p.oid
+                    WHERE
+                        p.classifier_name='{classifier}'
+                        AND p.class_name IN ('{class_name}')
+                        AND p.ranking=1 /* Ranking <==> Highest probability class name (AGN, SN, etc.) */
+                        AND o.{mjd_choose} BETWEEN {mjd_date - days_backward} AND {mjd_date + days_forward}
+                )
+
+                SELECT 
+                    o.oid, o.meanra, o.meandec, q3c_dist(c.ra,c.dec,o.meanra,o.meandec), 
+                    o.{mjd_choose}, {prefix}.classifier_name, {prefix}.class_name, {prefix}.probability
+
+                FROM object o INNER JOIN {prefix} ON {prefix}.oid=o.oid, catalog c
+                    /*
+                     * It is REALLY important to first use the catalog then the object ra,dec for speed. The radius is in degrees.
+                     */
+                WHERE
+                    q3c_join(c.ra, c.dec, o.meanra, o.meandec, {radius})
+                    AND o.{mjd_choose} BETWEEN {mjd_date - days_backward} AND {mjd_date + days_forward}
+                ORDER BY
+                    o.{order_by} {order_mode}
+                """
+        matches = matches.append(pd.read_sql(query, conn), ignore_index = True)
+    
+    conn.close()
+    return matches
+
 # This function takes information in from the GW file and returns them in a dictionary
 # I promise I'll make my functions properly documented... eventually
 def read_gwfile(filepath: str, hdu_num = 1):
@@ -450,29 +542,20 @@ def read_gwfile(filepath: str, hdu_num = 1):
     properties = {}
     
     try:
-        with fits.open(filepath) as hdu1:
-    
-            hdr = hdu1[hdu_num].header
-        
-            properties["mjd"] = hdr["MJD-OBS"]
-            properties["nside"] = hdr["NSIDE"]
-            properties["nest"] = True if hdr["ORDERING"] == "NESTED" else False #save myself some time here
-            #print(hdr['ORDERING'])
-            
-            data_table = Table(hdu1[hdu_num].data) #columns
-            properties["prob"] = data_table["PROB"].data
-        
-            #targ_id = data_table['TARGETID']
-            #targ_ra = data_table['TARGET_RA'].data # Now it's a numpy array
-            #targ_dec = data_table['TARGET_DEC'].data
-            #targ_mjd = data_table['MJD'][0] some have different versions of this so this is a *bad* idea... at least now I know the try except works!
+        # Use astropy's unified file I/O
+        hdu = Table.read(filepath, hdu = hdu_num)
+        properties["mjd"] = hdu.meta["MJD-OBS"]
+
+        properties["nest"] = True if hdu.meta["ORDERING"] == "NESTED" else False #save myself some time here
+        properties["nside"] = hdu.meta["NSIDE"]
+        properties["prob"] = hdu["PROB"].data
             
     except:
         filename = filepath.split("/")[-1]
         print("Could not open or use:", filename)
         print("In path:", filepath)
         #print("Trying the next file if it exists...")
-        return properties #np.array([]), np.array([]), np.array([])
+        return properties 
     
     #if transient_candidate:
     #    targ_mjd = filepath.split("/")[-1].split("_")[-2] #to grab the date
