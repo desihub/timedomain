@@ -48,7 +48,7 @@ start_time = time.time()
 #Set non-default plot size 
 plt.rcParams["figure.figsize"] = (20,6)
 
-path = "/global/project/projectdirs/desi/spectro/redux/fuji/tiles/cumulative"
+path = "/global/project/projectdirs/desi/spectro/redux/daily/tiles/cumulative"
 
 
 #SkyPortal token:
