@@ -5,7 +5,7 @@ import numpy
 
 #get array of yyyymmdds to loop through
 #getUnprocessedDates.py
-def getUnprocessedDates():
+def getUnprocessedDates(prod = "daily"):
     start_time = time.time()
     # Connect to desi.db with POSTGRES to get latest observed and unprocessed yyyymmdd
     f = open('/global/cfs/cdirs/desi/science/td/secrets/desi_pg.txt') #what is more valid?
@@ -19,13 +19,27 @@ def getUnprocessedDates():
     conn.close()
     
     # Open to transients_search.db for latest processed yyyymmdd to do comparison with unprocessed
-    filename_conn = "/global/cfs/cdirs/desi/science/td/daily-search/transients_search.db"
-    conn = sqlite3.connect(filename_conn)
-    trans_arr = conn.execute("""SELECT DISTINCT yyyymmdd from unprocessed_exposures""").fetchall()
-    conn.close()
+    if (prod == "daily"):
+        filename_conn = "/global/cfs/cdirs/desi/science/td/daily-search/transients_search.db"
+        conn = sqlite3.connect(filename_conn)
+        trans_arr = conn.execute("""SELECT DISTINCT yyyymmdd from unprocessed_exposures""").fetchall()
+        conn.close()
+    elif (prod == "everest"):
+        filename_conn = "/global/cfs/cdirs/desi/science/td/daily-search/transients_search.db"
+        conn = sqlite3.connect(filename_conn)
+        trans_arr = conn.execute("""SELECT DISTINCT yyyymmdd from processed_everest""").fetchall()
+        conn.close()
+    
+    # Open to transients_search.db for latest processed yyyymmdd to do comparison with empty nights
+    # filename_conn = "/global/cfs/cdirs/desi/science/td/daily-search/transients_search.db"
+    # conn = sqlite3.connect(filename_conn)
+    # empty_dates_arr = conn.execute("""SELECT DISTINCT yyyymmdd from empty_dates""").fetchall()
+    # conn.close()
 
     # Compare yyyymmdd from fibermap_daily with unprocessed_exposures, retaining those in fibermap_daily and not in unprocessed_daily
     night_arr = numpy.setdiff1d(desi_arr, trans_arr)
+    #Remove empty nights
+    # night_arr = numpy.setdiff1d(night_arr, empty_dates_arr)
 
     print('len(night_arr): ' + str(len(night_arr)))
     print("--- get unprocessed dates took:  %s seconds ---" % (time.time() - start_time))
@@ -42,3 +56,20 @@ def hasNothingToProcess(tps,group_tid,group_tp,group_night):
             hasNothing=False
             return hasNothing
     return hasNothing
+
+def processed(tid, tileid, date):
+    filename_conn = "/global/cfs/cdirs/desi/science/td/daily-search/transients_search.db"
+    try:
+        sqliteConnection = sqlite3.connect(filename_conn)
+        cursor = sqliteConnection.cursor()
+        sqlite_insert_query = """INSERT INTO daily_processed (TARGETID, TILEID, YYYYMMDD) VALUES({0},{1},{2})""".format(tid, tileid, date)
+        count = cursor.execute(sqlite_insert_query)
+        sqliteConnection.commit()
+        cursor.close()
+    except sqlite3.Error as error:
+        print("Failed to insert data into sqlite table", error)
+    finally:
+        if sqliteConnection:
+            sqliteConnection.close()
+            # print("The SQLite connection is closed")
+            
