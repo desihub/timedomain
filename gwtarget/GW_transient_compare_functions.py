@@ -452,7 +452,7 @@ def access_alerts(ra = 0, dec = 0, radius = 4, order_by = 'oid', # radius = 4
                   class_names = ['SN'], **kwargs):
     
     if not np.any(ra) or not np.any(dec):
-        raise NameError('RAs and DECs must be fed in as arguments (ra =..., dec =...) to `access_alerts`.')
+        raise NameError('RAs and DECs must be fed in as key word arguments (ra =..., dec =...) to `access_alerts`.')
     else:
         objects_str = ",\n".join([f"({r}, {d})" for r,d in zip(ra, dec)])
     
@@ -487,7 +487,7 @@ def access_alerts(ra = 0, dec = 0, radius = 4, order_by = 'oid', # radius = 4
     params = requests.get(credentials_file).json()["params"]
     conn = psycopg2.connect(dbname=params["dbname"], user=params["user"], host=params["host"], password=params["password"])
     
-    # For backwards compatibility
+
     matches = pd.DataFrame()
     
     for class_name in class_names:
@@ -533,7 +533,7 @@ def access_alerts(ra = 0, dec = 0, radius = 4, order_by = 'oid', # radius = 4
         matches = matches.append(pd.read_sql(query, conn), ignore_index = True)
     
     conn.close()
-    return matches
+    return matches.drop_duplicates(subset='oid')
 
 # This function takes information in from the GW file and returns them in a dictionary
 # I promise I'll make my functions properly documented... eventually
@@ -1291,15 +1291,18 @@ def recursive_pix_filter(map_properties, best_tile_pix, tile_dict, r_num, best_i
     
     return best_ids
 
-def nondisruptive_mode(map_properties: dict, degraded_map_properties:dict, pixmap, num_pointings:int = 10, restrict = False, overlap = True):
-    # This ND mode operates by calculating the probability interpolated over the 
-    # 90% CI region of the map. This is faster than summing up the probability
+def nondisruptive_mode(map_properties: dict, degrade_map_properties: dict, pixmap, 
+                       num_pointings:int = 10,  CI_level = 0.9,
+                       restrict = False, overlap = True):
+    
+    # This ND mode operates by calculating the probability covered by tiles in the 
+    # 90% CI region of the map. This is slightly slower than interpolating over the probability
     # of the pixels in each tile although the timing is fairly negligible. 
-    # This way is just cooler ;) -- Matt P.
+    # This way is less cool but the results seem better grouped -- Matt P.
     #
-    # The sum method can be found in the jupyter notebook of the same name.
+    # The interpolation method can be found in the jupyter notebook of the same name.
     # EXAMPLE CALL:
-    #     result_dict = nondisruptive_mode2(gw_properties, gw_degraded_properties, pixmap = pixmap[0.9], num_pointings = 15)
+    #     result_dict = nondisruptive_mode(gw_properties, gw_degraded_properties, pixmap = pixmap, num_pointings = 15)
     # 
     # I DO NOT RECOMMEND RUNNING THIS WITH RESTRICT ON AND OVERLAP OFF
     #
@@ -1311,20 +1314,22 @@ def nondisruptive_mode(map_properties: dict, degraded_map_properties:dict, pixma
     # found in different passes and programs
     
     pixmap = np.array(pixmap)
-
+    
     # Grab ecsv with tile numbers, positions, and # of observations
     tiles_path = "/global/cfs/cdirs/desi/survey/ops/surveyops/trunk/ops/tiles-main.ecsv"
     tile_info = unique(Table.read(tiles_path), keys=['RA', 'DEC'])
     max_pass_num = np.max(tile_info['PASS'])
+    # print(tile_info.columns)
+    
+    # PRIORITIZE LOWER PASS
+    # MAX SHOULD BE PER PROGRAM, num_pointings *per* program (bright, dark, backup[may remove] -- we think)
     
     conditions = tile_info['IN_DESI'] & (tile_info['STATUS'] == 'unobs') #& (tile_info['PROGRAM'] != 'BACKUP')
     tile_info = tile_info[conditions] # filter out by IN_DESI
     programs = ['DARK', 'BRIGHT', 'BACKUP']
-
+    
     best_tiles = {}
-
-    # Grab num_pointings per program
-    # May remove BACKUP in the future but the algo is fast, it's no problem.
+    
     for p in programs:
         
         in_DESI = tile_info[tile_info['PROGRAM'] == p]
@@ -1333,79 +1338,88 @@ def nondisruptive_mode(map_properties: dict, degraded_map_properties:dict, pixma
         tile_dec =  np.array(in_DESI['DEC'])
 
         tile_skycoord = SkyCoord(tile_ra*u.deg, tile_dec*u.deg)
+    
+        # grab top 20
+        prob_sum = 0
+        count = 0
+        idxs = []
+        d_prob = degrade_map_properties["prob"]
+        arg_prob = np.argsort(d_prob)[::-1]
 
+        while prob_sum < CI_level:
+            prob_sum += d_prob[arg_prob[count]]
+            count += 1
+            idxs.append(arg_prob[count])
+        
+        ra_d, dec_d = hp.pix2ang(degrade_map_properties["nside"], idxs, nest = degrade_map_properties["nest"], lonlat = True) 
+        pixmap_skycoord = SkyCoord(ra_d*u.deg, dec_d*u.deg)
+
+        # I bet this is faster than conesearch and checking matches of indices
+        # Don't know the order but this should be better optimized than a loop
+        # ... unless we parallelize but it's not worth it here
+        _, d2d_tile, _ = match_coordinates_sky(tile_skycoord, pixmap_skycoord)
+        # Filtering by maximum separation and closest match
+        sep_constraint = d2d_tile < 4*u.deg # Extended, doubled tile radius
+        tile_matches = tile_skycoord[sep_constraint]
+        in_constraint = in_DESI[sep_constraint]
+            
         # Initialize astropy HEALPix
         # SkyCoord defaults to ICRS so we hardcode it here
-        astro_hp_deg = HEALPix(nside = degraded_map_properties["nside"], 
-                           order = "nested" if degraded_map_properties["nest"] else "ring", 
-                           frame = 'icrs')
 
-        # Calculate interpolated probability at every pointing.
-        # We use the degraded map so that the interpolated probability
-        # better approximates the total probability covered by the tile (radius = 1.6 deg)
-        # since it uses the four nearest pixels to interpolate the value at that center position.
-        #
-        # We have seen similar results using NSIDE = 32 (pixel = 1.8 deg) and NSIDE = 64 (pixel = 55 arcmin)
-        # so we generally choose the former to get better coverage over the whole area of the tile.
-        interp_prob = astro_hp_deg.interpolate_bilinear_skycoord(tile_skycoord, degraded_map_properties["prob"])
-        
-        # Enforcing an arbitrary cut-off to speed up computation time later
-        # Because most will fail this test
-        cutoff = interp_prob > 0.001
-        
-        # UNCOMMENT if you want to keep *very* low to negligible probabilities to fill num_pointings
-        # if np.sum(cutoff) < num_pointings:
-        #     interp_prob_red = interp_prob
-        #     in_cutoff = in_DESI
-        # else:
-        
-        interp_prob_red = interp_prob[cutoff]
-        in_cutoff = in_DESI[cutoff]
+        astro_hp = ah.HEALPix(nside = map_properties["nside"], order = "nested" if map_properties["nest"] else "ring", frame = 'icrs')
 
-        # Interpolated probability as percentage
-        in_cutoff['PROB_COVERED'] = interp_prob_red*100
+        prob_vals = []
+        # Calculate best match
+        for coord in tile_matches:
+            hp_idx = astro_hp.cone_search_skycoord(coord, tile_rad)
+            both = np.intersect1d(hp_idx, pixmap, assume_unique = True)
+
+            if both.size:
+                #count += 1
+                prob_vals.append(np.sum(map_properties["prob"][both]))
+            else:
+                prob_vals.append(0)
+
+        prob_vals = np.array(prob_vals)
+        #args_prob_sum = np.argsort(prob_vals)[-num_pointings:]
         
-        # Sort by pass and then by probability
-        in_cutoff.sort(['PASS','PROB_COVERED'])
+        # Named to match write_too_ledger
+        in_constraint['PROB_COVERED'] = prob_vals*100
+        
+        # Sort by pass *and then* by probability
+        in_constraint.sort(['PASS','PROB_COVERED'])
         
         # Reverse the order so that highest probability is at the top
-        in_cutoff.reverse()
+        in_constraint.reverse()
+        in_constraint = in_constraint[in_constraint['PROB_COVERED'] > 0]
         
-        # We prioritize lower pass and work our way up
-        tile_table = in_cutoff[in_cutoff['PASS'] == 0]
+        tile_table = in_constraint[in_constraint['PASS'] == 0]
         pass_num = 1
         
-        # Grab by pass number and stack on to result table
         while (len(tile_table) < num_pointings) and (pass_num < max_pass_num):
-            in_pass = in_cutoff[in_cutoff['PASS'] == pass_num]
+            in_pass = in_constraint[in_constraint['PASS'] == pass_num]
             tile_table = vstack([tile_table, in_pass])
             pass_num += 1
-        
+            
         # Limit to num_pointings in case/when we go over the amount needed
         best_tiles[p] = tile_table[:num_pointings]
         
         if len(tile_table) < num_pointings:
             print(f"Could not find requested number of tiles ({num_pointings}) in/near 90% CI for {p} program.")
-            print(f"Found {len(tile_table)} tiles in/near 90% CI covering an approximate probability of {np.sum(tile_table['PROB_COVERED']):.4f}%.\n")
+            print(f"Found {len(tile_table)} tiles in/near 90% CI covering a total probability of {np.sum(tile_table['PROB_COVERED']):.4f}%.\n")
         
         # Go to next program... avoid a tab cluster on the way ;) 
-        if overlap:
+        if overlap or not len(tile_table):
             continue
+            
+        args_interp = np.argsort(in_constraint['PROB_COVERED'])[::-1]
 
-        # ************ RECURSIVE CALCULATION OF OVERLAP HERE ************
+        tileid_red = in_constraint['TILEID'][args_interp]
         
-        # TODO: Make this non-recursive
-        # It doesn't go that deep but because it's relatively unnecessary we may as well re-do it
-        args_interp = np.argsort(interp_prob)[::-1]
-        args_interp_red = np.argsort(interp_prob_red)[::-1]#[-num_pointings:]
-
-        tileid_red = in_DESI['TILEID'][args_interp][:np.sum(cutoff)]
-        skycoord_red = tile_skycoord[args_interp][:np.sum(cutoff)]
+        tile_ra_c = np.array(in_constraint['RA'])[args_interp]
+        tile_dec_c =  np.array(in_constraint['DEC'])[args_interp]
         
-        # Initialize astropy HEALPix to non-degraded map resolution.
-        astro_hp = HEALPix(nside = map_properties["nside"], 
-                           order = "nested" if map_properties["nest"] else "ring", 
-                           frame = 'icrs')
+        skycoord_red = SkyCoord(tile_ra_c*u.deg, tile_dec_c*u.deg)
 
         if restrict:
             tile_pix = {ID:np.intersect1d(astro_hp.cone_search_skycoord(coord, tile_rad), pixmap) 
@@ -1423,6 +1437,7 @@ def nondisruptive_mode(map_properties: dict, degraded_map_properties:dict, pixma
 
         best_ids = np.array([tileid_red[0]], dtype = int) #, tileid_red[new_max]], dtype = int)
 
+
         best_ids = recursive_pix_filter(map_properties, 
                              pix_in_best_tile, 
                              tile_pix,
@@ -1433,10 +1448,9 @@ def nondisruptive_mode(map_properties: dict, degraded_map_properties:dict, pixma
         if restrict and len(best_ids) != num_pointings:
             tileid_redd = np.setdiff1d(tileid_red, best_ids)
             best_ids = np.append(best_ids, tileid_redd)[:num_pointings]
-            
-        # TODO: GRAB FULL TABLE ROW 
-        best_tiles = best_ids
-
+        
+        best_tiles[p] = best_tiles[p][np.isin(best_tiles[p]['TILEID'], best_ids, assume_unique = True)]
+    
     return best_tiles
 
 if __name__ == "__main__":
