@@ -83,9 +83,9 @@ if __name__ == "__main__":
 #
 # *************************************************************************
     
-    help_text = sys.argv[0] + " handles and compares Gravitational Wave (GW) " \
-    "localization maps to DESI observations. Most generally, the code finds those " \
-    "observations in the area of a user-specified confidence interval (CI) of the GW map."
+    help_text = f"""{sys.argv[0]} handles and compares Gravitational Wave (GW)
+    localization maps to DESI observations. Most generally, the code finds those
+    observations in the area of a user-specified confidence interval (CI) of the GW map."""
     
     parser = argparse.ArgumentParser(description = help_text)
     c_intervals = parser.add_mutually_exclusive_group()
@@ -105,13 +105,13 @@ if __name__ == "__main__":
                         dest      = 'CI_val',
                         action    = 'store_const', 
                         const     = 0.9,
-                        help      = 'Specifying 90% CI')
+                        help      = 'Specifying 90%% CI')
     
     c_intervals.add_argument('--confidence_interval=95', '-CI95', 
                         dest      = 'CI_val',
                         action    = 'store_const', 
                         const     = 0.95,
-                        help      = 'Specifying 95% CI')
+                        help      = 'Specifying 95%% CI')
     
     d_modes.add_argument('--disruptive', '-D', 
                         dest   = 'mode', 
@@ -244,7 +244,9 @@ if __name__ == "__main__":
     # Use some sneaky Python-fu to determine number of pointings 
     # i.e. nd_mode as non-zero for bool evaluation and as integer
     if nd_mode:
-        nd_tile_info = nondisruptive_mode(gw_properties, gw_degraded_properties, pixmap, num_pointings = nd_mode, restrict = False, overlap = True)
+        nd_tile_info = nondisruptive_mode(gw_properties, gw_degraded_properties, pixmap,
+                                          num_pointings = nd_mode, CI_level = CI_val, 
+                                          restrict = False, overlap = True)
         
         outfile_name = f'{gw_name}_ND_ToO_ledger.ecsv'
         outfile = os.path.join(targetlists_path, outfile_name)
@@ -264,6 +266,11 @@ if __name__ == "__main__":
             ow = False
             
         print()
+        fig_outfile = os.path.join(targetlists_path, f"{gw_name}_ND_tiles.png")
+        
+        # For testing code, please ignore.
+        #plot_pointings(ra_map, dec_map, pointing_dict = nd_tile_info, savename = fig_outfile)
+        #sys.exit()
     
 # *************************************************************************
 #
@@ -295,16 +302,13 @@ if __name__ == "__main__":
         print(f"For mjd -- {gw_mjd:.2f}, RA, DEC dump...")
         print(*zip(ra_degraded,dec_degraded))
         print("Exitting.")
-        # TODO: REMOVE EXIT, used for testing
-        sys.exit()
+        # For testing, please ignore.
+        # sys.exit()
         print("Continuing...")
         
     else:
         alerts_sn = alerts.groupby(alerts.class_name).get_group("SN")
-        alerts_agn = alerts.groupby(alerts.class_name).get_group("AGN")   
-
-        alerts_sn = alerts_sn.drop_duplicates(subset='oid')
-        alerts_agn = alerts_agn.drop_duplicates(subset='oid')
+        alerts_agn = alerts.groupby(alerts.class_name).get_group("AGN")
 
         alerts_sn_ra = alerts_sn['meanra'].to_numpy()
         alerts_sn_dec = alerts_sn['meandec'].to_numpy()
@@ -424,7 +428,11 @@ if __name__ == "__main__":
 # 
 # The target lists are built in the same way as [Segev's code](https://github.com/desihub/timedomain/blob/master/gwtarget/gw_dr9.ipynb)
 
-    trg_file = os.path.join(targetlists_path, gw_name + str(int((100*CI_val))) + '_dr9.ecsv')
+    CI_str = ''
+    if CI_val != 0.9:
+        CI_str = '-' + str(int((100*CI_val))) + "CI"
+        
+    trg_file = os.path.join(targetlists_path, gw_name + CI_str + '_dr9.ecsv')
     
     try:
         targlist = Table.read(trg_file)
@@ -605,7 +613,7 @@ if __name__ == "__main__":
         
 #         write_too_ledger(outfile, nd_tile_info.to_pandas(), 
 #                          checker='MP/AP', overwrite=True, verbose=False, tabformat='ND')
-        # TODO: Check format of 2022 targetlist matches, it seems like they're not working right
+
     if not nd_mode:
         outfile = disruptive_mode(gwfile_path = path_gwfile, gw_name = gw_name)
         os.replace(outfile, os.path.join(targetlists_path, os.path.basename(outfile)))

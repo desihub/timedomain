@@ -25,11 +25,11 @@ from astropy.coordinates import SkyCoord, match_coordinates_sky, Angle
 from astropy.time import Time
 
 try:
-    from astropy_healpix import HEALPix
+    import astropy_healpix as ah
 except:
     import subprocess
     subprocess.check_call([sys.executable, "-m", "pip", "install", "--user", "astropy-healpix"])
-    from astropy_healpix import HEALPix
+    import astropy_healpix as ah
 
 import requests
 from alerce.core import Alerce
@@ -533,6 +533,7 @@ def access_alerts(ra = 0, dec = 0, radius = 4, order_by = 'oid', # radius = 4
         matches = matches.append(pd.read_sql(query, conn), ignore_index = True)
     
     conn.close()
+    
     return matches.drop_duplicates(subset='oid')
 
 # This function takes information in from the GW file and returns them in a dictionary
@@ -1452,6 +1453,16 @@ def nondisruptive_mode(map_properties: dict, degrade_map_properties: dict, pixma
         best_tiles[p] = best_tiles[p][np.isin(best_tiles[p]['TILEID'], best_ids, assume_unique = True)]
     
     return best_tiles
+
+def plot_pointings(ra_map, dec_map, pointing_dict:dict, savename:str):
+    
+    plt.scatter(ra_map, dec_map, alpha=0.2)
+    for p in ('DARK', 'BRIGHT', 'BACKUP'):
+        plt.scatter(pointing_dict[p]['RA'], pointing_dict[p]['DEC'], label=p, alpha = 0.8, marker="+")
+        
+    plt.legend()
+    plt.savefig(savename)
+    return None
 
 if __name__ == "__main__":
     pass
