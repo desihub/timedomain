@@ -1,11 +1,36 @@
 #!/usr/bin/env python
 
 from astropy import units as u
-from astropy.table import Table, vstack, hstack
+from astropy.table import Table, vstack, hstack, join
 import psycopg2
 from tqdm import tqdm
 import numpy as np
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+
+
+def get_pv_targets(pvtargfile):
+    """Get PV targets file. Join with SGA data if needed.
+    
+    Parameters
+    ----------
+    pvtargfile : str
+        Absolute or relative path to PV targets FITS file.
+    
+    Returns
+    -------
+    ttarg : astropy.Table
+        Targets table, including underlying galaxy data.
+    """
+    ttarg = Table.read(pvtargfile)
+    if 'SGA_ID' not in ttarg.columns:
+        if 'sv' in pvtargfile:
+            pvfullfile = pvtargfile.replace('sv', 'full')
+        else:
+            pvfullfile = pvtargfile.replace('.fits', '_full.fits')
+        tfull = Table.read(pvfullfile)
+        ttarg = join(ttarg, tfull['OBJID','BRICKID','BRICKNAME','SGA_ID'],
+                     keys=['OBJID','BRICKID','BRICKNAME'])
+    return ttarg
 
 
 def match_targets(pvtargtab, redux='daily', search='healpix'):
@@ -119,7 +144,7 @@ if __name__ == '__main__':
 
     output = None
     for infile in args.infiles:
-        data = Table.read(infile, hdu=1)
+        data = get_pv_targets(infile)
         print(f'Matching targets from {infile}...')
         matched_data = match_targets(data, redux=args.redux, search=args.search)
 
