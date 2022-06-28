@@ -199,9 +199,8 @@ class TransientModels:
 
 class ExposureData:
     
-    def __init__(self, prefix=os.environ['DESI_SPECTRO_REDUX'], survey='MAIN', redux='fuji', grouping='pernight'):
+    def __init__(self, prefix=os.environ['DESI_SPECTRO_REDUX'], survey='MAIN', redux='guadalupe', grouping='pernight'):
         """Build an exposure table with observing conditions using the GFA conditions database.
-
         Parameters
         ----------
         prefix : str
@@ -212,7 +211,6 @@ class ExposureData:
             Spectroscopic reduction (denali, everest, fuji, ...).
         grouping : str
             Type of exposure grouping (pernight, cumulative, ...).
-
         Returns
         -------
         exptab : astropy.Table
@@ -224,39 +222,18 @@ class ExposureData:
         # Grab conditions database from the most recent FITS file.
         matched_cond_files = sorted(glob('/global/cfs/cdirs/desi/survey/GFA/offline_matched_coadd_ccds_SV3-thru_*.fits'))
         obsconditions = Table.read(matched_cond_files[-1], 3)
+        obscolumns = ['EXPID', 'SKYRA', 'SKYDEC',
+                      'MOON_ILLUMINATION', 'MOON_ZD_DEG', 'MOON_SEP_DEG',
+                      'FWHM_ASEC', 'TRANSPARENCY', 'SKY_MAG_AB',
+                      'FIBER_FRACFLUX', 'FIBER_FRACFLUX_ELG', 'FIBER_FRACFLUX_BGS']
+        
+        # Exposure table corresponding to this reduction
+        exptab = Table.read(f'{prefix}/{redux}/exposures-{redux}.csv')
+        
+        # Join the conditions table with the reduction exposure table.
+        self.exptab = join(exptab, obsconditions[obscolumns], keys=['EXPID'])
 
-        # Loop through all exposure tables corresponding to the chosen pipeline reduction (denali, everest, fuji, ...)
-        exptab_redux = None
-        exposure_tables = sorted(glob('{}/{}/exposure_tables/2*/*.csv'.format(self.prefix, self.redux)))
-        columns = ['EXPID', 'EXPTIME', 'OBSTYPE', 'TILEID', 'FA_SURV', 'PROGRAM', 'TARGTRA', 'TARGTDEC', 'NIGHT']
-
-        for i, exposure_table in enumerate(exposure_tables):
-            exptab = Table.read(exposure_table, format='csv')[columns]
-
-            # Remove rows where FA_SURV and PROGRAM are masked.
-            select = np.ones(len(exptab), dtype=bool)
-            if hasattr(exptab['PROGRAM'], 'mask'):
-                select = select & ~exptab['PROGRAM'].mask
-            if hasattr(exptab['FA_SURV'], 'mask'):
-                select = select & ~exptab['FA_SURV'].mask
-            exptab = exptab[select]
-
-            if np.any(select):
-                select = exptab['PROGRAM'] == 'bright'
-                exptab = exptab[select]
-
-                if exptab_redux is None:
-                    exptab_redux = exptab
-                else:
-                    exptab_redux = vstack([exptab_redux, exptab])
-
-        obscolumns = ['EXPID', 'SKYRA', 'SKYDEC', 'MOON_ILLUMINATION', 'MOON_ZD_DEG', 'MOON_SEP_DEG',
-                      'MJD', 'FWHM_ASEC', 'TRANSPARENCY', 'SKY_MAG_AB',
-                      'FIBER_FRACFLUX', 'FIBER_FRACFLUX_ELG', 'FIBER_FRACFLUX_BGS',
-                      'AIRMASS', 'RADPROF_FWHM_ASEC',
-                      'FIBERFAC', 'FIBERFAC_ELG', 'FIBERFAC_BGS']
-
-        self.exptab = join(exptab_redux, obsconditions[obscolumns], keys=['EXPID'])
+        # self.exptab = join(exptab_redux, obsconditions[obscolumns], keys=['EXPID'])
         self.specfiles = self._get_spectra_files(survey, grouping)
         
         self.tiles = [*self.specfiles]
@@ -285,7 +262,7 @@ class ExposureData:
                 obscond = self._get_conditions(tile, night)
                 spec, ztab = self._get_spectraz(cofile, rdfile)
                 
-                return cofile, obscond, spec, ztab
+                return tile, night, cofile, obscond, spec, ztab
             except IndexError:
                 self.fileidx = 0
                 self.tileidx += 1
@@ -294,22 +271,20 @@ class ExposureData:
         except IndexError:
             raise StopIteration
         
-    def _get_spectra_files(self, program='sv2', grouping='pernight'):
-        """Get list of coadds and redrock files for a given reduction, program, and grouping.
-
+    def _get_spectra_files(self, survey='sv2', grouping='pernight'):
+        """Get list of coadds and redrock files for a given reduction, survey, and grouping.
         Parameters
         ----------
-        program : str
-            Name of observing program ('SV1', 'SV2', 'MAIN', ...).
+        survey : str
+            Name of survey ('SV1', 'SV2', 'SV3', 'MAIN', ...).
         grouping : str
             Exposure grouping: pernight or cumulative.
-
         Returns
         -------
         specfiles : dict
             Dictionary of tiles and per-night data added across exposures.
         """
-        select = self.exptab['FA_SURV'] == program.lower()
+        select = self.exptab['SURVEY'] == survey.lower()
         tileids = np.unique(self.exptab['TILEID'][select])
         specfiles = {}
         for tileid in tileids:
@@ -371,7 +346,7 @@ class ExposureData:
         spec_targid = spec.fibermap['TARGETID']
 
         ztab = Table.read(redshift_file, 'REDSHIFTS')
-        select_z = (ztab['ZWARN']==0) & (ztab['DELTACHI2']>=25) & (ztab['SPECTYPE']=='GALAXY')
+        select_z = (ztab['Z'] < 0.4) & (ztab['ZWARN']==0) & (ztab['DELTACHI2']>=25) & (ztab['SPECTYPE']=='GALAXY')
         ztab = ztab[select_z]
         ztab_targid = ztab['TARGETID']
             
@@ -379,7 +354,7 @@ class ExposureData:
         j = np.isin(ztab_targid, spec_targid)
 
         return spec[i], ztab[j]
-    
+
 
 if __name__ == '__main__':
 
