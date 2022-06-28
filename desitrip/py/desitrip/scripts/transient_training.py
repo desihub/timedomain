@@ -199,9 +199,8 @@ class TransientModels:
 
 class ExposureData:
     
-    def __init__(self, prefix=os.environ['DESI_SPECTRO_REDUX'], survey='SV2', redux='fuji', grouping='pernight'):
-        """Build an exposure table with observing conditions using Aaron Meisner's
-        exposure conditions database.
+    def __init__(self, prefix=os.environ['DESI_SPECTRO_REDUX'], survey='MAIN', redux='fuji', grouping='pernight'):
+        """Build an exposure table with observing conditions using the GFA conditions database.
 
         Parameters
         ----------
@@ -222,8 +221,8 @@ class ExposureData:
         self.redux = redux
         self.prefix = os.environ['DESI_SPECTRO_REDUX']
         
-        # Grab conditions database.
-        matched_cond_files = sorted(glob('/global/cfs/cdirs/desi/users/ameisner/GFA/conditions/offline_matched_coadd_ccds_SV1-thru_*fits'))
+        # Grab conditions database from the most recent FITS file.
+        matched_cond_files = sorted(glob('/global/cfs/cdirs/desi/survey/GFA/offline_matched_coadd_ccds_SV3-thru_*.fits'))
         obsconditions = Table.read(matched_cond_files[-1], 3)
 
         # Loop through all exposure tables corresponding to the chosen pipeline reduction (denali, everest, fuji, ...)
@@ -411,79 +410,83 @@ if __name__ == '__main__':
     # Loop through exposures tile by tile and petal by petal.
     nsim = 0
     for i, (cofile, obs, spec, ztab) in enumerate(exposures):
-        print(obs)
-        print(spec.num_spectra(), len(ztab))
+        try:
+            print(obs)
+            print(spec.num_spectra(), len(ztab))
 
-        # Generate transient models for some fraction of the input spectra.
-        nhosts = spec.num_spectra() // ntypes
-        ntrans = spec.num_spectra() - nhosts
-        types, models, phases, trafluxes = transmod.simulate_spectra(z=ztab['Z'][nhosts:], select_from_type=sim_types, obswave=wavemodel)
+            # Generate transient models for some fraction of the input spectra.
+            nhosts = spec.num_spectra() // ntypes
+            ntrans = spec.num_spectra() - nhosts
+            types, models, phases, trafluxes = transmod.simulate_spectra(z=ztab['Z'][nhosts:], select_from_type=sim_types, obswave=wavemodel)
 
-        # Rescale the transient spectra to the underlying data in the r band.
-        delta_r = np.random.uniform(0, 5, size=ntrans)
-        rfluxratio = 10**(-delta_r/2.5)
+            # Rescale the transient spectra to the underlying data in the r band.
+            delta_r = np.random.uniform(0, 5, size=ntrans)
+            rfluxratio = 10**(-delta_r/2.5)
 
-        for i in range(ntrans):
-            # Extract the redrock fit coefficients and reconstruct the redrock spectrum.
-            targetid, z, sp, sb, coeff = ztab[nhosts + i][['TARGETID', 'Z', 'SPECTYPE', 'SUBTYPE', 'COEFF']]
-            if np.ma.is_masked(sb):
-                sb = ''
-            ncoeff = templates[(sp, sb)].flux.shape[0]
-            coeff = coeff[0:ncoeff]
+            for i in range(ntrans):
+                # Extract the redrock fit coefficients and reconstruct the redrock spectrum.
+                targetid, z, sp, sb, coeff = ztab[nhosts + i][['TARGETID', 'Z', 'SPECTYPE', 'SUBTYPE', 'COEFF']]
+                if np.ma.is_masked(sb):
+                    sb = ''
+                ncoeff = templates[(sp, sb)].flux.shape[0]
+                coeff = coeff[0:ncoeff]
 
-            tflux = templates[(sp, sb)].flux.T.dot(coeff)
-            twave = templates[(sp, sb)].wave * (1 + z)
+                tflux = templates[(sp, sb)].flux.T.dot(coeff)
+                twave = templates[(sp, sb)].wave * (1 + z)
 
-            # Resample the redrock flux to the wavelength range of the transient simulation.
-            txflux = resample_flux(wavemodel, twave, tflux, ivar=None, extrapolate=False)
+                # Resample the redrock flux to the wavelength range of the transient simulation.
+                txflux = resample_flux(wavemodel, twave, tflux, ivar=None, extrapolate=False)
 
-            # Scale the transient flux to the host flux (given by the redrock model rather than the actual spectrum).
-            galnorm = rfilt.get_ab_maggies(txflux, copy(wavemodel))
-            fluxr_gal = galnorm['decam2014-r'].data[0]
+                # Scale the transient flux to the host flux (given by the redrock model rather than the actual spectrum).
+                galnorm = rfilt.get_ab_maggies(txflux, copy(wavemodel))
+                fluxr_gal = galnorm['decam2014-r'].data[0]
 
-            tranorm = rfilt.get_ab_maggies(trafluxes[i], copy(wavemodel))
-            fluxr_tra = tranorm['decam2014-r'].data[0]
+                tranorm = rfilt.get_ab_maggies(trafluxes[i], copy(wavemodel))
+                fluxr_tra = tranorm['decam2014-r'].data[0]
 
-            trafactor = fluxr_gal * rfluxratio[i] / fluxr_tra
-            trafluxes[i] *= trafactor
+                trafactor = fluxr_gal * rfluxratio[i] / fluxr_tra
+                trafluxes[i] *= trafactor
 
-        # Simulate the transient spectra using the current obsconditions.
-        outfits = os.path.basename(cofile).replace('coadd', 'transim')
-        outfits = os.path.join(args.outpref, outfits)
+            # Simulate the transient spectra using the current obsconditions.
+            outfits = os.path.basename(cofile).replace('coadd', 'transim')
+            outfits = os.path.join(args.outpref, outfits)
 
-        sim_spectra(wavemodel, np.asarray(trafluxes), program='bright',
-            spectra_filename=outfits,
-            obsconditions=obs,
-            targetid=ztab['TARGETID'][nhosts:])
+            sim_spectra(wavemodel, np.asarray(trafluxes), program='bright',
+                spectra_filename=outfits,
+                obsconditions=obs,
+                targetid=ztab['TARGETID'][nhosts:])
 
-        # Read the simulated transient spectra and resample to data wavelength.
-        a = coadd_cameras(spec[:nhosts])
-        a.fibermap.rename_column('COADD_FIBERSTATUS', 'FIBERSTATUS')
-        a.scores = None
+            # Read the simulated transient spectra and resample to data wavelength.
+            a = coadd_cameras(spec[:nhosts])
+            a.fibermap.rename_column('COADD_FIBERSTATUS', 'FIBERSTATUS')
+            a.scores = None
 
-        simspec = read_spectra(outfits)
-        b = spectroperf_resample_spectra(simspec, a.wave['brz'], nproc=2)
-        b.fibermap = spec.fibermap[nhosts:]
-        b.fibermap.rename_column('COADD_FIBERSTATUS', 'FIBERSTATUS')
-        idx = np.isin(spec.exp_fibermap['TARGETID'], simspec.fibermap['TARGETID'])
-        b.exp_fibermap = spec.exp_fibermap[idx]
-        b.scores = None
+            simspec = read_spectra(outfits)
+            b = spectroperf_resample_spectra(simspec, a.wave['brz'], nproc=2)
+            b.fibermap = spec.fibermap[nhosts:]
+            b.fibermap.rename_column('COADD_FIBERSTATUS', 'FIBERSTATUS')
+            idx = np.isin(spec.exp_fibermap['TARGETID'], simspec.fibermap['TARGETID'])
+            b.exp_fibermap = spec.exp_fibermap[idx]
+            b.scores = None
 
-        # Set up new output spectra. Store metadata in extra_catalog.
-        c = specstack([a, b])
-        extra_catalog = Table()
-        extra_catalog['TYPE'] = nhosts * ['Host'] + types
-        extra_catalog['MODEL'] = nhosts * [''] + models
-        extra_catalog['PHASE'] = nhosts * [0] + phases
-        extra_catalog['RFLUXRATIO'] = nhosts * [0.] + list(rfluxratio)
-        extra_catalog['Z'] = ztab['Z']
-        c.extra_catalog = extra_catalog
+            # Set up new output spectra. Store metadata in extra_catalog.
+            c = specstack([a, b])
+            extra_catalog = Table()
+            extra_catalog['TYPE'] = nhosts * ['Host'] + types
+            extra_catalog['MODEL'] = nhosts * [''] + models
+            extra_catalog['PHASE'] = nhosts * [0] + phases
+            extra_catalog['RFLUXRATIO'] = nhosts * [0.] + list(rfluxratio)
+            extra_catalog['Z'] = ztab['Z']
+            c.extra_catalog = extra_catalog
 
-        # Write output.
-        write_spectra(outfits, c)
+            # Write output.
+            write_spectra(outfits, c)
 
-        nsim += c.num_spectra()
-        if nsim >= args.nsim:
-            print(f'Simulated {nsim} spectra. Stopping.')
-            break
+            nsim += c.num_spectra()
+            if nsim >= args.nsim:
+                print(f'Simulated {nsim} spectra. Stopping.')
+                break
+
+        except:
+            continue
 
