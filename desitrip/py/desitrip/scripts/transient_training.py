@@ -202,7 +202,7 @@ class TransientModels:
 
 class ExposureData:
     
-    def __init__(self, prefix=os.environ['DESI_SPECTRO_REDUX'], survey='MAIN', redux='guadalupe', grouping='pernight'):
+    def __init__(self, prefix=os.environ['DESI_SPECTRO_REDUX'], survey='MAIN', program='BRIGHT', redux='guadalupe', grouping='pernight'):
         """Build an exposure table with observing conditions using the GFA conditions database.
         Parameters
         ----------
@@ -210,6 +210,8 @@ class ExposureData:
             Path to DESI spectroscopic reductions.
         survey : str
             Type of tile to use: SV0(1|2|3), MAIN, ...
+        program : str
+            Observing program (DARK, BRIGHT).
         redux : str
             Spectroscopic reduction (denali, everest, fuji, ...).
         grouping : str
@@ -232,6 +234,7 @@ class ExposureData:
         
         # Exposure table corresponding to this reduction
         exptab = Table.read(f'{prefix}/{redux}/exposures-{redux}.csv')
+        exptab = exptab[exptab['PROGRAM'] == program.lower()]
         
         # Join the conditions table with the reduction exposure table.
         self.exptab = join(exptab, obsconditions[obscolumns], keys=['EXPID'])
