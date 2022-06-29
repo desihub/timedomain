@@ -10,6 +10,9 @@ except Exception as x:
     raise SystemExit
 
 from desisim.scripts.quickspectra import sim_spectra
+
+from desitarget.targetmask import desi_mask
+
 from desispec.io import read_spectra, write_spectra
 from desispec.spectra import stack as specstack
 from desispec.coaddition import coadd, coadd_cameras, spectroperf_resample_spectra
@@ -341,7 +344,7 @@ class ExposureData:
             Spectra from a given set of coadd FITS files.
         """
         spec = read_spectra(coadd_file)
-        select_s = spec.fibermap['OBJTYPE'] == 'TGT'
+        select_s = (spec.fibermap['OBJTYPE'] == 'TGT') & ((desi_mask.BGS_ANY & spec.fibermap['DESI_TARGET']) != 0)
         spec = spec[select_s]
         spec_targid = spec.fibermap['TARGETID']
 
@@ -384,7 +387,7 @@ if __name__ == '__main__':
 
     # Loop through exposures tile by tile and petal by petal.
     nsim = 0
-    for i, (cofile, obs, spec, ztab) in enumerate(exposures):
+    for i, (tileid, night, cofile, obs, spec, ztab) in enumerate(exposures):
         try:
             print(obs)
             print(spec.num_spectra(), len(ztab))
@@ -431,11 +434,14 @@ if __name__ == '__main__':
                 obsconditions=obs,
                 targetid=ztab['TARGETID'][nhosts:])
 
-            # Read the simulated transient spectra and resample to data wavelength.
-            a = coadd_cameras(spec[:nhosts])
+            # Fluxes with no added transients.
+            a = coadd_cameras(spec)
             a.fibermap.rename_column('COADD_FIBERSTATUS', 'FIBERSTATUS')
             a.scores = None
 
+            # Fluxes with added transients.
+            # Read simulated transient spectra, resample to data wavelength,
+            # and add to the host fluxes.
             simspec = read_spectra(outfits)
             b = spectroperf_resample_spectra(simspec, a.wave['brz'], nproc=2)
             b.fibermap = spec.fibermap[nhosts:]
@@ -444,8 +450,11 @@ if __name__ == '__main__':
             b.exp_fibermap = spec.exp_fibermap[idx]
             b.scores = None
 
-            # Set up new output spectra. Store metadata in extra_catalog.
+            # Set up new output spectra.
             c = specstack([a, b])
+            coadd(c)
+          
+            # Put transient metadata into the new spectra extra_catalog table.
             extra_catalog = Table()
             extra_catalog['TYPE'] = nhosts * ['Host'] + types
             extra_catalog['MODEL'] = nhosts * [''] + models
