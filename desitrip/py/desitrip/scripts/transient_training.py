@@ -446,7 +446,7 @@ if __name__ == '__main__':
             # Read simulated transient spectra, resample to data wavelength,
             # and add to the host fluxes.
             simspec = read_spectra(outfits)
-            b = spectroperf_resample_spectra(simspec, a.wave['brz'], nproc=2)
+            b = spectroperf_resample_spectra(simspec, a.wave['brz'], nproc=8)
             b.fibermap = spec.fibermap[nhosts:]
             b.fibermap.rename_column('COADD_FIBERSTATUS', 'FIBERSTATUS')
             idx = np.isin(spec.exp_fibermap['TARGETID'], simspec.fibermap['TARGETID'])
