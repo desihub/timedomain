@@ -387,9 +387,12 @@ if __name__ == '__main__':
                    default=['Ia', 'Ib', 'Ic', 'II', 'IIb'],
                    choices=['87A-like', 'II', 'IIb', 'IIn', 'Ia', 'Ib', 'Ic', 'Ic-BL'],
                    help='List of transient types to simulate.')
-    p.add_argument('--phaserange', dest='phaserange', nargs=2,
-                   default=[-10,30],
+    p.add_argument('-d', '--dayrange', dest='dayrange', nargs=2,
+                   default=[-10,30], type=int,
                    help='Transient epoch range w.r.t. max light, in days.')
+    p.add_argument('-m', '--magrange', dest='magrange', nargs=2,
+                   default=[0,5], type=float,
+                   help='Transient-host r-mag difference [min, max].')
     args = p.parse_args()
 
     # Initialize redrock templates.
@@ -403,7 +406,15 @@ if __name__ == '__main__':
     wavemodel = np.arange(3300, 10991)
     sim_types = args.types
     ntypes = len(sim_types) + 1
-    phases = args.phaserange
+    
+    phases = args.dayrange
+    
+    dr1, dr2 = args.magrange
+    if dr1 == dr2:
+        print(f'Mag range {dr1}=={dr2}; resetting to 0, 5')
+        dr1, dr2 = 0, 5
+    if dr1 > dr2:
+        dr1, dr2 = dr2, dr1
 
     # Generate list of exposures.
     exposures = ExposureData(survey=args.survey, program=args.program, redux=args.redux)
@@ -421,7 +432,7 @@ if __name__ == '__main__':
             types, models, phases, trafluxes = transmod.simulate_spectra(z=ztab['Z'][nhosts:], select_from_type=sim_types, phase_range=phases, obswave=wavemodel)
 
             # Rescale the transient spectra to the underlying data in the r band.
-            delta_r = np.random.uniform(0, 5, size=ntrans)
+            delta_r = np.random.uniform(dr1, dr2, size=ntrans)
             rfluxratio = 10**(-delta_r/2.5)
 
             for i in range(ntrans):
@@ -496,4 +507,3 @@ if __name__ == '__main__':
 
         except:
             continue
-
