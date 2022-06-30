@@ -53,10 +53,12 @@ class TransientModels:
         modelfits : str
             Path to FITS file listing CCSN models.
         """
+        # Set up core-collapse models.
         modtab = Table.read(modelfits)
-        # List of models with odd-looking spectra for some epochs (provided by Eddie Sepeku).
+        
+        # Blacklist models with odd-looking spectra for some epochs (Eddie Sepeku).
         blacklist = [b'SN2013by', b'SN2013fs', b'SN2009bw', b'SN2012aw', b'SN2009kr', b'ASASSN14jb', b'SN2013am', b'SN2008ax', b'SN2008fq', b'SN2009ip', b'iPTF13bvn', b'SN2008D', b'SN1994I', b'SN2007gr', b'SN2009bb', b'SN2007ru']
-        select = ~np.in1d(ccsn['Name'].value, blacklist)
+        select = ~np.in1d(modtab['Name'].value, blacklist)
         modtab = modtab[select]
 
         sntypes = np.unique(modtab['Type'])
@@ -202,7 +204,7 @@ class TransientModels:
 
 
 class ExposureData:
-    
+
     def __init__(self, prefix=os.environ['DESI_SPECTRO_REDUX'], survey='MAIN', program='BRIGHT', redux='guadalupe', grouping='pernight'):
         """Build an exposure table with observing conditions using the GFA conditions database.
         Parameters
@@ -367,11 +369,27 @@ if __name__ == '__main__':
 
     p = argparse.ArgumentParser(description='Transient simulations from data',
                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    p.add_argument('--nsim', dest='nsim', default=1000, type=int,
-                   help='Minimum number of spectra to generate.')
-    p.add_argument('--out-prefix', dest='outpref', type=str,
+    p.add_argument('-o', '--out-prefix', dest='outpref', type=str,
                    help='Default folder of output spectra FITS files.',
-                   default='/global/project/projectdirs/desi/science/td/sim/sv1')
+                   default='/global/project/projectdirs/desi/science/td/sim')
+    p.add_argument('-n', '--nsim', dest='nsim', default=1000, type=int,
+                   help='Minimum number of spectra to generate.')
+    p.add_argument('-p', '--program', default='bright',
+                   choices=['bright', 'dark'],
+                   help='Observing program.')
+    p.add_argument('-r', '--redux', default='guadalupe',
+                   choices=['daily', 'fuji', 'guadalupe'],
+                   help='Spectroscopic reduction.')
+    p.add_argument('-s', '--survey', default='main',
+                   choices=['sv1', 'sv2', 'sv3', 'main'],
+                   help='Survey selection.')
+    p.add_argument('-t', '--types', dest='types', nargs='+',
+                   default=['Ia', 'Ib', 'Ic', 'II', 'IIb'],
+                   choices=['87A-like', 'II', 'IIb', 'IIn', 'Ia', 'Ib', 'Ic', 'Ic-BL'],
+                   help='List of transient types to simulate.')
+    p.add_argument('--phaserange', dest='phaserange', nargs=2,
+                   default=[-10,30],
+                   help='Transient epoch range w.r.t. max light, in days.')
     args = p.parse_args()
 
     # Initialize redrock templates.
@@ -383,11 +401,12 @@ if __name__ == '__main__':
     # Initialize access to transient models.
     transmod = TransientModels()
     wavemodel = np.arange(3300, 10991)
-    sim_types = ['Ia', 'Ib', 'Ic', 'II', 'IIb']
+    sim_types = args.types
     ntypes = len(sim_types) + 1
+    phases = args.phaserange
 
     # Generate list of exposures.
-    exposures = ExposureData()
+    exposures = ExposureData(survey=args.survey, program=args.program, redux=args.redux)
 
     # Loop through exposures tile by tile and petal by petal.
     nsim = 0
@@ -399,7 +418,7 @@ if __name__ == '__main__':
             # Generate transient models for some fraction of the input spectra.
             nhosts = spec.num_spectra() // ntypes
             ntrans = spec.num_spectra() - nhosts
-            types, models, phases, trafluxes = transmod.simulate_spectra(z=ztab['Z'][nhosts:], select_from_type=sim_types, obswave=wavemodel)
+            types, models, phases, trafluxes = transmod.simulate_spectra(z=ztab['Z'][nhosts:], select_from_type=sim_types, phase_range=phases, obswave=wavemodel)
 
             # Rescale the transient spectra to the underlying data in the r band.
             delta_r = np.random.uniform(0, 5, size=ntrans)
