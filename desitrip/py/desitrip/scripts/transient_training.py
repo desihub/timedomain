@@ -55,9 +55,10 @@ class TransientModels:
         """
         modtab = Table.read(modelfits)
         # List of models with odd-looking spectra for some epochs (provided by Eddie Sepeku).
-        blacklist = ['SN2013by','SN2013fs','SN2009bw','SN2012aw','SN2009kr','ASASSN14jb','SN2013am','SN2008ax','SN2008fq','SN2009ip','IPTF13bvn','SN2008D','SN1994I', 'SN2007gr','SN2009bb','SN2007ru']
-        select = [x not in blacklist for x in modtab['Name']]
+        blacklist = [b'SN2013by', b'SN2013fs', b'SN2009bw', b'SN2012aw', b'SN2009kr', b'ASASSN14jb', b'SN2013am', b'SN2008ax', b'SN2008fq', b'SN2009ip', b'iPTF13bvn', b'SN2008D', b'SN1994I', b'SN2007gr', b'SN2009bb', b'SN2007ru']
+        select = ~np.in1d(ccsn['Name'].value, blacklist)
         modtab = modtab[select]
+
         sntypes = np.unique(modtab['Type'])
         self.models = {}
         for sntype in sntypes:
