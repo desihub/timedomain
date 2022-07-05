@@ -1,4 +1,5 @@
 try:
+    import sncosmo
     from sncosmo.models import Model
 except ImportError as e:
     import pip
@@ -31,6 +32,7 @@ import os
 from glob import glob
 
 from scipy.ndimage import gaussian_filter
+from scipy.interpolate import RectBivariateSpline
 
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
@@ -41,6 +43,53 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 import argparse
+
+
+class KNSource(sncosmo.Source):
+    """Class to store kN simulations based on linear combinations of kilonova
+    models by Kasen 2017.
+    """
+    
+    _param_names = ['z', 't0', 'amplitude']
+    param_names_latex = ['z', 't0', 'amplitude']
+    
+    def __init__(self, modelfile=None, version=None):
+        """Construct a kilonova source.
+        
+        Parameters
+        ----------
+        modelfile : str or None
+            Path to CSV file with model fluxes vs time and wavelength.
+        version : str or None
+            Model version number.
+        """
+        self.name = os.path.splitext(os.path.basename(modelfile))[0]
+        self.version = version
+        self._phase = np.genfromtxt('/global/u2/l/lehsani/kilonova/models_0.2_0.8/time.csv')
+        self._wave = np.genfromtxt('/global/u2/l/lehsani/kilonova/models_0.2_0.8/wave.csv')[::-1]
+        
+        flux = np.flip(np.genfromtxt(modelfile, delimiter=','), axis=1)
+        self._model_flux = RectBivariateSpline(self._phase, self._wave, flux)
+        
+        self._parameters = np.array([0., 0., 1.])
+        
+    def _flux(self, phase, wave):
+        """Compute kilonova flux.
+        
+        Parameters
+        ----------
+        phase : float
+            Phase of the explosion, in days.
+        wave : ndarray
+            Wavelength array.
+        
+        Returns
+        -------
+        flux : ndarray
+            Flux vs wavelength at a given time/phase.
+        """
+        j = (np.abs(self._phase - phase)).argmin()
+        return self._model_flux(self._phase[j], wave)
 
 
 class TransientModels:
@@ -75,6 +124,14 @@ class TransientModels:
 
         # Add Ia models.
         self.models['Ia'] = ['hsiao']
+        
+        # Add kilonova models.
+        self.models['kN'] = []
+        knfiles = sorted(glob('/global/u2/l/lehsani/kilonova/models_0.2_0.8/*knova*.csv'))
+        for knfile in knfiles:
+            kn = KNSource(knfile)
+            sncosmo.register(kn, kn.name, force=True)
+            self.models['kN'].append(kn.name)
         
     def calc_flux(self, z, t, model, obswave, return_range=False):
         """Compute flux from an sncosmo model given redshift and time.
@@ -505,5 +562,6 @@ if __name__ == '__main__':
                 print(f'Simulated {nsim} spectra. Stopping.')
                 break
 
-        except:
+        except Exception as e:
+            print(e)
             continue
