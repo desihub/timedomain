@@ -1,0 +1,31 @@
+Need to source des18a
+As of Oct 2020 need the following
+
+export DESGW_DATA_DIR="data/"
+export DESGW_DIR="./python/"
+export PYTHONPATH="./python/:/data/des41.a/data/desgw/osgsetup/eeups/fnaleups/Linux64/lxml/v3.4.4/lib/python/:$PYTHONPATH"
+umask 002
+echo ''
+echo ''
+echo "Setting up Python environment..."
+source /cvmfs/des.opensciencegrid.org/eeups/startupcachejob21i.sh
+export EUPS_PATH=${EUPS_PATH}:/data/des41.a/data/desgw/osgsetup/eeups/fnaleups
+setup --nolocks pyslalib
+export PATH=/cvmfs/des.opensciencegrid.org/fnal/anaconda2/bin:$PATH
+source activate des18a
+unsetup numpy
+
+
+Need files from:  /data/des60.a/data/annis/new_mi_desgw/Main-Injector4/python/work9
+which is what is copied in this directory.
+
+
+Just run:
+source setup.sh
+python com.py
+
+In com.py
+Set all to true the first time, then once they are done you don’t need to remake the options 1 and 3 to make gifs
+
+
+Resimulator.yaml is where you can change things
