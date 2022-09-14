@@ -65,7 +65,7 @@ def helper(input_info):
             zinfo = getz(ra, dec)
 
             if (len(zinfo) == 0):
-                print(str(ztfid) + "\t" +  str(ra) + "\t" + str(dec) + "\t No Info." )
+                print(str(ztfid) + "\t" +  str(ra) + "\t" + str(dec) + "\t No_Info." )
             else:
                 for i in range(len(zinfo)):
                     tid = zinfo[i][0]
