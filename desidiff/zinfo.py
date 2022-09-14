@@ -51,6 +51,7 @@ def helper(input_info):
     #helper_info is a dic of ZTF id, input_ra, input_dec
     
     with open('output_test.txt', 'w') as f:
+        original_stdout = sys.stdout
         sys.stdout = f # Change the standard output to the file we created.
         ZTFids = input_info['id']
         ras = input_info['RA']
