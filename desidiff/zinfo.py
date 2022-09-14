@@ -71,11 +71,11 @@ def helper(input_info):
                     tid = zinfo[i][0]
                     night = zinfo[i][2]
                     z = zinfo[i][3]
-                    zerr = zinfo[i][6]
+                    zwarn = zinfo[i][7]
                     desi_ra = zinfo[i][4]
                     desi_dec =zinfo[i][5]
-                    if (zerr != 0): 
-                        print(str(ztfid) + "\t" +  str(ra) + "\t" + str(dec) + "\t zerr" )
+                    if (zwarn != 0): 
+                        print(str(ztfid) + "\t" +  str(ra) + "\t" + str(dec) + "\t zwarn" )
                         break
                     if (z > 0.15):
                         print(str(ztfid) + "\t" +  str(ra) + "\t" + str(dec) + "\t" + str(tid) + "\t"  + str(night) + "\t" + str(z) + "\t" + str(desi_ra)+ "\t" + str(desi_dec))
