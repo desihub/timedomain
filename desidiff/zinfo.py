@@ -75,7 +75,7 @@ def helper(input_info):
                     desi_ra = zinfo[i][4]
                     desi_dec =zinfo[i][5]
                     if (zerr != 0): 
-                        print(str(ztfid) + "\t" +  str(ra) + "\t" + str(dec) + "\t zerr != 0" )
+                        print(str(ztfid) + "\t" +  str(ra) + "\t" + str(dec) + "\t zerr!=0" )
                         break
                     if (z > 0.15):
                         print(str(ztfid) + "\t" +  str(ra) + "\t" + str(dec) + "\t" + str(tid) + "\t"  + str(night) + "\t" + str(z) + "\t" + str(desi_ra)+ "\t" + str(desi_dec))
