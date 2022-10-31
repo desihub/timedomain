@@ -271,7 +271,7 @@ class SMBBHAlertList(TooAlertList):
                 continue
 
             # Compute the observation window: now to now + 4 yr.
-            mjd0, mjd1 = t, t + 4*365
+            mjd0, mjd1 = mjd, mjd + 4*365
 
             # Accumulate data for output:
             # RA, DEC, PMRA, PMDEC, EPOCH, CHECKER, TYPE, PRIO, PROG, MJD_START, MJD_STOP, TOO_ID
