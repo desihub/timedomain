@@ -41,6 +41,8 @@ class AlertListFactory:
         elif 'XWIN_WORLD' in data.columns:
             # DECam ToO format from TAMU pipeline.
             return DECamAlertListTAMU(data)
+        elif 'Field' in data.columns and 'PROGRAM' in data.columns:
+            return SMBBHAlertList(data)
         elif 'Reporting Group/s' in data.columns and 'Discovery Data Source/s' in data.columns:
             # TNS ToO format.
             return TNSAlertList(data)
@@ -231,6 +233,50 @@ class DECamAlertListTAMU(TooAlertList):
             # RA, DEC, PMRA, PMDEC, EPOCH, CHECKER, TYPE, PRIO, PROG, MJD_START, MJD_STOP, TOO_ID
             too_list.append(
                 [ra, dec, 0., 0., 2000.0, 'SB/AP', 'FIBER', 'LO', 'BRIGHT', mjd0, mjd1, tooid]
+            )
+
+        return too_list
+
+
+class SMBBHAlertList(TooAlertList):
+    """ToO input handling from DECam using Rob Knop's pipeline.
+    """
+    def __init__(self, too_table):
+        super().__init__(too_table)
+
+    def generate_too_list(self):
+        """Find unique alerts not in the ToO database.
+
+        Returns
+        -------
+        too_list : tuple or list
+            Per-alert info needed for the ToO ledger.
+        """
+
+        too_list = []
+
+        for entry in self.too_table:
+            # Extract the relevant data for the ToO alert.
+            objid, ra, dec = entry['Id'], entry['RA'], entry['Dec']
+            instrum = entry['Survey']
+            t = Time.now()
+            date = t.to_datetime().isoformat(sep='T', timespec='seconds')
+            mjd = int(np.floor(t.mjd))
+
+            print(date)
+
+            # Enter data into the DB. 
+            tooid = self.toodb.add_alert(objid, instrum, date, mjd, ra, dec)
+            if tooid == 0:
+                continue
+
+            # Compute the observation window: now to now + 4 yr.
+            mjd0, mjd1 = t, t + 4*365
+
+            # Accumulate data for output:
+            # RA, DEC, PMRA, PMDEC, EPOCH, CHECKER, TYPE, PRIO, PROG, MJD_START, MJD_STOP, TOO_ID
+            too_list.append(
+                [ra, dec, 0., 0., 2000.0, 'SMBBH', 'TILE', 'HI', 'BRIGHT', mjd0, mjd1, tooid]
             )
 
         return too_list
