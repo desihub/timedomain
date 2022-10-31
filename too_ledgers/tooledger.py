@@ -35,9 +35,12 @@ class AlertListFactory:
         """
         data = Table.read(too_input_file)
 
-        if 'XWIN_WORLD' in data.columns:
-            # DECam ToO format.
-            return DECamAlertList(data)
+        if 'Candidate' in data.columns and 'Pipeline' in data.columns:
+            # DECam ToO format from TAMU pipeline.
+            return DECamAlertListRK(data)
+        elif 'XWIN_WORLD' in data.columns:
+            # DECam ToO format from TAMU pipeline.
+            return DECamAlertListTAMU(data)
         elif 'Reporting Group/s' in data.columns and 'Discovery Data Source/s' in data.columns:
             # TNS ToO format.
             return TNSAlertList(data)
@@ -134,8 +137,57 @@ RA DEC PMRA PMDEC REF_EPOCH CHECKER TOO_TYPE TOO_PRIO OCLAYER MJD_BEGIN MJD_END 
                 outf.write(f'{output}\n')
 
 
-class DECamAlertList(TooAlertList):
-    """ToO input handling from DECam/DESIRT.
+class DECamAlertListRK(TooAlertList):
+    """ToO input handling from DECam using Rob Knop's pipeline.
+    """
+    def __init__(self, too_table):
+        super().__init__(too_table)
+
+    def generate_too_list(self):
+        """Find unique alerts not in the ToO database.
+
+        Returns
+        -------
+        too_list : tuple or list
+            Per-alert info needed for the ToO ledger.
+        """
+
+        too_list = []
+
+        for entry in self.too_table:
+            # Extract the relevant data for the ToO alert.
+            objid, ra, dec = entry['Candidate'], entry['ra'], entry['dec']
+            date = entry['Min_Date']
+            t = Time(date, format='isot', scale='utc')
+            mjd = int(np.floor(t.mjd))
+
+            # Enter data into the DB. 
+            tooid = self.toodb.add_alert(objid, 'DECam', date, mjd, ra, dec)
+            if tooid == 0:
+                continue
+
+            # Compute the observation window. If the discovery date is old
+            # enough that the window will be <9 days, starting today, move the
+            # window up.
+            now = Time.now().mjd
+            dt = now - mjd
+            if dt >= 5:
+                print(f'Shifting time window for alert {tooid} on {mjd}')
+                mjd0, mjd1 = now, now+14
+            else:
+                mjd0, mjd1 = mjd, mjd+14
+
+            # Accumulate data for output:
+            # RA, DEC, PMRA, PMDEC, EPOCH, CHECKER, TYPE, PRIO, PROG, MJD_START, MJD_STOP, TOO_ID
+            too_list.append(
+                [ra, dec, 0., 0., 2000.0, 'SB/AP', 'TILE', 'HI', 'BRIGHT', mjd0, mjd1, tooid]
+            )
+
+        return too_list
+
+
+class DECamAlertListTAMU(TooAlertList):
+    """ToO input handling from DECam/DESIRT using the TAMU pipeline.
     """
     def __init__(self, too_table):
         super().__init__(too_table)
