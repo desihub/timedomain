@@ -156,7 +156,7 @@ class AlertListFactory:
         data = Table.read(too_input_file)
 
         if 'Candidate' in data.columns and 'Pipeline' in data.columns:
-            # DECam ToO format from TAMU pipeline.
+            # DECam ToO format from RK pipeline.
             return DECamAlertListRK(data)
         elif 'XWIN_WORLD' in data.columns:
             # DECam ToO format from TAMU pipeline.
@@ -351,9 +351,18 @@ class DECamAlertListTAMU(TooAlertList):
 
             # Accumulate data for output:
             # RA, DEC, PMRA, PMDEC, EPOCH, CHECKER, TYPE, PRIO, PROG, MJD_START, MJD_STOP, TOO_ID
-            too_list.append(
-                [ra, dec, 0., 0., 2000.0, 'SB/AP', 'FIBER', 'LO', 'BRIGHT', mjd0, mjd1, tooid]
-            )
+            in_cal, calname = in_calibration_field(ra, dec, mjd0, mjd1)
+            if in_cal:
+                # RA, Dec, time puts this observation in a DESI calibration
+                # field; set it up for TILE fiberassignment.
+                too_list.append(
+                    [ra, dec, 0., 0., 2000.0, 'SB/AP', 'TILE', 'HI', 'BRIGHT', mjd0, mjd1, tooid]
+                )
+            else:
+                # Normal observation: FIBER mode, LO priority.
+                too_list.append(
+                    [ra, dec, 0., 0., 2000.0, 'SB/AP', 'FIBER', 'LO', 'BRIGHT', mjd0, mjd1, tooid]
+                )
 
         return too_list
 
