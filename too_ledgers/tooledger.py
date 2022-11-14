@@ -12,9 +12,129 @@ from abc import ABC, abstractmethod
 import astropy.units as u
 from astropy.table import Table
 from astropy.time import Time
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import SkyCoord, angular_separation
+
+from datetime import datetime
 
 import numpy as np
+
+
+class DESICalibField :
+    """A simple class that stores the name, location, and observing dates of
+    DESI calibration fields. See https://desi.lbl.gov/trac/wiki/SurveyOps/CalibrationFields.
+    """
+
+    def __init__(self, name, ra, dec, dates):
+        """Initialize a calibration field.
+
+        Parameters
+        ----------
+        name : str
+            Name of the field.
+        ra : float
+            Field central RA.
+        dec : float
+            Field central declination.
+        dates : str
+            Months when the field is observed.
+        """
+        self.name = name
+        self.ra = ra
+        self.dec = dec
+        self.months = dates.split()
+
+    def in_fov(self, ra, dec, sepcut=1.6):
+        """Return true if a sky position is within the calibration field.
+
+        Parameters
+        ----------
+        ra : float
+            RA of input coordinates.
+        dec : float
+            Declination of input coordinates.
+        sepcut : float
+            Separation angle cut for FOV selection.
+
+        Returns
+        -------
+        infield : bool
+            True if target is inside a calibration field.
+        """
+        sep = angular_separation(self.ra*u.deg, self.dec*u.deg, ra*u.deg, dec*u.deg)
+        infield = sep < sepcut*u.deg
+        return infield
+
+    def in_obstime(self, obstime):
+        """Return true if an observation is requested during the coverage of
+        this calibration field.
+
+        Parameters
+        ----------
+        obstime : int, float, str, or datetime
+            If float, expect date in MJD. If str, expect month in standard
+            short notation (Jan, Feb, Mar, etc.).
+
+        Returns
+        -------
+        inmonth : bool
+            True if date is one of the months observed for this field.
+        """
+        month = None
+
+        if type(obstime) is float or type(obstime) is int:
+            month = Time(obstime, format='mjd').to_datetime().strftime('%b')
+        elif type(obstime) is str:
+            month = obstime
+        elif type(obstime) is datetime:
+            month = obstime.strftime('%b')
+        else:
+            raise TypeError('obstype not type float, str, or datetime')
+
+        return month in self.months
+
+
+def in_calibration_field(ra, dec, mjd0, mjd1):
+    """Return true if a sky position is within a calibration field.
+
+    Parameters
+    ----------
+    ra : float
+        RA of input coordinates.
+    dec : float
+        Declination of input coordinates.
+    mjd0 : float
+        Start of observation, in MJD.
+    mjd1 : float
+        End of observation, in MJD.
+
+    Returns
+    -------
+    infield : bool
+        True if target is inside a calibration field.
+    field : str or None
+        Field name if target is inside a calibration field, None otherwise.
+    """
+    desi_calib_fields = [
+        DESICalibField('COSMOS',  150.1, 2.182, 'Dec Jan Feb'),
+        DESICalibField('M-BHB 1', 203.5, 17.5, 'Mar Apr'),
+        DESICalibField('GAMA 15', 215.7, -0.7, 'May Jun Jul'),
+        DESICalibField('XMM LSS',  35.7, -4.75, 'Aug Sep Oct Nov')
+    ]
+
+    for calfield in desi_calib_fields:
+        # DESI field angular radius is 1.6 deg but the calibration tiles are
+        # also dithered by up to 1 degree from the center of the field, so
+        # perform a search radius of 2.6 degrees.
+        fov_cut = 2.6 # degrees
+
+        if calfield.in_fov(ra, dec, fov_cut):
+            
+            # Check if observation overlaps with this tile at a given time.
+            in_obstime = calfield.in_obstime(mjd0) or calfield.in_obstime(mjd1)
+            if in_obstime:
+                return in_obstime, calfield.name
+
+    return False, None
 
 
 class AlertListFactory:
