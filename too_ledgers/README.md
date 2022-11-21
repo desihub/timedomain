@@ -29,7 +29,7 @@ run.
 
 As of May 2022, the ledger should be appeneded to the end of the file
 ```
-/global/cscratch1/sd/adamyers/ToO/segev_put_it_here/ToO-input.ecsv
+/pscratch/sd/a/adamyers/ToO/segev_put_it_here/ToO-input.ecsv
 ```
 and Adam Meyers and Anand Raichoor should be informed of the update.
 
@@ -38,7 +38,7 @@ Example:
 python build_ledger.py desirt/legaObj220430.csv -o ToO-input-20220430.ecsv
 
 # Check output, then append to the master ledger.
-cat ToO-input-20220430.ecsv >> /global/cscratch1/sd/adamyers/ToO/segev_put_it_here/ToO-input.ecsv
+cat ToO-input-20220430.ecsv >> /pscratch/sd/a/adamyers/ToO/segev_put_it_here/ToO-input.ecsv
 
 # If all is OK, update the ToO database file under version control.
 git commit too_list.db
