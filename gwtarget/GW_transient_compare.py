@@ -301,8 +301,8 @@ if __name__ == "__main__":
         #print("... this is unlikely. Something probably went wrong with call to broker!")
         print(f"For mjd -- {gw_mjd:.2f}, RA, DEC dump...")
         print(*zip(ra_degraded,dec_degraded))
-        print("Exitting.")
         # For testing, please ignore.
+        # print("Exitting.")
         # sys.exit()
         print("Continuing...")
         
