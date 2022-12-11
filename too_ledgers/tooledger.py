@@ -81,14 +81,14 @@ class DESICalibField :
         """
         month = None
 
-        if type(obstime) is float or type(obstime) is int:
+        if isinstance(obstime, (int, float, np.floating)):
             month = Time(obstime, format='mjd').to_datetime().strftime('%b')
-        elif type(obstime) is str:
+        elif isinstance(obstime, str):
             month = obstime
-        elif type(obstime) is datetime:
+        elif isinstance(obstime, datetime):
             month = obstime.strftime('%b')
         else:
-            raise TypeError('obstype not type float, str, or datetime')
+            raise TypeError('obstime not type float, str, or datetime')
 
         return month in self.months
 
