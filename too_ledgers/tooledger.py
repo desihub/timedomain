@@ -118,7 +118,7 @@ def in_calibration_field(ra, dec, mjd0, mjd1):
         DESICalibField('COSMOS',  150.1, 2.182, 'Dec Jan Feb'),
         DESICalibField('M-BHB 1', 203.5, 17.5, 'Mar Apr'),
         DESICalibField('GAMA 15', 215.7, -0.7, 'May Jun Jul'),
-        DESICalibField('XMM LSS',  35.7, -4.75, 'Aug Sep Oct Nov')
+        DESICalibField('XMM LSS',  35.7, -4.75, 'Aug Sep Oct Nov Dec')
     ]
 
     for calfield in desi_calib_fields:
