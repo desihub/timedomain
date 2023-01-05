@@ -123,9 +123,9 @@ def in_calibration_field(ra, dec, mjd0, mjd1):
 
     for calfield in desi_calib_fields:
         # DESI field angular radius is 1.6 deg but the calibration tiles are
-        # also dithered by up to 1 degree from the center of the field, so
-        # perform a search radius of 2.6 degrees.
-        fov_cut = 2.6 # degrees
+        # also dithered by >1 degree from the center of the field, so
+        # perform a search radius of 3 degrees.
+        fov_cut = 3 # degrees
 
         if calfield.in_fov(ra, dec, fov_cut):
             
