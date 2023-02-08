@@ -53,6 +53,8 @@ import argparse
 import logging # to disable output when reading in FITS info
 
 import sqlite3
+
+import pickle
 """
 
 if __name__ == "__main__":
@@ -350,6 +352,10 @@ if __name__ == "__main__":
         plt.scatter(alerce_agn_rows['meanra'], alerce_agn_rows['meandec'], label='AGN', s=4, alpha=0.7)
         plt.scatter(alerce_sn_rows['meanra'], alerce_sn_rows['meandec'], label='SN', alpha=0.8)
         plt.legend()
+        #plt.xlim(213,222)
+        #plt.ylim(33,40)
+        # Flip to mimic later plots
+        plt.gca().invert_xaxis()
 
         plt.savefig(os.path.join(event_dir, "GW_DESI_Alerce.png"))
         plt.clf()
@@ -462,17 +468,66 @@ if __name__ == "__main__":
         print("Quitting.")
         sys.exit()
     
- 
+    #print("Starting the pickle process...")
+    pickle_filename = f"{gw_name}_targlist-matches.pickle"
+    pickle_path = os.path.join(event_dir, pickle_filename)
+    previous_matches = pickle_load(pickle_path)
+    
+    # Just checking!
+    if previous_matches:
+        try:
+            assert isinstance(previous_matches, dict), f"Pickle file {pickle_filename} contains something, but it is not a dictionary"
+        except AssertionError as ae:
+            print("Continuing fresh...")
+            previous_matches = {}
+    else:
+        previous_matches = {}
+        
+    previous_dates = previous_matches.get('dates', [])
+
     print("\nPerforming a closer (1\") match if found in previous check...")
     # As a reminder, uses original targlist data to find 1 arcsecond matches to individual targets via fibers
-    desi_target_matches, targlist_target_matches = closer_check(matches_dict = m_dict, catalog2_ras = np.array(targlist['RA']), catalog2_decs = np.array(targlist['DEC']))
-    if not targlist_target_matches:
+    # desi_target_matches, targlist_target_matches 
+    targlist_target_matches = closer_check(matches_dict = m_dict, 
+                                           catalog2_ras = np.array(targlist['RA']), 
+                                           catalog2_decs = np.array(targlist['DEC']),
+                                           # Take advantage of exiting 'exclusion list' implementation now that we use pickles
+                                           exclusion_list = previous_dates)
+    
+    
+    if not targlist_target_matches and not previous_matches:
         print("No matches found in closer matching (1 arcsecond).")
         print("Quitting.")
         sys.exit()
 
-    # Some data reduction to avoid repeats (there's quite a lot!)
-    unique_targlist_target_matches = SkyCoord(list(set([(val.ra.deg, val.dec.deg) for val in targlist_target_matches])), unit = 'deg')
+    new_matches = False
+    # Just saving some time here...
+    if targlist_target_matches:
+        # Adding in the pickled data if it exists
+        # I use numpy append because that seems to preserve the SkyCoord coordinate array (the backbone for SkyCoord is numpy after all)
+        # Which allows me to save some compute time for finding the unique ra,dec pairs below since I don't have to convert there
+        # and back again so many times.
+        targlist_target_matches = np.append(targlist_target_matches, previous_matches.get('unique_targlist_target_matches', []))
+
+        # Some data reduction to avoid repeats (there's quite a lot!)
+        unique_targlist_target_matches = SkyCoord(list(set([(val.ra.deg, val.dec.deg) for val in targlist_target_matches])), unit = 'deg')
+
+        # Dumping the pickle data with the new entries, overwrite matches, extend dates since we have the exclusion list
+        previous_matches['unique_targlist_target_matches'] = unique_targlist_target_matches
+        
+        new_matches = True
+
+    # Perform conditional check just in case there aren't any new dates to check since last run
+    # Also duplicates aren't important so I use set just in case they're unordered
+    
+    new_dates = False
+    if set(previous_dates) != set(m_dict.keys()):
+        previous_matches['dates'] = list(set( previous_dates + list(m_dict.keys()) ))
+        new_dates = True
+        
+    # Dumping data 
+    if new_matches or new_dates:
+        pickle_dump(previous_matches, pickle_path)
     
     #print(len(targlist))
     #print(len(targlist_target_matches))
