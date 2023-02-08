@@ -486,6 +486,7 @@ if __name__ == "__main__":
     previous_dates = previous_matches.get('dates', [])
 
     print("\nPerforming a closer (1\") match if found in previous check...")
+    print("This step skips over dates from a previous run if pickle file is found.")
     # As a reminder, uses original targlist data to find 1 arcsecond matches to individual targets via fibers
     # desi_target_matches, targlist_target_matches 
     targlist_target_matches = closer_check(matches_dict = m_dict, 
@@ -516,6 +517,11 @@ if __name__ == "__main__":
         previous_matches['unique_targlist_target_matches'] = unique_targlist_target_matches
         
         new_matches = True
+        
+    else:
+        # Repeat myself here so I can use the if statement to check if anything went through
+        targlist_target_matches = np.append(targlist_target_matches, previous_matches.get('unique_targlist_target_matches', []))
+        unique_targlist_target_matches = SkyCoord(list(set([(val.ra.deg, val.dec.deg) for val in targlist_target_matches])), unit = 'deg')
 
     # Perform conditional check just in case there aren't any new dates to check since last run
     # Also duplicates aren't important so I use set just in case they're unordered
