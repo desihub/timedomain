@@ -55,6 +55,7 @@ import psycopg2
 import requests
 import sqlite3
 
+import pickle
 
 # # Some handy, frequently used things
 global db_filename
@@ -860,6 +861,25 @@ def glob_frames(exp_d: str):
 #path_to_transient = "/global/cfs/cdirs/desi/science/td/daily-search/desitrip/out"
 #print(all_candidate_filenames(path_to_transient)[1])
 
+def pickle_dump(data_structure, filepath):
+    
+    with open(filepath, "wb") as f:    
+        pickle.dump(data_structure, f)
+    
+    return None
+
+def pickle_load(filepath):
+    
+    if not os.path.exists(filepath):
+        print("Cannot find pickle file in")
+        print(filepath)
+        print("Continuing...")
+        return None
+    
+    with open(filepath, "rb") as f:    
+        data_structure = pickle.load(f)
+    
+    return data_structure
 
 # ## Closer checking (handler) function
 # In the algorithm, **initial_check** has already been run and has produced a dictionary of DESI matches and 1-to-1 targetlist matches. Using said dictionary, we only check the dates/tiles in which we found a match and then compare all 5000 fibers to the whole targetlist again to save on operation time and memory.
@@ -871,7 +891,7 @@ def glob_frames(exp_d: str):
 def closer_check(matches_dict = {}, catalog2_ras = [], catalog2_decs = [], exclusion_list = []):
     
     # Initalizing output structures
-    all_exp_matches = {}
+    #all_exp_matches = {}
     all_targlist_matches = []
     
     # Just in case
@@ -885,9 +905,10 @@ def closer_check(matches_dict = {}, catalog2_ras = [], catalog2_decs = [], exclu
         
         # If I have to run this multiple times, I probably already know what days there won't be a match so this is to save time
         if date in exclusion_list:
+            print(f"{date} previously matched, continuing...")
             continue
-
-        all_exp_matches[date] = []
+        
+        #all_exp_matches[date] = []
         file_indices = {}
 
         all_targ_ras = np.array([])
@@ -923,7 +944,8 @@ def closer_check(matches_dict = {}, catalog2_ras = [], catalog2_decs = [], exclu
                 all_targ_decs = np.append(all_targ_decs, targ_decs)
 
         # Here we finally perform the match, re-using inner_matching but with a much more strict matching radius
-        desi_dict_matches, targlist_fiber_matches = inner_matching(exposure_ras_in = all_targ_ras, exposure_decs_in = all_targ_decs,
+        # desi_dict_matches, targlist_fiber_matches 
+        _ , targlist_fiber_matches = inner_matching(exposure_ras_in = all_targ_ras, exposure_decs_in = all_targ_decs,
                 ra_in = catalog2_ras, dec_in = catalog2_decs, 
                 max_sep = 1, sep_units = 'arcsec', around = False, query_dates = "")
 
@@ -934,7 +956,8 @@ def closer_check(matches_dict = {}, catalog2_ras = [], catalog2_decs = [], exclu
             print("No matches found. Continuing...")
             continue
         
-    return all_exp_matches, all_targlist_matches
+    #return all_exp_matches, all_targlist_matches
+    return all_targlist_matches
 
 
 # ## Building the DR9 targetlist 
