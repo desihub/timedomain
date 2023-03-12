@@ -115,7 +115,7 @@ def in_calibration_field(ra, dec, mjd0, mjd1):
         Field name if target is inside a calibration field, None otherwise.
     """
     desi_calib_fields = [
-        DESICalibField('COSMOS',  150.1, 2.182, 'Dec Jan Feb'),
+        DESICalibField('COSMOS',  150.1, 2.182, 'Dec Jan Feb Mar'),
         DESICalibField('M-BHB 1', 203.5, 17.5, 'Mar Apr'),
         DESICalibField('GAMA 15', 215.7, -0.7, 'May Jun Jul'),
         DESICalibField('XMM LSS',  35.7, -4.75, 'Aug Sep Oct Nov Dec Jan')
