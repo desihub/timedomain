@@ -151,7 +151,7 @@ if __name__ == "__main__":
     try:
         h = fits.open(gwfile)
     except FileNotFoundError:
-        print("Could not find the GW file. Please specify either a relative or full path to the file. Exitting.")
+        print("Could not find the GW file. Please specify either a relative or full path to the file. Exiting.")
         sys.exit()
         
     #h=fits.open('skymaps/GW190412_combined_skymap.fits.gz')
@@ -304,7 +304,7 @@ if __name__ == "__main__":
         print(f"For mjd -- {gw_mjd:.2f}, RA, DEC dump...")
         print(*zip(ra_degraded,dec_degraded))
         # For testing, please ignore.
-        # print("Exitting.")
+        # print("Exiting.")
         # sys.exit()
         print("Continuing...")
         
@@ -444,6 +444,12 @@ if __name__ == "__main__":
         targlist = Table.read(trg_file)
     except FileNotFoundError:
         targlist = build_targlist_table(gw_properties["nside"], pixmap)
+        
+        if not targlist: # i.e. None when no results returned
+            print("No DR9 targets found in CI region selected of GW map.")
+            print("Quitting.")
+            sys.exit()
+                
         targlist_write(targlist, trg_file, overwrite = True)
         
         
@@ -652,10 +658,14 @@ if __name__ == "__main__":
     fig = plot_cartmap_tiles(gwfile, tile_ra = [218.9,217.5], tile_dec = [36.6,35.8], \
                              targ_ra = targetlist_tile_ras, targ_dec = targetlist_tile_decs, angsize = 5, program_names = [])
     ax = fig.gca()
-    ax.set(xlim=(222, 213), ylim=(33,40))
+    ax.set(
+           xlim = (222, 213), 
+           ylim = (33,40),
+           xticks = np.arange(222, 212, -1)
+           )
     ax.scatter(targlist_radec_reduced['RA'], targlist_radec_reduced['DEC'], alpha = 0.2, s = 0.3)
     #ax.scatter(targlist['RA'], targlist['DEC'])
-    plt.savefig(os.path.join(event_dir, gw_name + '_desi_tile-matches.png'), dpi=120)
+    plt.savefig(os.path.join(event_dir, f"{gw_name}_desi_tile-matches.png"), dpi=120)
     
 # *************************************************************************
 #

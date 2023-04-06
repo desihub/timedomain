@@ -14,9 +14,10 @@
 import sys
 import os
 user_home = os.environ['HOME']
+user_name = os.getlogin()
 # For importing useful functions
-sys.path.append('/global/homes/p/portmanm/timedomain/')
-_ = [sys.path.append(user_home + '/desi/' + x + '/py/') for x in os.listdir('/global/homes/p/portmanm/desi/')]
+sys.path.append(f"/global/homes/{user_name[0]}/{user_name}/timedomain/")
+_ = [sys.path.append(f"{user_home}/desi/{x}/py/") for x in os.listdir(f"/global/homes/{user_name[0]}/{user_name}/desi/")]
 
 from astropy.io import fits
 from astropy.table import Table, Column, join, hstack, vstack, unique, setdiff
@@ -848,7 +849,7 @@ def glob_frames(exp_d: str):
             print("Could not grab/find any fits in the exposure directory:")
             print(exp_d)
             filenames_read = [] # Just in case
-            #raise SystemExit("Exitting.")
+            #raise SystemExit("Exiting.")
             print("Continuing...")
 
     #else:
@@ -983,6 +984,9 @@ def build_targlist_table(nside, pix_map):
             targlist_threshold = vstack([targlist_threshold, Table(io.read_targets_in_hp(hpdirname, nside = nside, pixlist=pix_map, columns=readcols))])
 
     # targlist90.rename_column('BRICK_OBJID', 'OBJID')
+    if not len(targlist_threshold): # i.e. 0 elements, I don't think Table has an 'empty' method
+        return None
+        
     targlist_threshold = unique(targlist_threshold)
     
     return targlist_threshold
@@ -1018,7 +1022,7 @@ def targlist_write(table_in, filename, overwrite = True):
 def grab_desi_targetid(matches_dict = {}, targlist_table = Table(), exclusion_list = []):
     
     if not targlist_table:
-        print("No targetlist table fed in. Exitting and returning empty table.")
+        print("No targetlist table fed in. Exiting and returning empty table.")
         return targlist_table
     
     if not matches_dict:
