@@ -151,7 +151,7 @@ if __name__ == "__main__":
     try:
         h = fits.open(gwfile)
     except FileNotFoundError:
-        print("Could not find the GW file. Please specify either a relative or full path to the file. Exitting.")
+        print("Could not find the GW file. Please specify either a relative or full path to the file. Exiting.")
         sys.exit()
         
     #h=fits.open('skymaps/GW190412_combined_skymap.fits.gz')
@@ -302,9 +302,9 @@ if __name__ == "__main__":
         print("No transient alert matches (SN or AGN) found within 4 degrees of CI contour.")
         #print("... this is unlikely. Something probably went wrong with call to broker!")
         print(f"For mjd -- {gw_mjd:.2f}, RA, DEC dump...")
-        print(*zip(ra_degraded,dec_degraded))
+        print(*zip(ra_degraded,dec_degraded), sep = "\n")
         # For testing, please ignore.
-        # print("Exitting.")
+        # print("Exiting.")
         # sys.exit()
         print("Continuing...")
         
@@ -438,12 +438,18 @@ if __name__ == "__main__":
     if CI_val != 0.9:
         CI_str = '-' + str(int((100*CI_val))) + "CI"
         
-    trg_file = os.path.join(targetlists_path, gw_name + CI_str + '_dr9.ecsv')
+    trg_file = os.path.join(targetlists_path, f"{gw_name}{CI_str}_dr9.ecsv")
     
     try:
         targlist = Table.read(trg_file)
     except FileNotFoundError:
         targlist = build_targlist_table(gw_properties["nside"], pixmap)
+        
+        if not targlist: # i.e. None when no results returned
+            print("No DR9 targets found in CI region selected of GW map.")
+            print("Quitting.")
+            sys.exit()
+                
         targlist_write(targlist, trg_file, overwrite = True)
         
         
@@ -585,8 +591,6 @@ if __name__ == "__main__":
                 targetlist_program_info.append(p_name)
                 targetlist_tileids.append(j['tileid'])
     
-    # ************** Need to ask about the above ***************
-
 # *************************************************************************
 #
 # REDUCING TARGETLIST BY PREVIOUS OBSERVATIONS
@@ -601,7 +605,7 @@ if __name__ == "__main__":
     targlist_radec_reduced = setdiff(targlist['RA', 'DEC'], tlist_matches_table)
 
     assert len(targlist_radec_reduced) == len(targlist) - len(unique_targlist_target_matches), "Something went wrong masking the dr9 target list! Stopping."
-    print('\n{:.2f}% of targets have already been observed within 2 degrees of DESI tile pointing in {} CI.'.format(100*len(unique_targlist_target_matches)/len(targlist), CI_val*100))
+    print(f"\n{100*len(unique_targlist_target_matches)/len(targlist):.2f}% of targets have already been observed within 2 degrees of DESI tile pointing in {CI_val*100}% CI.")
     
 # *************************************************************************
 #
@@ -614,8 +618,10 @@ if __name__ == "__main__":
     #targlist_write(targlist_radec_reduced, "dr9_targlist" + CI_val + "_reduced_radec.ecsv", overwrite = True)
 
     # Write dr9 targets to ecsv
-    write_too_ledger(filename = os.path.join(targetlists_path,'testing_ToO-bgs.ecsv'), too_table = targlist_radec_reduced.to_pandas(), checker='MP/AP', overwrite=True, verbose=False, tabformat='LEGACY')
-
+    print("\nWriting ToO Ledger... this may take awhile.")
+    write_too_ledger(filename = os.path.join(targetlists_path,f'{gw_name}_ToO-bgs.ecsv'), too_table = targlist_radec_reduced.to_pandas(), checker='MP/AP', overwrite=True, verbose=False, tabformat='LEGACY')
+    print("Done writing ledger.")
+    
 # *************************************************************************
 #
 # REDUCING TARGETLIST USING TARGETID
@@ -639,23 +645,52 @@ if __name__ == "__main__":
 # PLOTTING RESULTS
 #
 # *************************************************************************
-
-    # fig = plot_cartmap_tiles(gwfile, tile_ra = [218.9,217.5], tile_dec = [36.6,35.8], targ_ra = bd_tile_ras, targ_dec = bd_tile_decs, angsize = 5, program_names = bd_program_info)
-    # ax = fig.gca()
-    # ax.set(xlim=(222, 213), ylim=(33,40))
-    # #ax.scatter(exp_ras, exp_decs)
-    # #ax.scatter(targlist_radec_reduced['RA'], targlist_radec_reduced['DEC'], alpha = 0.2, s = 0.3)
-    # plt.savefig(user_home + '/' + gw_name + '_desi_tile-matches.png', dpi=120)
     
-    # Plot targetlist tile matches and DESI FOV, just in case 
-    # TODO don't hardcode the tile_ra and dec
-    fig = plot_cartmap_tiles(gwfile, tile_ra = [218.9,217.5], tile_dec = [36.6,35.8], \
-                             targ_ra = targetlist_tile_ras, targ_dec = targetlist_tile_decs, angsize = 5, program_names = [])
+    # Plot targetlist tile matches and DESI FOV.   
+    print("\nPlotting target list tile matches with DESI FOV.")
+    fig = plot_cartmap_tiles(gwfile,
+                             # From func: Add DESI tile drawings, specified by central RA, Dec.
+                             tile_ra  = True, 
+                             tile_dec = True,    
+                             
+                             # Only plot 40 because some regions are heavily congested with tile pointings
+                             targ_ra  = targetlist_tile_ras[:40], 
+                             targ_dec = targetlist_tile_decs[:40], 
+                             
+                             angsize = 5, 
+                             program_names = targetlist_program_info)
     ax = fig.gca()
-    ax.set(xlim=(222, 213), ylim=(33,40))
-    ax.scatter(targlist_radec_reduced['RA'], targlist_radec_reduced['DEC'], alpha = 0.2, s = 0.3)
-    #ax.scatter(targlist['RA'], targlist['DEC'])
-    plt.savefig(os.path.join(event_dir, gw_name + '_desi_tile-matches.png'), dpi=120)
+    
+    xmin, xmax = ax.get_xlim()
+    ymin, ymax = ax.get_ylim()
+
+    ax.set(
+       # Confusingly but appropriately, since the map is already 
+       # defined high -> low, xmin is high, xmax is low.
+       xticks = np.arange(int(xmin), int(xmax) - 1, -1),  # noninclusive of end hence -1
+       yticks = np.arange(int(ymin), int(ymax) + 1)
+      )
+    
+    target_str = "TARGETS"
+    ax.scatter(targlist_radec_reduced['RA'], 
+               targlist_radec_reduced['DEC'], 
+               alpha = 0.1, 
+               s = 0.1, 
+               label = target_str)
+    
+    handles, labels = ax.get_legend_handles_labels()
+    
+    # Adding in a larger marker for the legend for targets 
+    # since it can be hard to see otherwise.
+    l_h_dict = dict(zip(labels, handles))
+    l_h_dict[target_str] = mlines.Line2D([], [], color='darkgrey', marker='.', linestyle='None',
+                                         markersize=1)
+
+    order = ["50% CI", "90% CI", "DESI FOV", "BRIGHT", "DARK", target_str]
+    ax.legend([l_h_dict[label] for label in order], order, fontsize=10, ncol=2)
+    
+    print(f"Saving plot to {event_dir}.")
+    plt.savefig(os.path.join(event_dir, f"{gw_name}_desi_tile-matches.png"), dpi=120)
     
 # *************************************************************************
 #
