@@ -42,6 +42,8 @@ from desispec.io import read_spectra, write_spectra
 from desispec.spectra import Spectra
 
 import matplotlib.pyplot as plt
+import matplotlib.lines as mlines
+
 import healpy as hp
 import pandas as pd
 import numpy as np
@@ -575,10 +577,13 @@ def prob_pixel_locs(gw_in: dict, percentile = [0.9]):
     sort_percentile = sorted(percentile)
     max_percentile = sort_percentile[-1]
     #npix = len(gw_map)
+    
     pb = gw_in["prob"] #hs.data['PROB']
     NSIDE = gw_in["nside"]
+    
     idx_sort = np.argsort(pb)
     idx_sort_up = list(reversed(idx_sort))
+    
     sum = 0.
     id = 0
     p_idx = 0
@@ -598,9 +603,10 @@ def prob_pixel_locs(gw_in: dict, percentile = [0.9]):
         
     all_idx = dict(zip(sort_percentile, all_idx))
     total_area = {}
+    
     for i in sort_percentile:
         area = hp.nside2pixarea(gw_in['nside'], degrees=True)*len(all_idx[i])
-        print("The ", i*100. ,"% map is ",area," deg^2", sep = '')
+        print(f"The {i*100.}% map is {area:.4f} deg^2")
         total_area[i] = area
 
     return all_idx, total_area
@@ -1127,14 +1133,14 @@ def plot_cartmap_tiles(lvc_healpix_file, levels=[0.5, 0.9], angsize=3., tile_ra=
 
     # Open and close the temporary plot.
     tfig   = plt.figure(num=2,figsize=figsize)
-    rotimg = hp.cartview(gwmap, fig=2,coord='C', title="", cbar=False, flip='astro',
+    rotimg = hp.cartview(gwmap, fig=2, coord='C', title="", cbar=False, flip='astro',
                          lonra=[cxmin,cxmax], latra=[ymin,ymax], rot=frot,
                          notext=True, xsize=1000,
                          return_projected_map=True)
     plt.close(tfig)
 
     # Now make the real plot with the desired angular contours.
-    fig, ax = plt.subplots(1,1, num=1, figsize=figsize)
+    fig, ax = plt.subplots(1, 1, num=1, figsize=figsize)
     img = ax.imshow(rotimg, extent=[cxmax, cxmin, ymin, ymax],
                     origin='lower', cmap='OrRd')
 
@@ -1142,8 +1148,8 @@ def plot_cartmap_tiles(lvc_healpix_file, levels=[0.5, 0.9], angsize=3., tile_ra=
         p = ax.plot(rc, dc, 'g-', ls=lstyle, lw=2, label='{}% CI'.format(clev))
 
     ax.set(xlim=(cxmax, cxmin),
-       xlabel='RA [deg]',
-       ylabel='Dec [deg]')
+           xlabel='RA [deg]',
+           ylabel='Dec [deg]')
     ax.grid(ls=':')
     
     bright_list = ['BRIGHT', 'BGS']
@@ -1164,22 +1170,34 @@ def plot_cartmap_tiles(lvc_healpix_file, levels=[0.5, 0.9], angsize=3., tile_ra=
         else:
             ax.plot(targ_ra, targ_dec, 'k.', alpha=0.5, label = 'Matches') # temp change, alpha = 0.1 -> alpha = 0.5 (maybe push command line arg for this)
 
-    _h, _l = ax.get_legend_handles_labels()
+    #_h, _l = ax.get_legend_handles_labels()
 
     # Add DESI tile drawings, specified by central RA, Dec.
-    if tile_ra is not None and tile_dec is not None:
+    if tile_ra and tile_dec:
+        first = True
         #for _ra_c, _dec_c in zip(tile_ra, tile_dec):
         for _ra_c, _dec_c in zip(targ_ra, targ_dec):
-            circ = plt.Circle((_ra_c, _dec_c), radius=1.6, fc='None', ec='b', ls=':', lw=2)
+            
+            if first:
+                circ = plt.Circle((_ra_c, _dec_c), radius=1.6, fc='None', ec='b', ls=':', lw=2, label = 'DESI FOV')
+                first = False
+                
+            else:
+                # Cheating the label/legend hooplah
+                # Manually appending to legend makes it so that we can't retrieve the circles later.
+                # Meaning reproducing the legend (i.e. when we add things) loses either the circles themselves
+                # or their labels in the legend.
+                circ = plt.Circle((_ra_c, _dec_c), radius=1.6, fc='None', ec='b', ls=':', lw=2)
+                
             ax.add_artist(circ)
-
-        _h.append(circ)
-        _l.append('DESI FOV')
-    
-    ax.legend(handles=_h, labels=_l, fontsize=10, ncol=2)
+            
+    ax.legend(fontsize=10, ncol=2) # handles=_h, labels=_l,
 
     cb = fig.colorbar(img, orientation='horizontal', shrink=0.95,
                       fraction=0.04, pad=0.2, ax=ax)
+    
+    # Scientific notation for cleanliness
+    cb.formatter.set_powerlimits((0, 0))
     cb.set_label(r'$dp/d\Omega$ [deg$^{-2}$]')
 
     return fig
