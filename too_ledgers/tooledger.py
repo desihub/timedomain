@@ -164,6 +164,8 @@ class AlertListFactory:
         elif 'objid' in data.columns and 'skycoord_obj' in data.columns and 'ra_obj' in data.columns and 'dec_obj' in data.columns:
             # DECam ToO alert list from Lei Hu's pipeline.
             return DECamAlertListLH(data)
+        elif 'OBJID' in data.columns and 'RA_OBJ' in data.columns and 'DEC_OBJ' in data.columns:
+            return DECamAlertListShen(data)
         elif 'Field' in data.columns and 'PROGRAM' in data.columns:
             return SMBBHAlertList(data)
         elif 'Reporting Group/s' in data.columns and 'Discovery Data Source/s' in data.columns:
@@ -391,6 +393,65 @@ class DECamAlertListLH(TooAlertList):
             # Extract the relevant data for the ToO alert.
             objid, ra, dec = entry['objid'], entry['ra_obj'], entry['dec_obj']
             date = entry['date_first_alert']
+            t = Time(f'{date}', format='isot', scale='utc')
+            mjd = int(np.floor(t.mjd))
+
+            # Enter data into the DB. 
+            tooid = self.toodb.add_alert(objid, 'DECam', date, mjd, ra, dec)
+            if tooid == 0:
+                continue
+
+            # Compute the observation window. If the discovery date is old
+            # enough that the window will be <9 days, starting today, move the
+            # window up.
+            now = Time.now().mjd
+            dt = now - mjd
+            if dt >= 5:
+                print(f'Shifting time window for alert {tooid} on {mjd}')
+                mjd0, mjd1 = now, now+14
+            else:
+                mjd0, mjd1 = mjd, mjd+14
+
+            # Accumulate data for output:
+            # RA, DEC, PMRA, PMDEC, EPOCH, CHECKER, TYPE, PRIO, PROG, MJD_START, MJD_STOP, TOO_ID
+            in_cal, calname = in_calibration_field(ra, dec, mjd0, mjd1)
+            if in_cal:
+                # RA, Dec, time puts this observation in a DESI calibration
+                # field; set it up for TILE fiberassignment.
+                too_list.append(
+                    [ra, dec, 0., 0., 2000.0, 'SB/AP', 'TILE', 'HI', 'BRIGHT', mjd0, mjd1, tooid]
+                )
+            else:
+                # Normal observation: FIBER mode, LO priority.
+                too_list.append(
+                    [ra, dec, 0., 0., 2000.0, 'SB/AP', 'FIBER', 'LO', 'BRIGHT', mjd0, mjd1, tooid]
+                )
+
+        return too_list
+
+
+class DECamAlertListShen(TooAlertList):
+    """ToO input handling from DECam/DESIRT using Yue Shen's pipeline.
+    """
+    def __init__(self, too_table):
+        super().__init__(too_table)
+
+    def generate_too_list(self):
+        """Find unique alerts not in the ToO database.
+
+        Returns
+        -------
+        too_list : tuple or list
+            Per-alert info needed for the ToO ledger.
+        """
+
+        too_list = []
+
+        for entry in self.too_table:
+            # Extract the relevant data for the ToO alert.
+            objid, ra, dec = entry['OBJID'], entry['RA_OBJ'], entry['DEC_OBJ']
+            yr, mo, dy = objid[1:5], objid[5:7], objid[7:9]
+            date = f'{yr}-{mo}-{dy}T00:00:00.1'
             t = Time(f'{date}', format='isot', scale='utc')
             mjd = int(np.floor(t.mjd))
 
