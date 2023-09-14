@@ -19,6 +19,10 @@ from datetime import datetime
 import numpy as np
 
 
+# Time window to allow fiberassign to use the alert, in days.
+delta_t = 28
+
+
 class DESICalibField :
     """A simple class that stores the name, location, and observing dates of
     DESI calibration fields. See https://desi.lbl.gov/trac/wiki/SurveyOps/CalibrationFields.
@@ -300,9 +304,9 @@ class DECamAlertListRK(TooAlertList):
             dt = now - mjd
             if dt >= 5:
                 print(f'Shifting time window for alert {tooid} on {mjd}')
-                mjd0, mjd1 = now, now+14
+                mjd0, mjd1 = now, now+delta_t
             else:
-                mjd0, mjd1 = mjd, mjd+14
+                mjd0, mjd1 = mjd, mjd+delta_t
 
             # Accumulate data for output:
             # RA, DEC, PMRA, PMDEC, EPOCH, CHECKER, TYPE, PRIO, PROG, MJD_START, MJD_STOP, TOO_ID
@@ -350,9 +354,9 @@ class DECamAlertListTAMU(TooAlertList):
             dt = now - mjd
             if dt >= 5:
                 print(f'Shifting time window for alert {tooid} on {mjd}')
-                mjd0, mjd1 = now, now+14
+                mjd0, mjd1 = now, now+delta_t
             else:
-                mjd0, mjd1 = mjd, mjd+14
+                mjd0, mjd1 = mjd, mjd+delta_t
 
             # Accumulate data for output:
             # RA, DEC, PMRA, PMDEC, EPOCH, CHECKER, TYPE, PRIO, PROG, MJD_START, MJD_STOP, TOO_ID
@@ -408,9 +412,9 @@ class DECamAlertListLH(TooAlertList):
             dt = now - mjd
             if dt >= 5:
                 print(f'Shifting time window for alert {tooid} on {mjd}')
-                mjd0, mjd1 = now, now+14
+                mjd0, mjd1 = now, now+delta_t
             else:
-                mjd0, mjd1 = mjd, mjd+14
+                mjd0, mjd1 = mjd, mjd+delta_t
 
             # Accumulate data for output:
             # RA, DEC, PMRA, PMDEC, EPOCH, CHECKER, TYPE, PRIO, PROG, MJD_START, MJD_STOP, TOO_ID
@@ -467,9 +471,9 @@ class DECamAlertListShen(TooAlertList):
             dt = now - mjd
             if dt >= 5:
                 print(f'Shifting time window for alert {tooid} on {mjd}')
-                mjd0, mjd1 = now, now+14
+                mjd0, mjd1 = now, now+delta_t
             else:
-                mjd0, mjd1 = mjd, mjd+14
+                mjd0, mjd1 = mjd, mjd+delta_t
 
             # Accumulate data for output:
             # RA, DEC, PMRA, PMDEC, EPOCH, CHECKER, TYPE, PRIO, PROG, MJD_START, MJD_STOP, TOO_ID
@@ -568,7 +572,7 @@ class TNSAlertList(TooAlertList):
             # Accumulate data for output:
             # RA, DEC, PMRA, PMDEC, EPOCH, CHECKER, TYPE, PRIO, PROG, MJD_START, MJD_STOP, TOO_ID
             too_list.append(
-                [ra, dec, 0., 0., 2000.0, 'SB/AP', 'FIBER', 'LO', 'BRIGHT', t.mjd, t.mjd + 14, tooid]
+                [ra, dec, 0., 0., 2000.0, 'SB/AP', 'FIBER', 'LO', 'BRIGHT', t.mjd, t.mjd + delta_t, tooid]
             )
 
         return too_list
